@@ -179,13 +179,13 @@ Default development password for all seed accounts: `Password123!`
 
 ## 🧪 Testing & Validation
 
-All 114 automated tests across monorepo packages, mobile, and backend pass with zero warnings:
+All 121 automated tests across monorepo packages, mobile, and backend pass with zero warnings:
 
 ```bash
-# Run all unit and E2E tests across monorepo (114 tests)
+# Run all unit and E2E tests across monorepo (121 tests)
 pnpm test
 
-# Run backend E2E tests specifically (89 tests in 12 suites)
+# Run backend E2E tests specifically (96 tests in 12 suites)
 pnpm --filter @fitcore/api test
 
 # Run mobile tests specifically (25 tests in 8 suites)
@@ -198,9 +198,9 @@ pnpm typecheck
 pnpm lint
 ```
 
-### Backend E2E Test Suite Breakdown (89 tests in 12 suites)
-1. `test/membership-lifecycle.e2e-spec.ts` — Plan creation, staff assignment, purchase snapshotting, lifecycle transitions (pause/resume/cancel/renew), auto-expiration, and facility access rules (13 tests).
-2. `test/membership-security.e2e-spec.ts` — Cross-tenant plan isolation (404), member self-service anti-IDOR, staff assignment permission guards, turnstile facility access policy verification (8 tests).
+### Backend E2E Test Suite Breakdown (96 tests in 12 suites)
+1. `test/membership-security.e2e-spec.ts` — Cross-tenant plan isolation (404), member anti-IDOR, Section 45 Tests A-F (Organisation ownership, MemberOutlet independence, access scope grants, cross-tenant denial), Section 46 Historical Data snapshot integrity test, turnstile access policy evaluation (15 tests).
+2. `test/membership-lifecycle.e2e-spec.ts` — Plan creation, staff assignment, purchase snapshotting, lifecycle transitions (pause/resume/cancel/renew), auto-expiration, and facility access rules (13 tests).
 3. `test/member-lifecycle.e2e-spec.ts` — Member profile, PAR-Q, health screening, injury tracking, consents, signatures, and complete onboarding flow (14 tests).
 4. `test/member-security.e2e-spec.ts` — Anti-IDOR, tenant isolation on member profiles, reception medical clearance restrictions, zero health logging (8 tests).
 5. `test/day3-lifecycle.e2e-spec.ts` — Full Day 3 end-to-end multi-tenant lifecycle (11 tests).

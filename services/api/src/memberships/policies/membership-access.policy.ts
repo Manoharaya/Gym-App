@@ -4,12 +4,18 @@ import { PrismaService } from '../../database/prisma.service';
 export type AccessReasonCode =
   | 'ACTIVE_MEMBERSHIP'
   | 'NO_ACTIVE_MEMBERSHIP'
+  | 'OUTLET_NOT_INCLUDED'
   | 'OUTLET_NOT_IN_SCOPE'
+  | 'NO_GYM_ACCESS_ENTITLEMENT'
   | 'MISSING_ENTITLEMENT'
   | 'MEMBERSHIP_EXPIRED'
   | 'MEMBERSHIP_SUSPENDED'
+  | 'MEMBERSHIP_CANCELLED'
   | 'MEMBERSHIP_PAUSED'
-  | 'MEMBERSHIP_PENDING';
+  | 'MEMBERSHIP_PENDING'
+  | 'ORGANISATION_MISMATCH'
+  | 'MEMBER_NOT_FOUND'
+  | 'OUTLET_NOT_FOUND';
 
 export interface AccessDecisionResult {
   allowed: boolean;
@@ -56,7 +62,7 @@ export class MembershipAccessPolicy {
     if (!member) {
       return {
         allowed: false,
-        reason: 'NO_ACTIVE_MEMBERSHIP',
+        reason: 'MEMBER_NOT_FOUND',
         details: 'Member profile not found',
       };
     }
@@ -77,7 +83,7 @@ export class MembershipAccessPolicy {
     if (!outlet || outlet.status !== 'ACTIVE') {
       return {
         allowed: false,
-        reason: 'OUTLET_NOT_IN_SCOPE',
+        reason: 'OUTLET_NOT_FOUND',
         details: 'Requested facility outlet is not active or does not exist',
       };
     }
@@ -85,16 +91,26 @@ export class MembershipAccessPolicy {
     const now = new Date();
     const memberships = member.memberships;
 
+    // Check cross-organisation boundary
+    const orgMemberships = memberships.filter((m) => m.organisationId === outlet.organisationId);
+    if (orgMemberships.length === 0) {
+      return {
+        allowed: false,
+        reason: 'ORGANISATION_MISMATCH',
+        details: 'Member does not have any membership in the requested outlet organisation',
+      };
+    }
+
     // Filter active or trial memberships within valid date range
-    const activeMemberships = memberships.filter((m) => {
+    const activeMemberships = orgMemberships.filter((m) => {
       const isActiveStatus = m.status === 'ACTIVE' || m.status === 'TRIAL';
       const isDateValid = m.startDate <= now && m.endDate >= now;
-      return isActiveStatus && isDateValid && m.organisationId === outlet.organisationId;
+      return isActiveStatus && isDateValid;
     });
 
     if (activeMemberships.length === 0) {
-      // Find descriptive rejection reason from existing records
-      const paused = memberships.find((m) => m.status === 'PAUSED');
+      // Find descriptive rejection reason from existing records in this organisation
+      const paused = orgMemberships.find((m) => m.status === 'PAUSED');
       if (paused) {
         return {
           allowed: false,
@@ -104,7 +120,7 @@ export class MembershipAccessPolicy {
         };
       }
 
-      const suspended = memberships.find((m) => m.status === 'SUSPENDED');
+      const suspended = orgMemberships.find((m) => m.status === 'SUSPENDED');
       if (suspended) {
         return {
           allowed: false,
@@ -114,7 +130,17 @@ export class MembershipAccessPolicy {
         };
       }
 
-      const pending = memberships.find((m) => m.status === 'PENDING');
+      const cancelled = orgMemberships.find((m) => m.status === 'CANCELLED');
+      if (cancelled) {
+        return {
+          allowed: false,
+          reason: 'MEMBERSHIP_CANCELLED',
+          membershipId: cancelled.id,
+          details: 'Membership has been cancelled',
+        };
+      }
+
+      const pending = orgMemberships.find((m) => m.status === 'PENDING');
       if (pending) {
         return {
           allowed: false,
@@ -124,7 +150,7 @@ export class MembershipAccessPolicy {
         };
       }
 
-      const expired = memberships.find((m) => m.status === 'EXPIRED' || m.endDate < now);
+      const expired = orgMemberships.find((m) => m.status === 'EXPIRED' || m.endDate < now);
       if (expired) {
         return {
           allowed: false,
@@ -189,14 +215,14 @@ export class MembershipAccessPolicy {
     if (missingEntitlement) {
       return {
         allowed: false,
-        reason: 'MISSING_ENTITLEMENT',
+        reason: 'NO_GYM_ACCESS_ENTITLEMENT',
         details: `Active membership does not include entitlement: ${entitlementType}`,
       };
     }
 
     return {
       allowed: false,
-      reason: 'OUTLET_NOT_IN_SCOPE',
+      reason: 'OUTLET_NOT_INCLUDED',
       details: 'Active membership does not grant access to this specific facility outlet',
     };
   }

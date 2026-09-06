@@ -197,6 +197,18 @@ export class AssignMembershipDto {
   autoRenew?: boolean;
 }
 
+export class UpdateMembershipDto {
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  autoRenew?: boolean;
+
+  @ApiPropertyOptional({ example: '2026-12-31T23:59:59.000Z' })
+  @IsString()
+  @IsOptional()
+  endDate?: string;
+}
+
 export class LifecycleActionDto {
   @ApiPropertyOptional({ example: 'Member requested temporary medical suspension' })
   @IsString()

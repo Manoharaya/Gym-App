@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
@@ -13,6 +14,7 @@ import { MembershipLifecycleService } from '../membership-lifecycle.service';
 import { MembershipRenewalService } from '../membership-renewal.service';
 import {
   AssignMembershipDto,
+  UpdateMembershipDto,
   LifecycleActionDto,
   CheckAccessDto,
   MembershipQueryDto,
@@ -138,6 +140,19 @@ export class MembershipsController {
   ) {
     const orgId = this.resolveOrgId(user, headerOrgId);
     return this.membershipsService.assignMembership(orgId, dto, user);
+  }
+
+  @Patch('memberships/:id')
+  @ApiOperation({ summary: 'Update membership parameters' })
+  @RequirePermission('memberships', 'UPDATE', 'ORGANISATION')
+  async updateMembership(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') membershipId: string,
+    @Body() dto: UpdateMembershipDto,
+    @Headers('x-organisation-id') headerOrgId?: string
+  ) {
+    const orgId = this.resolveOrgId(user, headerOrgId);
+    return this.membershipsService.updateMembership(orgId, membershipId, dto, user);
   }
 
   @Post('memberships/:id/activate')

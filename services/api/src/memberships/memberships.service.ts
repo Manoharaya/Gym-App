@@ -406,6 +406,43 @@ export class MembershipsService {
   }
 
   /**
+   * Updates membership parameters (such as autoRenew, endDate) with audit logging.
+   */
+  async updateMembership(
+    organisationId: string,
+    membershipId: string,
+    dto: any,
+    actor: AuthenticatedUser
+  ) {
+    const membership = await this.prisma.memberMembership.findFirst({
+      where: { id: membershipId, organisationId },
+    });
+
+    if (!membership) {
+      throw new NotFoundException(`Membership with ID ${membershipId} not found`);
+    }
+
+    const updated = await this.prisma.memberMembership.update({
+      where: { id: membershipId },
+      data: {
+        ...(dto.autoRenew !== undefined ? { autoRenew: dto.autoRenew } : {}),
+        ...(dto.endDate ? { endDate: new Date(dto.endDate) } : {}),
+      },
+    });
+
+    await this.audit.log({
+      action: 'MEMBERSHIP_UPDATED',
+      resource: 'member_membership',
+      resourceId: membershipId,
+      organisationId,
+      userId: actor.id,
+      metadata: { updatedFields: dto },
+    });
+
+    return updated;
+  }
+
+  /**
    * Evaluates facility access for a member at a given outlet.
    */
   async checkFacilityAccess(memberProfileId: string, outletId: string, entitlementType?: string) {

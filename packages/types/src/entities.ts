@@ -361,12 +361,18 @@ export interface MemberMembershipHistory extends BaseEntity {
 export type AccessReasonCode =
   | 'ACTIVE_MEMBERSHIP'
   | 'NO_ACTIVE_MEMBERSHIP'
+  | 'OUTLET_NOT_INCLUDED'
   | 'OUTLET_NOT_IN_SCOPE'
+  | 'NO_GYM_ACCESS_ENTITLEMENT'
   | 'MISSING_ENTITLEMENT'
   | 'MEMBERSHIP_EXPIRED'
   | 'MEMBERSHIP_SUSPENDED'
+  | 'MEMBERSHIP_CANCELLED'
   | 'MEMBERSHIP_PAUSED'
-  | 'MEMBERSHIP_PENDING';
+  | 'MEMBERSHIP_PENDING'
+  | 'ORGANISATION_MISMATCH'
+  | 'MEMBER_NOT_FOUND'
+  | 'OUTLET_NOT_FOUND';
 
 export interface AccessDecisionResult {
   allowed: boolean;

@@ -139,3 +139,21 @@ The `MembershipDateService` provides timezone-aware, month-boundary-safe calcula
 
 1. **Auto-Expiration Processor**: Batch scans active/trial memberships where `endDate < now()` and transitions them to `EXPIRED`, recording an auditable lifecycle history entry.
 2. **Auto-Renewal Service**: For memberships marked `autoRenew: true`, calculates the next contiguous term (`startDate = previousEndDate`, `endDate = nextTermEnd`), records the new `MemberMembership` snapshot, and marks the prior membership renewed.
+
+---
+
+## 6. Non-Negotiable Architectural Invariants
+
+The FitCore Membership Domain strictly enforces the following 10 architectural invariants across all code, tests, and documentation:
+
+1. **A `MembershipPlan` belongs to exactly one `Organisation`**: Products are defined at the brand/tenant level, never owned by an individual outlet.
+2. **A `MemberMembership` belongs to exactly one `Organisation`**: Every membership subscription is strictly tenant-scoped.
+3. **A `MemberMembership` references a Member belonging to that `Organisation`**: Members cannot hold memberships in an organisation they do not belong to.
+4. **A `MemberMembership` references a `MembershipPlan` belonging to that `Organisation`**: Cross-organisation plan assignment is strictly forbidden.
+5. **`MemberOutlet` does NOT authorize physical gym access**: `MemberOutlet` represents sociological/administrative relationship history (e.g. home club, transfers), never turnstile authorization.
+6. **Membership access is determined by active membership + entitlements + access scope**: Facility access evaluates whether the member has an `ACTIVE` or `TRIAL` membership, with required entitlement (e.g. `GYM_ACCESS`), granting access to the requested outlet.
+7. **`originOutletId`, if present, is informational/commercial provenance, NOT ownership**: It tracks where a membership was sold/created for commission or reporting, never resource ownership or access rights.
+8. **A membership can grant access to multiple outlets**: Supported via `MULTI_OUTLET` access scope and the `MemberMembershipOutlet` join table.
+9. **A membership can grant access to all outlets in an organisation**: Supported via `ALL_ORGANISATION_OUTLETS` access scope without requiring individual join rows.
+10. **Membership history must remain auditable**: All commercial purchase terms are snapshotted on creation, and every lifecycle state transition is permanently recorded in `MemberMembershipHistory`.
+

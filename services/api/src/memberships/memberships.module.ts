@@ -10,6 +10,8 @@ import { MembershipRenewalService } from './membership-renewal.service';
 import { MembershipExpirationProcessor } from './membership-expiration.processor';
 import { MembershipDateService } from './membership-date.service';
 import { MembershipAccessPolicy } from './policies/membership-access.policy';
+import { MembershipAccessService } from './membership-access.service';
+import { MembershipEntitlementService } from './membership-entitlement.service';
 
 @Module({
   imports: [DatabaseModule, AuditModule],
@@ -22,11 +24,15 @@ import { MembershipAccessPolicy } from './policies/membership-access.policy';
     MembershipExpirationProcessor,
     MembershipDateService,
     MembershipAccessPolicy,
+    MembershipAccessService,
+    MembershipEntitlementService,
   ],
   exports: [
     MembershipPlanService,
     MembershipsService,
     MembershipAccessPolicy,
+    MembershipAccessService,
+    MembershipEntitlementService,
     MembershipLifecycleService,
     MembershipRenewalService,
   ],
