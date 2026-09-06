@@ -3,6 +3,7 @@
  */
 
 export interface ApiResponse<T> {
+  success: boolean;
   data: T;
   message?: string;
   requestId?: string;
@@ -19,6 +20,7 @@ export interface ApiPaginationMeta {
 }
 
 export interface ApiPaginatedResponse<T> {
+  success: boolean;
   data: T[];
   pagination: ApiPaginationMeta;
   message?: string;
@@ -26,6 +28,7 @@ export interface ApiPaginatedResponse<T> {
 }
 
 export interface ApiErrorResponse {
+  success: false;
   error: {
     code: string;
     message: string;

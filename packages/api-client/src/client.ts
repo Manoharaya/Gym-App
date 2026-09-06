@@ -167,11 +167,12 @@ export class FitCoreApiClient {
 
       // 204 No Content
       if (response.status === 204) {
-        return { data: {} as T, requestId };
+        return { success: true, data: {} as T, requestId };
       }
 
       const json = await response.json();
       return {
+        success: json?.success ?? true,
         data: (json && 'data' in json ? json.data : json) as T,
         message: json?.message,
         requestId: json?.requestId ?? requestId,

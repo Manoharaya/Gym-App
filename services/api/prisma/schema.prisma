@@ -1,0 +1,229 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organisation {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  status      String    @default("ACTIVE") // ACTIVE, SUSPENDED, TRIAL
+  timezone    String    @default("Australia/Perth")
+  currency    String    @default("AUD")
+  country     String    @default("Australia")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  outlets     Outlet[]
+  userRoles   UserRole[]
+  auditLogs   AuditLog[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("organisations")
+}
+
+model Outlet {
+  id              String        @id @default(cuid())
+  organisationId  String
+  name            String
+  slug            String
+  code            String
+  status          String        @default("ACTIVE") // ACTIVE, MAINTENANCE, COMING_SOON
+  timezone        String        @default("Australia/Perth")
+  address         String
+  city            String
+  state           String
+  country         String        @default("Australia")
+  postalCode      String
+  latitude        Float?
+  longitude       Float?
+  phone           String?
+  email           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  userOutlets     UserOutlet[]
+  auditLogs       AuditLog[]
+
+  @@unique([organisationId, slug])
+  @@unique([organisationId, code])
+  @@index([organisationId])
+  @@index([status])
+  @@map("outlets")
+}
+
+model User {
+  id               String        @id @default(cuid())
+  email            String        @unique
+  phone            String?
+  passwordHash     String
+  firstName        String
+  lastName         String
+  displayName      String?
+  avatarUrl        String?
+  status           String        @default("ACTIVE") // ACTIVE, SUSPENDED, INACTIVE
+  emailVerifiedAt  DateTime?
+  phoneVerifiedAt  DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  // Relations
+  userRoles        UserRole[]
+  userOutlets      UserOutlet[]
+  sessions         Session[]
+  auditLogs        AuditLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id            String           @id @default(cuid())
+  name          String           @unique // SUPERADMIN, ORGANISATION_OWNER, OUTLET_MANAGER, RECEPTION, TRAINER, FINANCE, MEMBER
+  description   String?
+  isSystemRole  Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  permissions   RolePermission[]
+  userRoles     UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  resource    String           // members, outlets, organisations, staff, appointments, etc.
+  action      String           // CREATE, READ, UPDATE, DELETE, MANAGE
+  scope       String           // PLATFORM, ORGANISATION, OUTLET, ASSIGNED_CLIENTS, SELF
+  description String?
+  createdAt   DateTime         @default(now())
+
+  // Relations
+  roles       RolePermission[]
+
+  @@unique([resource, action, scope])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id              String        @id @default(cuid())
+  userId          String
+  roleId          String
+  organisationId  String
+  outletId        String?
+  createdAt       DateTime      @default(now())
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organisationId])
+  @@index([outletId])
+  @@map("user_roles")
+}
+
+model UserOutlet {
+  id        String   @id @default(cuid())
+  userId    String
+  outletId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outlet    Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, outletId])
+  @@index([userId])
+  @@index([outletId])
+  @@map("user_outlets")
+}
+
+model Session {
+  id            String         @id @default(cuid())
+  userId        String
+  tokenFamily   String
+  isValid       Boolean        @default(true)
+  userAgent     String?
+  ipAddress     String?
+  expiresAt     DateTime
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+  @@index([tokenFamily])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  sessionId String
+  tokenHash String   @unique
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id              String        @id @default(cuid())
+  userId          String?
+  organisationId  String?
+  outletId        String?
+  action          String
+  resource        String
+  resourceId      String?
+  metadata        Json?
+  ipAddress       String?
+  userAgent       String?
+  requestId       String?
+  createdAt       DateTime      @default(now())
+
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organisation    Organisation? @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
