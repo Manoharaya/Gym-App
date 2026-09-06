@@ -12,3 +12,8 @@ export * from './Loading';
 export * from './EmptyState';
 export * from './ErrorState';
 export * from './IconButton';
+export * from './Icon';
+export * from './MetricCard';
+export * from './ProgressRing';
+export * from './Tabs';
+export * from './SkeletonLoader';

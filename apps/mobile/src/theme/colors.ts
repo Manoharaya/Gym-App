@@ -2,14 +2,14 @@ import { colors as baseColors } from '@fitcore/ui';
 
 export const themeColors = {
   ...baseColors,
-  cardBackground: '#16191E',
-  modalBackground: '#1A1E24',
-  elevatedBackground: '#222832',
-  inputBackground: '#12151A',
-  inputBorder: '#282E39',
-  inputBorderFocused: '#E63946',
-  badgeBackground: 'rgba(230, 57, 70, 0.15)',
-  badgeText: '#FF4D5E',
+  cardBackground: '#141822',
+  modalBackground: '#1A2130',
+  elevatedBackground: '#1F2738',
+  inputBackground: '#0F1219',
+  inputBorder: '#232B3E',
+  inputBorderFocused: '#0EA5E9',
+  badgeBackground: 'rgba(14, 165, 233, 0.15)',
+  badgeText: '#38BDF8',
 } as const;
 
 export type ThemeColors = typeof themeColors;

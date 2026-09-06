@@ -1,14 +1,27 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { MemberStackParamList } from './types';
-import { NavigationPlaceholderScreen } from './PlaceholderScreen';
 import { themeColors } from '../theme';
+
+import { MemberHomeScreen } from '../features/dashboard';
+import { WorkoutSessionScreen } from '../features/training';
+import { ExerciseDetailScreen } from '../features/exercises';
+import { ProgressScreen } from '../features/progress';
+import { NutritionScreen } from '../features/nutrition';
+import { DailyCheckInScreen } from '../features/check-ins';
+import { AICoachScreen } from '../features/ai-coach';
+import { WearablesScreen } from '../features/wearables';
+import { NotificationsScreen } from '../features/notifications';
+import { ProfileScreen } from '../features/profile';
+import { SettingsScreen } from '../features/settings';
+
 import {
   MembershipHomeScreen,
   MembershipDetailsScreen,
   MembershipHistoryScreen,
   MembershipPlansScreen,
 } from '../features/membership';
+
 import {
   BillingScreen,
   InvoicesScreen,
@@ -40,156 +53,56 @@ export const MemberNavigator: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: themeColors.cardBackground },
-        headerTintColor: '#FFFFFF',
+        headerShown: false,
         contentStyle: { backgroundColor: themeColors.background },
       }}
     >
-      <Stack.Screen name="MemberHome" options={{ title: 'Member Dashboard' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="Member Experience"
-            module="features/dashboard"
-            roleScope="MEMBER (SELF)"
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen name="WorkoutSession" options={{ title: 'Active Workout' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="Workout Tracker"
-            module="features/training"
-            roleScope="MEMBER (SELF)"
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen
-        name="Bookings"
-        component={ClassesScreen}
-        options={{ title: 'Class Schedule' }}
-      />
-      <Stack.Screen
-        name="ClassDetails"
-        component={ClassDetailsScreen}
-        options={{ title: 'Class Details' }}
-      />
-      <Stack.Screen
-        name="BookingConfirmation"
-        component={BookingConfirmationScreen}
-        options={{ title: 'Confirmation', headerBackVisible: false }}
-      />
-      <Stack.Screen
-        name="MyBookings"
-        component={MyBookingsScreen}
-        options={{ title: 'My Bookings & Waitlist' }}
-      />
-      <Stack.Screen name="Progress" options={{ title: 'Metrics & Progress' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="Progress Analytics"
-            module="features/progress"
-            roleScope="MEMBER (SELF)"
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen name="AICoach" options={{ title: 'FitCore AI Coach' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="AI Coaching Chat"
-            module="features/ai-coach"
-            roleScope="MEMBER (SELF)"
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen name="MemberProfile" options={{ title: 'My Profile' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="Member Profile & Membership"
-            module="features/profile"
-            roleScope="MEMBER (SELF)"
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen
-        name="MembershipHome"
-        component={MembershipHomeScreen}
-        options={{ title: 'Membership & Access' }}
-      />
-      <Stack.Screen
-        name="MembershipDetails"
-        component={MembershipDetailsScreen}
-        options={{ title: 'Contract Details' }}
-      />
-      <Stack.Screen
-        name="MembershipHistory"
-        component={MembershipHistoryScreen}
-        options={{ title: 'Membership History' }}
-      />
-      <Stack.Screen
-        name="MembershipPlans"
-        component={MembershipPlansScreen}
-        options={{ title: 'Available Plans' }}
-      />
-      <Stack.Screen
-        name="Billing"
-        component={BillingScreen}
-        options={{ title: 'Billing & Payments' }}
-      />
-      <Stack.Screen
-        name="Invoices"
-        component={InvoicesScreen}
-        options={{ title: 'Invoices' }}
-      />
-      <Stack.Screen
-        name="InvoiceDetails"
-        component={InvoiceDetailsScreen}
-        options={{ title: 'Invoice Details' }}
-      />
-      <Stack.Screen
-        name="PaymentHistory"
-        component={PaymentHistoryScreen}
-        options={{ title: 'Payment Receipts' }}
-      />
-      <Stack.Screen
-        name="PaymentDetails"
-        component={PaymentDetailsScreen}
-        options={{ title: 'Receipt Details' }}
-      />
-      <Stack.Screen
-        name="PaymentMethods"
-        component={PaymentMethodsScreen}
-        options={{ title: 'Payment Methods' }}
-      />
-      <Stack.Screen
-        name="AddPaymentMethod"
-        component={AddPaymentMethodScreen}
-        options={{ title: 'Add Card' }}
-      />
-      <Stack.Screen
-        name="AccessHome"
-        component={AccessHomeScreen}
-        options={{ title: 'Physical Access' }}
-      />
-      <Stack.Screen
-        name="QRCode"
-        component={QRCodeScreen}
-        options={{ title: 'Digital Pass' }}
-      />
-      <Stack.Screen
-        name="CheckIn"
-        component={CheckInScreen}
-        options={{ title: 'Check In' }}
-      />
-      <Stack.Screen
-        name="VisitHistory"
-        component={VisitHistoryScreen}
-        options={{ title: 'Visit History' }}
-      />
-      <Stack.Screen
-        name="AccessStatus"
-        component={AccessStatusScreen}
-        options={{ title: 'Access Diagnostics' }}
-      />
+      {/* Flagship Member Dashboard */}
+      <Stack.Screen name="MemberHome" component={MemberHomeScreen} />
+
+      {/* Workout & Training */}
+      <Stack.Screen name="WorkoutSession" component={WorkoutSessionScreen} />
+      <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
+
+      {/* Class Booking & Scheduling */}
+      <Stack.Screen name="Bookings" component={ClassesScreen} />
+      <Stack.Screen name="ClassDetails" component={ClassDetailsScreen} />
+      <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+      <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+
+      {/* Analytics, Nutrition & AI */}
+      <Stack.Screen name="Progress" component={ProgressScreen} />
+      <Stack.Screen name="Nutrition" component={NutritionScreen} />
+      <Stack.Screen name="DailyCheckIn" component={DailyCheckInScreen} />
+      <Stack.Screen name="AICoach" component={AICoachScreen} />
+      <Stack.Screen name="Wearables" component={WearablesScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+
+      {/* Profile & Settings */}
+      <Stack.Screen name="MemberProfile" component={ProfileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+
+      {/* Membership & Contracts */}
+      <Stack.Screen name="MembershipHome" component={MembershipHomeScreen} />
+      <Stack.Screen name="MembershipDetails" component={MembershipDetailsScreen} />
+      <Stack.Screen name="MembershipHistory" component={MembershipHistoryScreen} />
+      <Stack.Screen name="MembershipPlans" component={MembershipPlansScreen} />
+
+      {/* Billing & Payments */}
+      <Stack.Screen name="Billing" component={BillingScreen} />
+      <Stack.Screen name="Invoices" component={InvoicesScreen} />
+      <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen} />
+      <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
+      <Stack.Screen name="PaymentDetails" component={PaymentDetailsScreen} />
+      <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
+      <Stack.Screen name="AddPaymentMethod" component={AddPaymentMethodScreen} />
+
+      {/* Physical Door Access & QR */}
+      <Stack.Screen name="AccessHome" component={AccessHomeScreen} />
+      <Stack.Screen name="QRCode" component={QRCodeScreen} />
+      <Stack.Screen name="CheckIn" component={CheckInScreen} />
+      <Stack.Screen name="VisitHistory" component={VisitHistoryScreen} />
+      <Stack.Screen name="AccessStatus" component={AccessStatusScreen} />
     </Stack.Navigator>
   );
 };

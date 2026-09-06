@@ -10,9 +10,12 @@ import { Divider } from '../components/primitives/Divider';
 import { useTenant } from '../providers/TenantProvider';
 import { usePermissions } from '../hooks/usePermissions';
 import { themeColors, spacing } from '../theme';
+import { Icon } from '../components/primitives/Icon';
+import { useNavigation } from '@react-navigation/native';
 import type { UserRole } from '@fitcore/types';
 
 export const AppShell: React.FC = () => {
+  const navigation = useNavigation<any>();
   const config = getAppConfig();
   const { tenant, setRole, setOutlet } = useTenant();
   const { can } = usePermissions();
@@ -54,6 +57,85 @@ export const AppShell: React.FC = () => {
         </View>
 
         <Divider spacingSize={3} />
+
+        {/* Redesigned Experience Launcher Hero */}
+        <Card elevated bordered style={styles.launcherCard}>
+          <View style={styles.launcherHeader}>
+            <View style={styles.launcherTitleRow}>
+              <View style={styles.sparkleIcon}>
+                <Icon name="sparkles" size={14} color="#FFFFFF" />
+              </View>
+              <Text variant="h3">Redesigned Experience Suite</Text>
+            </View>
+            <Badge label="PREMIUM UI/UX" variant="primary" />
+          </View>
+          <Text variant="bodySmall" style={styles.launcherDesc}>
+            Launch directly into the newly redesigned, Apple-grade interfaces tailored for members and operational roles:
+          </Text>
+
+          <View style={styles.launcherGrid}>
+            <Button
+              title="🏃‍♂️ Member Experience"
+              variant="accent"
+              size="sm"
+              onPress={() => {
+                setRole('MEMBER');
+                navigation.navigate('MemberFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="🏋️‍♂️ Trainer Hub"
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                setRole('TRAINER');
+                navigation.navigate('TrainerFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="🛎️ Reception Desk"
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                setRole('RECEPTION');
+                navigation.navigate('ReceptionFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="🏢 Outlet Manager"
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                setRole('OUTLET_MANAGER');
+                navigation.navigate('OutletManagerFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="💳 Finance Center"
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                setRole('FINANCE');
+                navigation.navigate('FinanceFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="👑 Organisation Owner"
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                setRole('ORGANISATION_OWNER');
+                navigation.navigate('OrganisationOwnerFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+          </View>
+        </Card>
 
         {/* Technical Verification Overview Card */}
         <Card elevated bordered style={styles.summaryCard}>
@@ -270,6 +352,45 @@ const styles = StyleSheet.create({
   },
   tagline: {
     color: themeColors.textSecondary,
+  },
+  launcherCard: {
+    padding: spacing[4],
+    backgroundColor: '#121722',
+    borderColor: '#232E45',
+    borderWidth: 1.5,
+    gap: spacing[3],
+  },
+  launcherHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  launcherTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  sparkleIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: themeColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  launcherDesc: {
+    color: themeColors.textSecondary,
+    lineHeight: 18,
+  },
+  launcherGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+    marginTop: spacing[1],
+  },
+  launcherBtn: {
+    flexGrow: 1,
+    minWidth: '45%',
   },
   summaryCard: {
     gap: spacing[3],

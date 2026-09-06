@@ -1,0 +1,391 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../../navigation/types';
+import {
+  Screen,
+  Card,
+  Input,
+  Button,
+  Badge,
+  Icon,
+} from '../../../components/primitives';
+import { themeColors, typography, spacing, radius } from '../../../theme';
+import { useAuthStore } from '../../../store/authStore';
+import { useTenantStore } from '../../../store/tenantStore';
+import type { UserRole } from '@fitcore/types';
+
+type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+
+interface DemoProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  roleLabel: string;
+  badgeVariant: 'primary' | 'accent' | 'ai' | 'warning' | 'info' | 'success';
+}
+
+const DEMO_PROFILES: DemoProfile[] = [
+  {
+    id: 'user_alex_chen',
+    name: 'Alex Chen',
+    email: 'alex.chen@secondwind.example.com',
+    role: 'MEMBER',
+    roleLabel: 'Member',
+    badgeVariant: 'accent',
+  },
+  {
+    id: 'user_marcus_brody',
+    name: 'Marcus Brody',
+    email: 'marcus.brody@secondwind.example.com',
+    role: 'TRAINER',
+    roleLabel: 'Trainer',
+    badgeVariant: 'ai',
+  },
+  {
+    id: 'user_reception',
+    name: 'Emma Watson',
+    email: 'reception.perth@secondwind.example.com',
+    role: 'RECEPTION',
+    roleLabel: 'Reception',
+    badgeVariant: 'info',
+  },
+  {
+    id: 'user_manager',
+    name: 'David Miller',
+    email: 'manager.perth@secondwind.example.com',
+    role: 'OUTLET_MANAGER',
+    roleLabel: 'Manager',
+    badgeVariant: 'warning',
+  },
+  {
+    id: 'user_owner',
+    name: 'Robert Sterling',
+    email: 'owner@secondwind.example.com',
+    role: 'ORGANISATION_OWNER',
+    roleLabel: 'Owner',
+    badgeVariant: 'primary',
+  },
+];
+
+export const LoginScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const { setSession, setLoading } = useAuthStore();
+  const { setRole } = useTenantStore();
+
+  const [email, setEmail] = useState('alex.chen@secondwind.example.com');
+  const [password, setPassword] = useState('password123');
+  const [selectedProfile, setSelectedProfile] = useState<DemoProfile>(DEMO_PROFILES[0]!);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSelectProfile = (profile: DemoProfile) => {
+    setSelectedProfile(profile);
+    setEmail(profile.email);
+    setError(null);
+  };
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Simulate authentication transition with selected role context
+      setRole(selectedProfile.role);
+      setSession(selectedProfile.id, selectedProfile.role);
+      // Navigation will be automatically updated by AppNavigator via role state
+    } catch {
+      setError('Invalid credentials. Please verify your email and password.');
+    } finally {
+      setIsSubmitting(false);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Screen safeAreaEdges={['top', 'bottom']} statusBarStyle="light">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Brand Monogram & Header */}
+          <View style={styles.brandHeader}>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoText}>FC</Text>
+            </View>
+            <Text style={styles.brandTitle}>FitCore</Text>
+            <Text style={styles.brandSubtitle}>Intelligent Athletic Performance Platform</Text>
+          </View>
+
+          {/* Role / Demo Profile Quick Picker */}
+          <Card style={styles.profileCard}>
+            <View style={styles.profileHeaderRow}>
+              <Text style={styles.sectionHeading}>SELECT USER ROLE</Text>
+              <Badge label="DEVELOPMENT SEED" variant="neutral" />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.profileScroll}
+            >
+              {DEMO_PROFILES.map((profile) => {
+                const isSelected = selectedProfile.id === profile.id;
+                return (
+                  <TouchableOpacity
+                    key={profile.id}
+                    onPress={() => handleSelectProfile(profile)}
+                    style={[styles.profilePill, isSelected && styles.profilePillSelected]}
+                  >
+                    <View style={styles.profilePillHeader}>
+                      <Badge label={profile.roleLabel} variant={profile.badgeVariant} />
+                    </View>
+                    <Text
+                      style={[
+                        styles.profileName,
+                        isSelected && { color: themeColors.textPrimary },
+                      ]}
+                    >
+                      {profile.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </Card>
+
+          {/* Login Form */}
+          <Card style={styles.formCard}>
+            <Text style={styles.formTitle}>Sign In</Text>
+            <Text style={styles.formSubtitle}>
+              Active profile: {selectedProfile.name} ({selectedProfile.roleLabel})
+            </Text>
+
+            {error && (
+              <View style={styles.errorBanner}>
+                <Icon name="alert-circle" size={16} color={themeColors.danger} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            <View style={styles.inputGroup}>
+              <Input
+                label="Email Address"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholder="you@domain.com"
+              />
+
+              <Input
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder="••••••••"
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ForgotPassword')}
+              style={styles.forgotPassword}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot credentials?</Text>
+            </TouchableOpacity>
+
+            <Button
+              title={isSubmitting ? 'Authenticating...' : `Enter as ${selectedProfile.roleLabel}`}
+              onPress={handleLogin}
+              variant="accent"
+              loading={isSubmitting}
+              style={styles.signInButton}
+            />
+
+            {/* Quick Face ID / Biometrics hint button */}
+            <Button
+              title="Sign in with Biometrics"
+              onPress={handleLogin}
+              variant="outline"
+              leftIcon={<Icon name="shield" size={18} color={themeColors.textPrimary} />}
+              style={styles.biometricButton}
+            />
+          </Card>
+
+          {/* Footer Join Option */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have a membership yet?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerLink}>Join Club</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
+  );
+};
+
+const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
+  container: {
+    padding: spacing[4],
+    gap: spacing[4],
+  },
+  brandHeader: {
+    alignItems: 'center',
+    marginVertical: spacing[3],
+  },
+  logoBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.xl,
+    backgroundColor: themeColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[2],
+    shadowColor: themeColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  logoText: {
+    ...typography.h1,
+    color: '#FFFFFF',
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+  brandTitle: {
+    ...typography.h1,
+    color: themeColors.textPrimary,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  brandSubtitle: {
+    ...typography.bodySmall,
+    color: themeColors.textSecondary,
+    marginTop: spacing[0.5],
+  },
+  profileCard: {
+    padding: spacing[3],
+  },
+  profileHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+  },
+  sectionHeading: {
+    ...typography.caption,
+    color: themeColors.textMuted,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  profileScroll: {
+    flexDirection: 'row',
+    gap: spacing[2],
+  },
+  profilePill: {
+    backgroundColor: themeColors.surface,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    minWidth: 120,
+  },
+  profilePillSelected: {
+    borderColor: themeColors.accent,
+    backgroundColor: themeColors.surfaceActive,
+  },
+  profilePillHeader: {
+    marginBottom: spacing[1],
+  },
+  profileName: {
+    ...typography.bodySmall,
+    color: themeColors.textSecondary,
+    fontWeight: '600',
+  },
+  formCard: {
+    padding: spacing[5],
+    gap: spacing[3],
+  },
+  formTitle: {
+    ...typography.h2,
+    color: themeColors.textPrimary,
+    fontWeight: '700',
+  },
+  formSubtitle: {
+    ...typography.bodySmall,
+    color: themeColors.textSecondary,
+    marginTop: -spacing[1],
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: themeColors.dangerBackground,
+    padding: spacing[3],
+    borderRadius: radius.md,
+    gap: spacing[2],
+  },
+  errorText: {
+    ...typography.bodySmall,
+    color: themeColors.danger,
+    flex: 1,
+  },
+  inputGroup: {
+    gap: spacing[3],
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: -spacing[1],
+  },
+  forgotPasswordText: {
+    ...typography.caption,
+    color: themeColors.accent,
+    fontWeight: '600',
+  },
+  signInButton: {
+    marginTop: spacing[1],
+  },
+  biometricButton: {
+    marginTop: spacing[1],
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing[1.5],
+    paddingVertical: spacing[3],
+  },
+  footerText: {
+    ...typography.bodySmall,
+    color: themeColors.textSecondary,
+  },
+  registerLink: {
+    ...typography.bodySmall,
+    color: themeColors.accent,
+    fontWeight: '700',
+  },
+});

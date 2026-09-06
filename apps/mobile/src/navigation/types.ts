@@ -15,14 +15,20 @@ export type AuthStackParamList = {
 
 export type MemberStackParamList = {
   MemberHome: undefined;
-  WorkoutSession: { workoutId: string };
+  WorkoutSession: { workoutId?: string } | undefined;
+  ExerciseDetail: { exerciseId: string; exerciseName?: string };
   Bookings: undefined;
   ClassDetails: { sessionId: string };
   BookingConfirmation: { booking?: any; waitlist?: any; isWaitlisted?: boolean };
   MyBookings: undefined;
   Progress: undefined;
+  Nutrition: undefined;
+  DailyCheckIn: undefined;
   AICoach: undefined;
+  Wearables: undefined;
+  Notifications: undefined;
   MemberProfile: undefined;
+  Settings: undefined;
   MembershipHome: undefined;
   MembershipDetails: { membershipId: string };
   MembershipHistory: undefined;

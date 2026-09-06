@@ -5,3 +5,4 @@ export * from './PaymentHistoryScreen';
 export * from './PaymentDetailsScreen';
 export * from './PaymentMethodsScreen';
 export * from './AddPaymentMethodScreen';
+export * from './FinanceHomeScreen';

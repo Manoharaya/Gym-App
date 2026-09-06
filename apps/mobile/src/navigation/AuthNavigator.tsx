@@ -1,8 +1,12 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from './types';
-import { NavigationPlaceholderScreen } from './PlaceholderScreen';
 import { themeColors } from '../theme';
+import {
+  LoginScreen,
+  RegisterScreen,
+  ForgotPasswordScreen,
+} from '../features/auth/screens';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -10,38 +14,13 @@ export const AuthNavigator: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: themeColors.cardBackground },
-        headerTintColor: '#FFFFFF',
+        headerShown: false,
         contentStyle: { backgroundColor: themeColors.background },
       }}
     >
-      <Stack.Screen name="Login" options={{ title: 'Sign In' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="FitCore Member & Staff Login"
-            module="features/auth"
-            roleScope="PUBLIC / PRE-AUTH"
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen name="Register" options={{ title: 'Join Club' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="Member Registration"
-            module="features/auth"
-            roleScope="PUBLIC / PRE-AUTH"
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen name="ForgotPassword" options={{ title: 'Reset Credentials' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="Password Reset Recovery"
-            module="features/auth"
-            roleScope="PUBLIC / PRE-AUTH"
-          />
-        )}
-      </Stack.Screen>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 };

@@ -1,6 +1,1 @@
-/**
- * AI Fitness Coach Screens
- * Screen implementations deferred to feature milestone.
- */
-
-export {};
+export * from './AICoachScreen';

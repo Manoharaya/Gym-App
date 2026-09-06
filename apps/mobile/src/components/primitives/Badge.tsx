@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { radius, spacing, themeColors, typography } from '../../theme';
 
-export type BadgeVariant = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+export type BadgeVariant = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'ai' | 'accent';
 
 export interface BadgeProps {
   label: string;
@@ -60,6 +60,12 @@ const styles = StyleSheet.create({
   neutral: {
     backgroundColor: themeColors.surfaceActive,
   },
+  ai: {
+    backgroundColor: themeColors.aiLight,
+  },
+  accent: {
+    backgroundColor: themeColors.accentLight,
+  },
   text: {
     ...typography.caption,
     fontWeight: '600',
@@ -84,5 +90,11 @@ const textStyles = StyleSheet.create({
   },
   neutral: {
     color: themeColors.textSecondary,
+  },
+  ai: {
+    color: themeColors.aiPrimary,
+  },
+  accent: {
+    color: themeColors.accent,
   },
 });

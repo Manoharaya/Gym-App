@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { dimensions, radius, spacing, themeColors, typography } from '../../theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'ai' | 'accent';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
@@ -117,6 +117,12 @@ const styles = StyleSheet.create({
   danger: {
     backgroundColor: themeColors.danger,
   },
+  ai: {
+    backgroundColor: themeColors.aiPrimary,
+  },
+  accent: {
+    backgroundColor: themeColors.accent,
+  },
   pressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
@@ -161,6 +167,12 @@ const textVariantStyles = StyleSheet.create({
     color: themeColors.textPrimary,
   },
   danger: {
+    color: '#FFFFFF',
+  },
+  ai: {
+    color: '#FFFFFF',
+  },
+  accent: {
     color: '#FFFFFF',
   },
 });
