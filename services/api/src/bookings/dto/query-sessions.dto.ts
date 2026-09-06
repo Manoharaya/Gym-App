@@ -27,6 +27,10 @@ export class QuerySessionsDto {
   category?: string;
 
   @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   skip?: number;

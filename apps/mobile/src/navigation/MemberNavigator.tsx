@@ -45,6 +45,8 @@ import {
   ClassDetailsScreen,
   BookingConfirmationScreen,
   MyBookingsScreen,
+  BookingDetailScreen,
+  WaitlistStatusScreen,
 } from '../features/booking';
 
 const Stack = createNativeStackNavigator<MemberStackParamList>();
@@ -66,8 +68,11 @@ export const MemberNavigator: React.FC = () => {
 
       {/* Class Booking & Scheduling */}
       <Stack.Screen name="Bookings" component={ClassesScreen} />
+      <Stack.Screen name="Classes" component={ClassesScreen} />
       <Stack.Screen name="ClassDetails" component={ClassDetailsScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+      <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+      <Stack.Screen name="WaitlistStatus" component={WaitlistStatusScreen} />
       <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
 
       {/* Analytics, Nutrition & AI */}

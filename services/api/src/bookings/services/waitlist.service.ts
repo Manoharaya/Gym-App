@@ -226,4 +226,47 @@ export class WaitlistService {
       return entry;
     });
   }
+
+  /**
+   * Sweeps expired waitlist offers and triggers promotion for the next candidate.
+   */
+  async expireWaitlistOffers(classSessionId?: string) {
+    const now = new Date();
+    const expiredOffers = await this.prisma.waitlistEntry.findMany({
+      where: {
+        ...(classSessionId ? { classSessionId } : {}),
+        status: 'OFFERED',
+        offerExpiresAt: { lte: now },
+      },
+      include: { classSession: true },
+    });
+
+    const results = [];
+    for (const offer of expiredOffers) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.waitlistEntry.update({
+          where: { id: offer.id },
+          data: { status: 'EXPIRED' },
+        });
+
+        if (offer.bookingId) {
+          await tx.booking.update({
+            where: { id: offer.bookingId },
+            data: {
+              status: 'CANCELLED',
+              cancellationReason: 'Waitlist offer expired without acceptance',
+              cancelledAt: now,
+            },
+          });
+        }
+      });
+
+      // Promote next candidate
+      const nextPromoted = await this.promoteNext(offer.classSessionId);
+      results.push({ expiredOfferId: offer.id, nextPromoted });
+    }
+
+    return results;
+  }
 }
+

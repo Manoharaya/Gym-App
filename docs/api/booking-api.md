@@ -185,3 +185,98 @@ Returns session detail including current confirmed bookings, waitlist entries, a
 - **Endpoint**: `POST /api/v1/staff/bookings/:id/no-show`
 - **Permissions**: `bookings:check_in` or `bookings:manage`
 - **Response**: `200 OK` (sets `status: NO_SHOW`).
+
+---
+
+## 4. Advanced Scheduling & Resource Management Endpoints (Day 9)
+
+### 4.1 Create Recurring Schedule
+- **Endpoint**: `POST /api/v1/recurring-schedules`
+- **Permissions**: `classes:manage` or `schedules:manage`
+- **Body**:
+```json
+{
+  "outletId": "outlet-uuid",
+  "classTemplateId": "template-uuid",
+  "frequency": "WEEKLY",
+  "daysOfWeek": [1, 3, 5],
+  "startTime": "06:30",
+  "durationMinutes": 45,
+  "customCapacity": 16,
+  "trainerId": "trainer-uuid",
+  "resourceId": "resource-uuid",
+  "startDate": "2026-10-01T00:00:00Z",
+  "endDate": "2026-12-31T23:59:59Z"
+}
+```
+- **Response**: `201 Created`
+
+### 4.2 Generate Concrete Sessions
+- **Endpoint**: `POST /api/v1/recurring-schedules/:id/generate`
+- **Permissions**: `classes:manage` or `schedules:manage`
+- **Body**:
+```json
+{
+  "fromDate": "2026-10-01T00:00:00Z",
+  "toDate": "2026-10-31T23:59:59Z"
+}
+```
+- **Behavior**: Idempotently generates concrete `ClassSession` records. Preserves existing sessions and overridden occurrences (`isOverride: true`).
+- **Response**: `200 OK` (`ClassSession[]`)
+
+### 4.3 Preview Recurring Occurrences
+- **Endpoint**: `GET /api/v1/recurring-schedules/:id/preview?fromDate=2026-10-01T00:00:00Z&toDate=2026-10-14T23:59:59Z`
+- **Response**: `200 OK` (calculated local and UTC wall-clock slots without modifying database).
+
+### 4.4 Update / Override Individual Session
+- **Endpoint**: `PATCH /api/v1/class-sessions/:id`
+- **Permissions**: `classes:manage`
+- **Body**:
+```json
+{
+  "name": "Special Edition HIIT",
+  "startsAt": "2026-10-05T07:00:00Z",
+  "endsAt": "2026-10-05T08:00:00Z",
+  "capacity": 20,
+  "trainerId": "substitute-trainer-uuid",
+  "resourceId": "studio-2-uuid"
+}
+```
+- **Invariants**:
+  - Automatically flags `isOverride: true` and preserves `originalStartsAt`.
+  - Enforces capacity floor: `capacity >= confirmedBookingCount` (`CAPACITY_BELOW_CONFIRMED_BOOKINGS`).
+  - Checks trainer and room conflicts unless authorized staff override is provided.
+- **Response**: `200 OK`
+
+### 4.5 Register Physical Resource (Room / Studio)
+- **Endpoint**: `POST /api/v1/resources`
+- **Permissions**: `outlets:manage` or `classes:manage`
+- **Body**:
+```json
+{
+  "outletId": "outlet-uuid",
+  "name": "Studio Alpha",
+  "type": "STUDIO",
+  "capacity": 25
+}
+```
+- **Response**: `201 Created`
+
+### 4.6 Get Resource Timetable
+- **Endpoint**: `GET /api/v1/resources/:id/timetable?startDate=2026-10-01&endDate=2026-10-07`
+- **Response**: `200 OK` (resource details and scheduled sessions).
+
+### 4.7 Record Trainer Unavailability / Leave
+- **Endpoint**: `POST /api/v1/staff/trainer-availability/unavailability`
+- **Permissions**: `trainers:manage` or `schedules:manage`
+- **Body**:
+```json
+{
+  "trainerId": "trainer-uuid",
+  "startDate": "2026-10-10T00:00:00Z",
+  "endDate": "2026-10-15T23:59:59Z",
+  "reason": "Annual Leave / Holiday"
+}
+```
+- **Response**: `201 Created`
+

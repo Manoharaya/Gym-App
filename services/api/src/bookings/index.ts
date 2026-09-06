@@ -6,4 +6,5 @@ export * from './services/waitlist.service';
 export * from './services/trainer-availability.service';
 export * from './services/recurring-schedule.service';
 export * from './services/resource.service';
+export * from './utils/timezone.util';
 export * from './dto';

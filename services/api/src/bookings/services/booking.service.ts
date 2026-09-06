@@ -295,14 +295,25 @@ export class BookingService {
 
     const now = new Date();
     const session = booking.classSession;
+    let isLateCancellation = false;
 
     // Cancellation window validation for CONFIRMED bookings (unless staff override)
     if (!options?.isStaffOverride && booking.status === 'CONFIRMED') {
       if (session.cancellationClosesAt && now > session.cancellationClosesAt) {
-        throw new BadRequestException({
-          code: 'CANCELLATION_WINDOW_CLOSED',
-          message: `Cancellation deadline has passed (deadline was ${session.cancellationClosesAt.toISOString()})`,
-        });
+        const policy =
+          session.bookingPolicy ||
+          (await this.prisma.bookingPolicy.findFirst({
+            where: { organisationId: booking.organisationId, isDefault: true },
+          }));
+
+        if (policy && policy.allowLateCancellation === false) {
+          throw new BadRequestException({
+            code: 'CANCELLATION_WINDOW_CLOSED',
+            message: `Cancellation deadline has passed (deadline was ${session.cancellationClosesAt.toISOString()})`,
+          });
+        }
+
+        isLateCancellation = true;
       }
     }
 
@@ -313,7 +324,10 @@ export class BookingService {
         data: {
           status: 'CANCELLED',
           cancelledAt: now,
-          cancellationReason: options?.reason || 'Member voluntary cancellation',
+          isLateCancellation,
+          cancellationReason:
+            options?.reason ||
+            (isLateCancellation ? 'Late cancellation by member' : 'Member voluntary cancellation'),
         },
         include: {
           classSession: true,

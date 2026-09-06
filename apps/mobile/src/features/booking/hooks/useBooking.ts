@@ -107,3 +107,6 @@ export function useLeaveWaitlistMutation() {
     },
   });
 }
+
+export const useCancelBooking = useCancelBookingMutation;
+

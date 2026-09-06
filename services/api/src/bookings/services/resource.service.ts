@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { CreateResourceDto } from '../dto';
 
 @Injectable()
 export class ResourceService {
@@ -7,6 +8,9 @@ export class ResourceService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Lists physical resources / rooms / studios for an outlet.
+   */
   async listResources(organisationId: string, outletId?: string) {
     return this.prisma.resource.findMany({
       where: {
@@ -20,17 +24,12 @@ export class ResourceService {
     });
   }
 
-  async createResource(
-    organisationId: string,
-    data: {
-      outletId: string;
-      name: string;
-      type?: string;
-      capacity?: number;
-    },
-  ) {
+  /**
+   * Registers a new physical studio room or equipment zone.
+   */
+  async createResource(organisationId: string, dto: CreateResourceDto) {
     const outlet = await this.prisma.outlet.findFirst({
-      where: { id: data.outletId, organisationId },
+      where: { id: dto.outletId, organisationId },
     });
 
     if (!outlet) {
@@ -40,33 +39,78 @@ export class ResourceService {
     return this.prisma.resource.create({
       data: {
         organisationId,
-        outletId: data.outletId,
-        name: data.name,
-        type: data.type || 'STUDIO',
-        capacity: data.capacity || 30,
+        outletId: dto.outletId,
+        name: dto.name,
+        type: dto.type || 'STUDIO',
+        capacity: dto.capacity || 30,
         status: 'ACTIVE',
       },
     });
   }
 
+  /**
+   * Checks whether a room / resource is available without overlapping class sessions.
+   */
   async isResourceAvailable(
     resourceId: string,
     startsAt: Date,
     endsAt: Date,
-  ): Promise<{ available: boolean; conflictingSessionId?: string }> {
+    options?: { excludeSessionId?: string },
+  ): Promise<{ available: boolean; conflictingSessionId?: string; conflictingSessionName?: string }> {
     const conflict = await this.prisma.classSession.findFirst({
       where: {
         resourceId,
         status: { not: 'CANCELLED' },
         startsAt: { lt: endsAt },
         endsAt: { gt: startsAt },
+        ...(options?.excludeSessionId ? { id: { not: options.excludeSessionId } } : {}),
       },
+      include: { resource: true },
     });
 
     if (conflict) {
-      return { available: false, conflictingSessionId: conflict.id };
+      return {
+        available: false,
+        conflictingSessionId: conflict.id,
+        conflictingSessionName: conflict.name || 'Class',
+      };
     }
 
     return { available: true };
+  }
+
+  /**
+   * Fetches room timetable schedule for staff view.
+   */
+  async getResourceTimetable(resourceId: string, startDate: Date, endDate: Date) {
+    const resource = await this.prisma.resource.findUnique({
+      where: { id: resourceId },
+      include: { outlet: true },
+    });
+
+    if (!resource) {
+      throw new NotFoundException('Resource not found');
+    }
+
+    const sessions = await this.prisma.classSession.findMany({
+      where: {
+        resourceId,
+        startsAt: { gte: startDate, lte: endDate },
+        status: { not: 'CANCELLED' },
+      },
+      include: {
+        classType: true,
+        trainer: { select: { id: true, firstName: true, lastName: true } },
+        _count: { select: { bookings: true } },
+      },
+      orderBy: { startsAt: 'asc' },
+    });
+
+    return {
+      resource,
+      startDate,
+      endDate,
+      sessions,
+    };
   }
 }

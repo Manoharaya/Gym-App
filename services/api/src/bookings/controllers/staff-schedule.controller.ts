@@ -89,6 +89,30 @@ export class StaffScheduleController {
     return this.trainerService.getTrainerSchedule(trainerId, startDate, endDate);
   }
 
+  @Post('trainers/availability')
+  @RequirePermission('schedules', 'MANAGE', 'ORGANISATION')
+  @ApiOperation({ summary: 'Set recurring weekly availability slot for a trainer (Staff)' })
+  async setTrainerAvailability(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: any,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.trainerService.setAvailability(organisationId, dto);
+  }
+
+  @Post('trainers/unavailability')
+  @RequirePermission('schedules', 'MANAGE', 'ORGANISATION')
+  @ApiOperation({ summary: 'Record trainer blockout, vacation, or time-off (Staff)' })
+  async recordTrainerUnavailability(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: any,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.trainerService.recordUnavailability(organisationId, dto, user.id);
+  }
+
   @Get('class-sessions/:id/bookings')
   @RequirePermission('bookings', 'VIEW', 'ORGANISATION')
   @ApiOperation({ summary: 'List all member bookings and attendees for a session (Staff)' })

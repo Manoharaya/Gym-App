@@ -7,6 +7,8 @@ import { ClassesController } from './controllers/classes.controller';
 import { ClassSessionsController } from './controllers/class-sessions.controller';
 import { BookingsController } from './controllers/bookings.controller';
 import { StaffScheduleController } from './controllers/staff-schedule.controller';
+import { RecurringSchedulesController } from './controllers/recurring-schedules.controller';
+import { ResourcesController } from './controllers/resources.controller';
 
 // Services
 import { BookingEligibilityService } from './services/booking-eligibility.service';
@@ -24,6 +26,8 @@ import { ResourceService } from './services/resource.service';
     ClassSessionsController,
     BookingsController,
     StaffScheduleController,
+    RecurringSchedulesController,
+    ResourcesController,
   ],
   providers: [
     BookingEligibilityService,

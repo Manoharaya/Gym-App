@@ -235,6 +235,34 @@ export class BookingEligibilityService {
       }
     }
 
+    // 6b. Check Daily Bookings Limit (if configured in policy)
+    if (policy && policy.maxBookingsPerDay && policy.maxBookingsPerDay > 0 && !options?.isStaffOverride) {
+      const sessionDayStart = new Date(session.startsAt);
+      sessionDayStart.setUTCHours(0, 0, 0, 0);
+      const sessionDayEnd = new Date(sessionDayStart);
+      sessionDayEnd.setUTCDate(sessionDayEnd.getUTCDate() + 1);
+
+      const dailyBookingsCount = await this.prisma.booking.count({
+        where: {
+          memberProfileId,
+          organisationId: session.organisationId,
+          status: 'CONFIRMED',
+          classSession: {
+            startsAt: { gte: sessionDayStart, lt: sessionDayEnd },
+            status: { not: 'CANCELLED' },
+          },
+        },
+      });
+
+      if (dailyBookingsCount >= policy.maxBookingsPerDay) {
+        return {
+          eligible: false,
+          reason: 'DAILY_BOOKING_LIMIT_REACHED',
+          message: `Daily booking limit reached: maximum ${policy.maxBookingsPerDay} class bookings permitted per day`,
+        };
+      }
+    }
+
     // 7. Check Member Time Conflicts (Overlapping Confirmed Classes)
     const overlappingBooking = await this.prisma.booking.findFirst({
       where: {

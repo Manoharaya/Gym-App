@@ -83,13 +83,24 @@ export class ClassSessionsController {
 
   @Patch(':id')
   @RequirePermission('class_sessions', 'UPDATE', 'ORGANISATION')
-  @ApiOperation({ summary: 'Update a scheduled class session (Staff)' })
+  @ApiOperation({ summary: 'Update / override a scheduled class session (Staff)' })
   async updateSession(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: UpdateClassSessionDto,
   ) {
-    return this.sessionService.updateSession(id, dto);
+    return this.sessionService.updateSession(id, dto, user.id);
+  }
+
+  @Post(':id/cancel')
+  @RequirePermission('class_sessions', 'DELETE', 'ORGANISATION')
+  @ApiOperation({ summary: 'Cancel a scheduled class session (Staff)' })
+  async cancelSessionPost(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body('reason') reason?: string,
+  ) {
+    return this.sessionService.cancelSession(id, reason, user.id);
   }
 
   @Delete(':id')
@@ -100,6 +111,6 @@ export class ClassSessionsController {
     @Param('id') id: string,
     @Query('reason') reason?: string,
   ) {
-    return this.sessionService.cancelSession(id, reason);
+    return this.sessionService.cancelSession(id, reason, user.id);
   }
 }

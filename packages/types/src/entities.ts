@@ -978,7 +978,7 @@ export type BookingStatus =
   | 'COMPLETED'
   | 'NO_SHOW';
 
-export type WaitlistStatus = 'PENDING' | 'PROMOTED' | 'CANCELLED' | 'EXPIRED';
+export type WaitlistStatus = 'PENDING' | 'OFFERED' | 'PROMOTED' | 'CANCELLED' | 'EXPIRED';
 
 export type ResourceType =
   | 'STUDIO'
@@ -996,6 +996,7 @@ export type BookingDenialReason =
   | 'CANCELLATION_WINDOW_CLOSED'
   | 'CLASS_FULL'
   | 'BOOKING_LIMIT_REACHED'
+  | 'DAILY_BOOKING_LIMIT_REACHED'
   | 'MEMBERSHIP_REQUIRED'
   | 'MEMBERSHIP_INACTIVE'
   | 'MEMBERSHIP_SUSPENDED'
@@ -1043,6 +1044,10 @@ export interface BookingPolicy extends BaseEntity {
   maxWaitlistSize: number;
   allowLateBooking: boolean;
   allowCancellation: boolean;
+  allowLateCancellation?: boolean;
+  lateCancellationWindowHours?: number;
+  recordLateCancellation?: boolean;
+  maxBookingsPerDay?: number;
   isDefault: boolean;
 }
 
@@ -1063,11 +1068,14 @@ export interface ClassSession extends BaseEntity {
   trainerId?: string;
   resourceId?: string;
   bookingPolicyId?: string;
+  recurringScheduleId?: string;
   name?: string;
   startsAt: string;
   endsAt: string;
   capacity: number;
   status: ClassSessionStatus;
+  isOverride?: boolean;
+  originalStartsAt?: string;
   bookingOpensAt?: string;
   bookingClosesAt?: string;
   cancellationClosesAt?: string;
@@ -1121,6 +1129,7 @@ export interface Booking extends BaseEntity {
   bookedAt: string;
   cancelledAt?: string;
   cancellationReason?: string;
+  isLateCancellation?: boolean;
   checkedInAt?: string;
   noShowAt?: string;
   waitlistPosition?: number;
@@ -1137,6 +1146,7 @@ export interface WaitlistEntry extends BaseEntity {
   bookingId?: string;
   position: number;
   status: WaitlistStatus;
+  offerExpiresAt?: string;
   joinedAt: string;
   promotedAt?: string;
   cancelledAt?: string;
@@ -1150,9 +1160,11 @@ export interface TrainerAvailability extends BaseEntity {
   startTime?: string;
   endTime?: string;
   specificDate?: string;
+  endDate?: string;
   isAvailable: boolean;
   timezone: string;
   notes?: string;
+  reason?: string;
 }
 
 export interface RecurringSchedule extends BaseEntity {
@@ -1161,9 +1173,12 @@ export interface RecurringSchedule extends BaseEntity {
   classTemplateId: string;
   trainerId?: string;
   resourceId?: string;
+  frequency?: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
   dayOfWeek: number;
+  daysOfWeek?: number[];
   startTime: string;
   durationMinutes: number;
+  customCapacity?: number;
   startDate: string;
   endDate?: string;
   timezone: string;

@@ -18,8 +18,11 @@ export type MemberStackParamList = {
   WorkoutSession: { workoutId?: string } | undefined;
   ExerciseDetail: { exerciseId: string; exerciseName?: string };
   Bookings: undefined;
+  Classes: undefined;
   ClassDetails: { sessionId: string };
   BookingConfirmation: { booking?: any; waitlist?: any; isWaitlisted?: boolean };
+  BookingDetail: { bookingId: string };
+  WaitlistStatus: { waitlistId?: string; sessionId?: string };
   MyBookings: undefined;
   Progress: undefined;
   Nutrition: undefined;

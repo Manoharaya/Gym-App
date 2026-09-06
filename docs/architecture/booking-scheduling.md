@@ -148,3 +148,54 @@ Staff and managers can manage the session roster:
 - **`check-in`**: When a member arrives at the studio, staff marks attendance (`status: ATTENDED`, `attendedAt: now()`).
 - **`no-show`**: If a member fails to arrive, staff marks `status: NO_SHOW`.
 - **`cancel-session`**: If a trainer is unavailable or room is out of service, the session is marked `CANCELLED`. All confirmed and waitlisted bookings are cancelled automatically.
+
+---
+
+## 7. Advanced Recurring Schedules & Timezone Engine (Day 9)
+
+FitCore utilizes a deterministic, timezone-aware scheduling engine designed for multi-frequency group programming (`DAILY`, `WEEKLY`, `BIWEEKLY`, `MONTHLY`).
+
+### Key Invariants:
+1. **Concrete Session Materialization**:
+   - `ClassSession` records are generated and persisted from `RecurringSchedule` templates, never computed on the fly. This enables discrete booking records, attendance tracking, and localized auditing.
+2. **UTC Storage with Local Wall-Clock Evaluation**:
+   - All session timestamps (`startsAt`, `endsAt`) are stored strictly in UTC.
+   - Recurrence rules are evaluated in the outlet's IANA timezone (`TimezoneUtil`), deterministically accounting for Daylight Saving Time (DST) shifts.
+3. **Generation Idempotency**:
+   - Running generation multiple times produces zero duplicates. Existing sessions and overridden sessions (`originalStartsAt`) are detected and preserved.
+
+```mermaid
+flowchart LR
+    A[RecurringSchedule Template] -->|TimezoneUtil.calculateRecurringOccurrences| B[Local Wall-Clock Slots]
+    B -->|Convert to UTC with IANA Timezone| C[UTC Timestamp Boundaries]
+    C -->|Idempotency Check on startsAt / originalStartsAt| D{Existing Session?}
+    D -- No --> E[Persist Concrete ClassSession]
+    D -- Yes --> F[Skip Duplicate / Preserve Override]
+```
+
+---
+
+## 8. Single-Session Overrides & Capacity Floors (Day 9)
+
+Staff can customize individual occurrences without modifying the parent recurring template:
+- **`isOverride: true`**: Tagged automatically whenever an occurrence's time, trainer, room, or capacity deviates from its template.
+- **`originalStartsAt`**: Preserves original slot timestamp to prevent background generator re-duplication.
+- **Capacity Floor Enforcement**:
+  - Staff cannot reduce an occurrence's capacity below currently confirmed bookings (`CAPACITY_BELOW_CONFIRMED_BOOKINGS`), preventing phantom overbooking.
+
+---
+
+## 9. Advanced Cancellation Policies, Daily Limits & Conflict Engine (Day 9)
+
+1. **Late Cancellation Window**:
+   - Enforces `policy.allowLateCancellation`. If disallowed, late cancellations are rejected with `CANCELLATION_WINDOW_CLOSED`.
+   - If permitted, booking is marked `isLateCancellation: true` for late fee / penalty accounting, and the spot is immediately released for FIFO waitlist promotion.
+2. **Daily Booking Quota**:
+   - Enforces `policy.maxBookingsPerDay` across an organisation per member.
+3. **Overlapping Session Conflict**:
+   - Prevents members from booking simultaneous overlapping sessions (`BOOKING_TIME_CONFLICT`).
+4. **Physical Resource Conflict**:
+   - Rooms/studios enforce exclusive time slots (`RESOURCE_SCHEDULE_CONFLICT`).
+5. **Trainer Availability & Unavailability**:
+   - Trainer leaves, vacations, and regular off-days block session assignment unless authorized staff explicitly override with an immutable audit log.
+

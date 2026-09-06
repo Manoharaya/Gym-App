@@ -7,3 +7,6 @@ export * from './cancel-booking.dto';
 export * from './manual-booking.dto';
 export * from './query-sessions.dto';
 export * from './trainer-availability.dto';
+export * from './create-recurring-schedule.dto';
+export * from './create-resource.dto';
+export * from './record-unavailability.dto';
