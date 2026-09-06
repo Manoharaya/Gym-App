@@ -169,6 +169,27 @@ async function main() {
     { resource: 'access_credentials', action: 'READ', scope: 'ORGANISATION', description: 'View member access credentials' },
     { resource: 'access_devices', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage hardware turnstiles and doors' },
     { resource: 'access_devices', action: 'READ', scope: 'ORGANISATION', description: 'View access hardware devices' },
+
+    // Day 8: Booking & Scheduling Foundation
+    { resource: 'classes', action: 'VIEW', scope: 'ORGANISATION', description: 'View classes and sessions' },
+    { resource: 'classes', action: 'VIEW', scope: 'SELF', description: 'View available classes as a member' },
+    { resource: 'classes', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage class types and templates' },
+    { resource: 'class_sessions', action: 'VIEW', scope: 'ORGANISATION', description: 'View class sessions' },
+    { resource: 'class_sessions', action: 'VIEW', scope: 'SELF', description: 'View class sessions as member' },
+    { resource: 'class_sessions', action: 'CREATE', scope: 'ORGANISATION', description: 'Schedule new class sessions' },
+    { resource: 'class_sessions', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update scheduled class sessions' },
+    { resource: 'class_sessions', action: 'DELETE', scope: 'ORGANISATION', description: 'Cancel scheduled class sessions' },
+    { resource: 'bookings', action: 'CREATE', scope: 'SELF', description: 'Book class sessions' },
+    { resource: 'bookings', action: 'CREATE', scope: 'ORGANISATION', description: 'Create bookings in organisation' },
+    { resource: 'bookings', action: 'CANCEL', scope: 'SELF', description: 'Cancel own class booking' },
+    { resource: 'bookings', action: 'CANCEL', scope: 'ORGANISATION', description: 'Cancel bookings in organisation' },
+    { resource: 'bookings', action: 'VIEW', scope: 'SELF', description: 'View own class bookings' },
+    { resource: 'bookings', action: 'VIEW', scope: 'ORGANISATION', description: 'View all class bookings in organisation' },
+    { resource: 'bookings', action: 'MANUAL', scope: 'ORGANISATION', description: 'Perform receptionist manual booking/cancellation' },
+    { resource: 'bookings', action: 'CHECK_IN', scope: 'ORGANISATION', description: 'Mark booking attendance check-in' },
+    { resource: 'bookings', action: 'NO_SHOW', scope: 'ORGANISATION', description: 'Mark booking as no-show' },
+    { resource: 'schedules', action: 'VIEW', scope: 'ORGANISATION', description: 'View staff and trainer schedules' },
+    { resource: 'schedules', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage recurring schedules and availability' },
   ];
 
 
@@ -275,6 +296,21 @@ async function main() {
     'access_credentials:READ:ORGANISATION',
     'access_devices:MANAGE:ORGANISATION',
     'access_devices:READ:ORGANISATION',
+    // Day 8
+    'classes:VIEW:ORGANISATION',
+    'classes:MANAGE:ORGANISATION',
+    'class_sessions:VIEW:ORGANISATION',
+    'class_sessions:CREATE:ORGANISATION',
+    'class_sessions:UPDATE:ORGANISATION',
+    'class_sessions:DELETE:ORGANISATION',
+    'bookings:VIEW:ORGANISATION',
+    'bookings:CREATE:ORGANISATION',
+    'bookings:CANCEL:ORGANISATION',
+    'bookings:MANUAL:ORGANISATION',
+    'bookings:CHECK_IN:ORGANISATION',
+    'bookings:NO_SHOW:ORGANISATION',
+    'schedules:VIEW:ORGANISATION',
+    'schedules:MANAGE:ORGANISATION',
   ];
 
   for (const k of ownerPerms) {
@@ -320,6 +356,20 @@ async function main() {
     'access:EVENT_VIEW:ORGANISATION',
     'access_credentials:READ:ORGANISATION',
     'access_devices:READ:ORGANISATION',
+    // Day 8
+    'classes:VIEW:ORGANISATION',
+    'classes:MANAGE:ORGANISATION',
+    'class_sessions:VIEW:ORGANISATION',
+    'class_sessions:CREATE:ORGANISATION',
+    'class_sessions:UPDATE:ORGANISATION',
+    'class_sessions:DELETE:ORGANISATION',
+    'bookings:VIEW:ORGANISATION',
+    'bookings:MANUAL:ORGANISATION',
+    'bookings:CHECK_IN:ORGANISATION',
+    'bookings:NO_SHOW:ORGANISATION',
+    'bookings:CANCEL:ORGANISATION',
+    'schedules:VIEW:ORGANISATION',
+    'schedules:MANAGE:ORGANISATION',
   ];
 
   for (const k of managerPerms) {
@@ -356,6 +406,15 @@ async function main() {
     'access_credentials:MANAGE:ORGANISATION',
     'access_credentials:READ:ORGANISATION',
     'access_devices:READ:ORGANISATION',
+    // Day 8
+    'classes:VIEW:ORGANISATION',
+    'class_sessions:VIEW:ORGANISATION',
+    'bookings:VIEW:ORGANISATION',
+    'bookings:MANUAL:ORGANISATION',
+    'bookings:CHECK_IN:ORGANISATION',
+    'bookings:NO_SHOW:ORGANISATION',
+    'bookings:CANCEL:ORGANISATION',
+    'schedules:VIEW:ORGANISATION',
   ];
 
   for (const k of receptionPerms) {
@@ -399,6 +458,13 @@ async function main() {
     'membership_plans:READ:ORGANISATION',
     'memberships:READ:OUTLET',
     'entitlements:READ:ORGANISATION',
+    // Day 8
+    'classes:VIEW:ORGANISATION',
+    'class_sessions:VIEW:ORGANISATION',
+    'bookings:VIEW:ORGANISATION',
+    'bookings:CHECK_IN:ORGANISATION',
+    'schedules:VIEW:ORGANISATION',
+    'schedules:MANAGE:ORGANISATION',
   ];
 
   for (const k of trainerPerms) {
@@ -443,6 +509,12 @@ async function main() {
     'access:VIEW:SELF',
     'access_credentials:MANAGE:SELF',
     'access_credentials:READ:SELF',
+    // Day 8
+    'classes:VIEW:SELF',
+    'class_sessions:VIEW:SELF',
+    'bookings:VIEW:SELF',
+    'bookings:CREATE:SELF',
+    'bookings:CANCEL:SELF',
   ];
 
   for (const k of memberPerms) {
@@ -1515,7 +1587,337 @@ async function main() {
     }
   }
 
-  console.log('✅ FitCore Database Seeding Completed (Day 7: Physical Access & Turnstiles Foundation).');
+  // =========================================================================
+  // DAY 8: BOOKING & SCHEDULING FOUNDATION SEED
+  // =========================================================================
+  console.log('Seeding Day 8: Booking & Scheduling Foundation...');
+
+  // 1. Default Booking Policy
+  const defaultPolicy = await prisma.bookingPolicy.upsert({
+    where: { id: 'policy_seed_default_001' },
+    update: {},
+    create: {
+      id: 'policy_seed_default_001',
+      organisationId: secondWind.id,
+      name: 'Standard Club Booking Policy',
+      maxAdvanceBookingHours: 168, // 7 days
+      minimumCancellationNoticeHours: 2, // 2 hours
+      maxActiveBookings: 5,
+      allowWaitlist: true,
+      maxWaitlistSize: 10,
+      allowLateBooking: true,
+      allowCancellation: true,
+      isDefault: true,
+    },
+  });
+
+  // 2. Class Types
+  const classTypesData = [
+    {
+      id: 'class_type_hiit_001',
+      name: 'HIIT Surge',
+      description: 'High-intensity interval training designed to push your aerobic and anaerobic limits.',
+      category: 'HIIT',
+      durationMinutes: 45,
+      defaultCapacity: 20,
+      bookingRequired: true,
+      membershipEntitlementKey: 'GROUP_CLASSES',
+    },
+    {
+      id: 'class_type_yoga_001',
+      name: 'Vinyasa Flow Yoga',
+      description: 'Dynamic breath-to-movement flow focusing on mobility, core stability, and mindfulness.',
+      category: 'YOGA',
+      durationMinutes: 60,
+      defaultCapacity: 25,
+      bookingRequired: true,
+      membershipEntitlementKey: 'GROUP_CLASSES',
+    },
+    {
+      id: 'class_type_strength_001',
+      name: 'Strength & Conditioning Lab',
+      description: 'Barbell and dumbbell structured periodization for building lean muscle and athletic power.',
+      category: 'STRENGTH',
+      durationMinutes: 60,
+      defaultCapacity: 16,
+      bookingRequired: true,
+      membershipEntitlementKey: 'GROUP_CLASSES',
+    },
+    {
+      id: 'class_type_spin_001',
+      name: 'Rhythm Spin Cycle',
+      description: 'High-energy indoor cycling workout synchronized to curated playlists and power intervals.',
+      category: 'SPIN',
+      durationMinutes: 45,
+      defaultCapacity: 20,
+      bookingRequired: true,
+      membershipEntitlementKey: 'GROUP_CLASSES',
+    },
+    {
+      id: 'class_type_pilates_001',
+      name: 'Mat Pilates Core',
+      description: 'Classical core and pelvic floor conditioning for posture, tone, and functional alignment.',
+      category: 'PILATES',
+      durationMinutes: 50,
+      defaultCapacity: 18,
+      bookingRequired: true,
+      membershipEntitlementKey: 'GROUP_CLASSES',
+    },
+  ];
+
+  const classTypeMap = new Map<string, any>();
+  for (const ct of classTypesData) {
+    const created = await prisma.classType.upsert({
+      where: { id: ct.id },
+      update: {},
+      create: {
+        ...ct,
+        organisationId: secondWind.id,
+        status: 'ACTIVE',
+      },
+    });
+    classTypeMap.set(ct.id, created);
+  }
+
+  // 3. Resources (Rooms / Studios)
+  const resourcesData = [
+    {
+      id: 'res_perth_studio_1',
+      outletId: perthCbd.id,
+      name: 'Studio 1 - Main Floor',
+      type: 'STUDIO',
+      capacity: 30,
+    },
+    {
+      id: 'res_perth_spin_room',
+      outletId: perthCbd.id,
+      name: 'Spin Studio',
+      type: 'ROOM',
+      capacity: 22,
+    },
+    {
+      id: 'res_perth_strength_bay',
+      outletId: perthCbd.id,
+      name: 'Functional Strength Bay',
+      type: 'AREA',
+      capacity: 20,
+    },
+    {
+      id: 'res_freo_ocean_studio',
+      outletId: fremantle.id,
+      name: 'Ocean Studio',
+      type: 'STUDIO',
+      capacity: 25,
+    },
+  ];
+
+  const resourceMap = new Map<string, any>();
+  for (const res of resourcesData) {
+    const created = await prisma.resource.upsert({
+      where: { id: res.id },
+      update: {},
+      create: {
+        ...res,
+        organisationId: secondWind.id,
+        status: 'ACTIVE',
+      },
+    });
+    resourceMap.set(res.id, created);
+  }
+
+  // 4. Class Templates
+  const templatesData = [
+    {
+      id: 'tmpl_hiit_morning',
+      classTypeId: 'class_type_hiit_001',
+      name: 'Morning HIIT Surge',
+      durationMinutes: 45,
+      defaultCapacity: 20,
+    },
+    {
+      id: 'tmpl_yoga_sunrise',
+      classTypeId: 'class_type_yoga_001',
+      name: 'Sunrise Vinyasa Flow',
+      durationMinutes: 60,
+      defaultCapacity: 25,
+    },
+    {
+      id: 'tmpl_strength_evening',
+      classTypeId: 'class_type_strength_001',
+      name: 'Evening Strength Lab',
+      durationMinutes: 60,
+      defaultCapacity: 16,
+    },
+    {
+      id: 'tmpl_spin_lunch',
+      classTypeId: 'class_type_spin_001',
+      name: 'Express Lunch Spin',
+      durationMinutes: 45,
+      defaultCapacity: 20,
+    },
+  ];
+
+  for (const tmpl of templatesData) {
+    await prisma.classTemplate.upsert({
+      where: { id: tmpl.id },
+      update: {},
+      create: {
+        ...tmpl,
+        organisationId: secondWind.id,
+        defaultBookingPolicyId: defaultPolicy.id,
+        status: 'ACTIVE',
+      },
+    });
+  }
+
+  // 5. Trainer Availability for Mike
+  const trainerMike = await prisma.user.findFirst({
+    where: { email: 'trainer.mike@secondwind.com.au' },
+  });
+
+  if (trainerMike) {
+    for (let day = 1; day <= 5; day++) {
+      await prisma.trainerAvailability.upsert({
+        where: { id: `avail_mike_weekday_${day}` },
+        update: {},
+        create: {
+          id: `avail_mike_weekday_${day}`,
+          organisationId: secondWind.id,
+          trainerId: trainerMike.id,
+          dayOfWeek: day,
+          startTime: '06:00',
+          endTime: '18:00',
+          isAvailable: true,
+          timezone: 'Australia/Perth',
+          notes: 'Standard weekday coaching shift',
+        },
+      });
+    }
+  }
+
+  // 6. Scheduled Class Sessions for Today and Upcoming Days
+  const now = new Date();
+  const todayMorning = new Date(now);
+  todayMorning.setHours(9, 0, 0, 0);
+
+  const todayNoon = new Date(now);
+  todayNoon.setHours(12, 0, 0, 0);
+
+  const todayEvening = new Date(now);
+  todayEvening.setHours(17, 30, 0, 0);
+
+  const tomorrowMorning = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  tomorrowMorning.setHours(7, 0, 0, 0);
+
+  const sessionsToSeed = [
+    {
+      id: 'session_seed_hiit_today_morning',
+      outletId: perthCbd.id,
+      classTypeId: 'class_type_hiit_001',
+      classTemplateId: 'tmpl_hiit_morning',
+      trainerId: trainerMike?.id,
+      resourceId: 'res_perth_studio_1',
+      bookingPolicyId: defaultPolicy.id,
+      name: 'HIIT Surge - Morning Blast',
+      startsAt: todayMorning,
+      endsAt: new Date(todayMorning.getTime() + 45 * 60 * 1000),
+      capacity: 20,
+      status: 'OPEN',
+      bookingOpensAt: new Date(todayMorning.getTime() - 7 * 24 * 60 * 60 * 1000),
+      bookingClosesAt: new Date(todayMorning.getTime() - 15 * 60 * 1000),
+      cancellationClosesAt: new Date(todayMorning.getTime() - 2 * 60 * 60 * 1000),
+    },
+    {
+      id: 'session_seed_spin_today_noon',
+      outletId: perthCbd.id,
+      classTypeId: 'class_type_spin_001',
+      classTemplateId: 'tmpl_spin_lunch',
+      trainerId: trainerMike?.id,
+      resourceId: 'res_perth_spin_room',
+      bookingPolicyId: defaultPolicy.id,
+      name: 'Express Lunch Spin',
+      startsAt: todayNoon,
+      endsAt: new Date(todayNoon.getTime() + 45 * 60 * 1000),
+      capacity: 20,
+      status: 'OPEN',
+      bookingOpensAt: new Date(todayNoon.getTime() - 7 * 24 * 60 * 60 * 1000),
+      bookingClosesAt: new Date(todayNoon.getTime() - 15 * 60 * 1000),
+      cancellationClosesAt: new Date(todayNoon.getTime() - 2 * 60 * 60 * 1000),
+    },
+    {
+      id: 'session_seed_strength_today_evening',
+      outletId: perthCbd.id,
+      classTypeId: 'class_type_strength_001',
+      classTemplateId: 'tmpl_strength_evening',
+      trainerId: trainerMike?.id,
+      resourceId: 'res_perth_strength_bay',
+      bookingPolicyId: defaultPolicy.id,
+      name: 'Evening Strength & Conditioning Lab',
+      startsAt: todayEvening,
+      endsAt: new Date(todayEvening.getTime() + 60 * 60 * 1000),
+      capacity: 16,
+      status: 'OPEN',
+      bookingOpensAt: new Date(todayEvening.getTime() - 7 * 24 * 60 * 60 * 1000),
+      bookingClosesAt: new Date(todayEvening.getTime() - 15 * 60 * 1000),
+      cancellationClosesAt: new Date(todayEvening.getTime() - 2 * 60 * 60 * 1000),
+    },
+    {
+      id: 'session_seed_yoga_tomorrow_freo',
+      outletId: fremantle.id,
+      classTypeId: 'class_type_yoga_001',
+      classTemplateId: 'tmpl_yoga_sunrise',
+      trainerId: trainerMike?.id,
+      resourceId: 'res_freo_ocean_studio',
+      bookingPolicyId: defaultPolicy.id,
+      name: 'Fremantle Sunrise Vinyasa Flow',
+      startsAt: tomorrowMorning,
+      endsAt: new Date(tomorrowMorning.getTime() + 60 * 60 * 1000),
+      capacity: 25,
+      status: 'OPEN',
+      bookingOpensAt: new Date(tomorrowMorning.getTime() - 7 * 24 * 60 * 60 * 1000),
+      bookingClosesAt: new Date(tomorrowMorning.getTime() - 15 * 60 * 1000),
+      cancellationClosesAt: new Date(tomorrowMorning.getTime() - 2 * 60 * 60 * 1000),
+    },
+  ];
+
+  for (const sess of sessionsToSeed) {
+    await prisma.classSession.upsert({
+      where: { id: sess.id },
+      update: {},
+      create: {
+        ...sess,
+        organisationId: secondWind.id,
+      },
+    });
+  }
+
+  // 7. Seed Sample Confirmed Booking for Active Member
+  const bookingSeedUser = await prisma.user.findFirst({
+    where: { email: 'active.member@secondwind.com.au' },
+  });
+  if (bookingSeedUser) {
+    const bookingSeedProfile = await prisma.memberProfile.findFirst({
+      where: { userId: bookingSeedUser.id, organisationId: secondWind.id },
+    });
+
+    if (bookingSeedProfile) {
+      await prisma.booking.upsert({
+        where: { id: 'booking_seed_active_member_001' },
+        update: {},
+        create: {
+          id: 'booking_seed_active_member_001',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: bookingSeedProfile.id,
+          classSessionId: 'session_seed_hiit_today_morning',
+          status: 'CONFIRMED',
+          bookedAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+
+  console.log('✅ FitCore Database Seeding Completed (Day 8: Booking & Scheduling Foundation).');
 }
 
 main()

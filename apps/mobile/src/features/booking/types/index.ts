@@ -1,10 +1,47 @@
-/**
- * Appointments & Booking Types
- * Schedules personal training, consultations, and class reservations.
- */
+import type {
+  ClassCategory,
+  ClassSessionStatus,
+  BookingStatus,
+  WaitlistStatus,
+  ResourceType,
+  BookingDenialReason,
+  ClassType,
+  ClassTemplate,
+  BookingPolicy,
+  Resource,
+  ClassSession,
+  Booking,
+  WaitlistEntry,
+  TrainerAvailability,
+  RecurringSchedule,
+  BookingEligibilityResult,
+} from '@fitcore/types';
+
+export type {
+  ClassCategory,
+  ClassSessionStatus,
+  BookingStatus,
+  WaitlistStatus,
+  ResourceType,
+  BookingDenialReason,
+  ClassType,
+  ClassTemplate,
+  BookingPolicy,
+  Resource,
+  ClassSession,
+  Booking,
+  WaitlistEntry,
+  TrainerAvailability,
+  RecurringSchedule,
+  BookingEligibilityResult,
+};
 
 export interface BookingState {
-  isInitialized: boolean;
+  selectedDate: string;
+  selectedOutletId: string | null;
+  selectedCategory: string | null;
+  activeBookings: Booking[];
+  waitlists: WaitlistEntry[];
   isLoading: boolean;
   error: string | null;
 }

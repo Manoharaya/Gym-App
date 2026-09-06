@@ -581,7 +581,7 @@ export interface Trainer extends TenantScopedEntity {
   avatarUrl?: string;
 }
 
-export interface Booking extends TenantScopedEntity {
+export interface LegacyAppointmentBooking extends TenantScopedEntity {
   userId: string;
   trainerId?: string;
   serviceType: 'PERSONAL_TRAINING' | 'CLASS' | 'CONSULTATION' | 'ASSESSMENT';
@@ -946,4 +946,235 @@ export interface DynamicQRCredentialResponse {
   expiresAt: string;
   refreshIntervalSeconds: number;
 }
+
+// ============================================================================
+// DAY 8: BOOKING & SCHEDULING FOUNDATION
+// ============================================================================
+
+export type ClassCategory =
+  | 'YOGA'
+  | 'STRENGTH'
+  | 'HIIT'
+  | 'SPIN'
+  | 'PILATES'
+  | 'BOXING'
+  | 'CROSSFIT'
+  | 'ZUMBA'
+  | 'OTHER';
+
+export type ClassSessionStatus =
+  | 'SCHEDULED'
+  | 'OPEN'
+  | 'FULL'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export type BookingStatus =
+  | 'CONFIRMED'
+  | 'WAITLISTED'
+  | 'CANCELLED'
+  | 'CHECKED_IN'
+  | 'COMPLETED'
+  | 'NO_SHOW';
+
+export type WaitlistStatus = 'PENDING' | 'PROMOTED' | 'CANCELLED' | 'EXPIRED';
+
+export type ResourceType =
+  | 'STUDIO'
+  | 'ROOM'
+  | 'COURT'
+  | 'AREA'
+  | 'EQUIPMENT_BAY';
+
+export type BookingDenialReason =
+  | 'BOOKING_NOT_FOUND'
+  | 'CLASS_SESSION_NOT_FOUND'
+  | 'CLASS_SESSION_CANCELLED'
+  | 'BOOKING_NOT_OPEN'
+  | 'BOOKING_CLOSED'
+  | 'CANCELLATION_WINDOW_CLOSED'
+  | 'CLASS_FULL'
+  | 'BOOKING_LIMIT_REACHED'
+  | 'MEMBERSHIP_REQUIRED'
+  | 'MEMBERSHIP_INACTIVE'
+  | 'MEMBERSHIP_SUSPENDED'
+  | 'MEMBERSHIP_ENTITLEMENT_REQUIRED'
+  | 'OUTLET_NOT_AUTHORIZED'
+  | 'BOOKING_TIME_CONFLICT'
+  | 'TRAINER_SCHEDULE_CONFLICT'
+  | 'RESOURCE_SCHEDULE_CONFLICT'
+  | 'ALREADY_BOOKED'
+  | 'ALREADY_WAITLISTED'
+  | 'IDEMPOTENCY_CONFLICT'
+  | 'ORGANISATION_MISMATCH'
+  | 'BOOKING_NOT_ALLOWED';
+
+export interface ClassType extends BaseEntity {
+  organisationId: string;
+  name: string;
+  description?: string;
+  category: ClassCategory;
+  durationMinutes: number;
+  defaultCapacity: number;
+  bookingRequired: boolean;
+  membershipEntitlementKey?: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+}
+
+export interface ClassTemplate extends BaseEntity {
+  organisationId: string;
+  classTypeId: string;
+  name: string;
+  description?: string;
+  durationMinutes: number;
+  defaultCapacity: number;
+  defaultBookingPolicyId?: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+}
+
+export interface BookingPolicy extends BaseEntity {
+  organisationId: string;
+  name: string;
+  maxAdvanceBookingHours: number;
+  minimumCancellationNoticeHours: number;
+  maxActiveBookings: number;
+  allowWaitlist: boolean;
+  maxWaitlistSize: number;
+  allowLateBooking: boolean;
+  allowCancellation: boolean;
+  isDefault: boolean;
+}
+
+export interface Resource extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  name: string;
+  type: ResourceType;
+  capacity: number;
+  status: 'ACTIVE' | 'MAINTENANCE' | 'DISABLED';
+}
+
+export interface ClassSession extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  classTemplateId?: string;
+  classTypeId: string;
+  trainerId?: string;
+  resourceId?: string;
+  bookingPolicyId?: string;
+  name?: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  status: ClassSessionStatus;
+  bookingOpensAt?: string;
+  bookingClosesAt?: string;
+  cancellationClosesAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  trainer?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  resource?: {
+    id: string;
+    name: string;
+    type: string;
+  };
+  outlet?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  classType?: {
+    id: string;
+    name: string;
+    category: ClassCategory;
+    durationMinutes: number;
+    description?: string;
+  };
+  classTemplate?: {
+    id: string;
+    name: string;
+    description?: string;
+  };
+  policy?: BookingPolicy;
+  _count?: {
+    bookings?: number;
+    waitlistEntries?: number;
+  };
+  confirmedBookingCount?: number;
+  waitlistCount?: number;
+  spotsRemaining?: number;
+  userBookingStatus?: BookingStatus | null;
+}
+
+export interface Booking extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  memberProfileId: string;
+  classSessionId: string;
+  status: BookingStatus;
+  bookedAt: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  checkedInAt?: string;
+  noShowAt?: string;
+  waitlistPosition?: number;
+  idempotencyKey?: string;
+  metadata?: Record<string, unknown>;
+  classSession?: ClassSession;
+}
+
+export interface WaitlistEntry extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  classSessionId: string;
+  memberProfileId: string;
+  bookingId?: string;
+  position: number;
+  status: WaitlistStatus;
+  joinedAt: string;
+  promotedAt?: string;
+  cancelledAt?: string;
+  classSession?: ClassSession;
+}
+
+export interface TrainerAvailability extends BaseEntity {
+  organisationId: string;
+  trainerId: string;
+  dayOfWeek?: number;
+  startTime?: string;
+  endTime?: string;
+  specificDate?: string;
+  isAvailable: boolean;
+  timezone: string;
+  notes?: string;
+}
+
+export interface RecurringSchedule extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  classTemplateId: string;
+  trainerId?: string;
+  resourceId?: string;
+  dayOfWeek: number;
+  startTime: string;
+  durationMinutes: number;
+  startDate: string;
+  endDate?: string;
+  timezone: string;
+  isActive: boolean;
+}
+
+export interface BookingEligibilityResult {
+  eligible: boolean;
+  reason?: BookingDenialReason;
+  message?: string;
+  memberMembershipId?: string;
+}
+
 

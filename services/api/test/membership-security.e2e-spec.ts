@@ -318,6 +318,9 @@ describe('Membership Security, IDOR & Access Policy (Day 5 E2E)', () => {
 
     it('Test D: Member has MemberOutlet -> Outlet A + Outlet B, but membership only grants Outlet A. Access to Outlet B is DENIED', async () => {
       // Temporarily give parq.member a MemberOutlet for Fremantle (they only have a Perth CBD membership)
+      await prisma.memberOutlet.deleteMany({
+        where: { memberProfileId: parqMemberProfileId, outletId: fremantleOutletId },
+      });
       const tempMO = await prisma.memberOutlet.create({
         data: {
           memberProfileId: parqMemberProfileId,

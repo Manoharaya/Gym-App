@@ -27,6 +27,13 @@ import {
   AccessStatusScreen,
 } from '../features/access';
 
+import {
+  ClassesScreen,
+  ClassDetailsScreen,
+  BookingConfirmationScreen,
+  MyBookingsScreen,
+} from '../features/booking';
+
 const Stack = createNativeStackNavigator<MemberStackParamList>();
 
 export const MemberNavigator: React.FC = () => {
@@ -56,15 +63,26 @@ export const MemberNavigator: React.FC = () => {
           />
         )}
       </Stack.Screen>
-      <Stack.Screen name="Bookings" options={{ title: 'Classes & PT' }}>
-        {() => (
-          <NavigationPlaceholderScreen
-            title="Booking Schedule"
-            module="features/booking"
-            roleScope="MEMBER (SELF)"
-          />
-        )}
-      </Stack.Screen>
+      <Stack.Screen
+        name="Bookings"
+        component={ClassesScreen}
+        options={{ title: 'Class Schedule' }}
+      />
+      <Stack.Screen
+        name="ClassDetails"
+        component={ClassDetailsScreen}
+        options={{ title: 'Class Details' }}
+      />
+      <Stack.Screen
+        name="BookingConfirmation"
+        component={BookingConfirmationScreen}
+        options={{ title: 'Confirmation', headerBackVisible: false }}
+      />
+      <Stack.Screen
+        name="MyBookings"
+        component={MyBookingsScreen}
+        options={{ title: 'My Bookings & Waitlist' }}
+      />
       <Stack.Screen name="Progress" options={{ title: 'Metrics & Progress' }}>
         {() => (
           <NavigationPlaceholderScreen

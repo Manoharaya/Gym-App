@@ -42,7 +42,15 @@ model Organisation {
   checkIns             CheckIn[]
   accessEvents         AccessEvent[]
   guestAccessPasses    GuestAccessPass[]
-
+  classTypes           ClassType[]
+  classTemplates       ClassTemplate[]
+  classSessions        ClassSession[]
+  bookingPolicies      BookingPolicy[]
+  resources            Resource[]
+  bookings             Booking[]
+  waitlistEntries      WaitlistEntry[]
+  trainerAvailabilities TrainerAvailability[]
+  recurringSchedules   RecurringSchedule[]
 
   @@index([slug])
   @@index([status])
@@ -87,6 +95,11 @@ model Outlet {
   checkIns             CheckIn[]
   accessEvents         AccessEvent[]
   guestAccessPasses    GuestAccessPass[]
+  resources            Resource[]
+  classSessions        ClassSession[]
+  bookings             Booking[]
+  waitlistEntries      WaitlistEntry[]
+  recurringSchedules   RecurringSchedule[]
 
 
   @@unique([organisationId, slug])
@@ -122,6 +135,9 @@ model User {
   memberProfile          MemberProfile?
   accessOverridesCreated AccessOverride[] @relation("AccessOverridesCreated")
   guestPassesCreated     GuestAccessPass[] @relation("GuestPassesCreated")
+  trainerSessions           ClassSession[]        @relation("TrainerSessions")
+  trainerAvailabilities     TrainerAvailability[]
+  trainerRecurringSchedules RecurringSchedule[]   @relation("TrainerRecurringSchedules")
 
   @@index([email])
   @@index([phone])
@@ -337,6 +353,8 @@ model MemberProfile {
   accessOverrides              AccessOverride[]
   checkIns                     CheckIn[]
   accessEvents                 AccessEvent[]
+  bookings                     Booking[]
+  waitlistEntries              WaitlistEntry[]
 
 
   @@index([userId])
@@ -1264,4 +1282,263 @@ model GuestAccessPass {
   @@index([status])
   @@map("guest_access_passes")
 }
+
+// ============================================================================
+// DAY 8: BOOKING & SCHEDULING FOUNDATION
+// ============================================================================
+
+model ClassType {
+  id                       String          @id @default(cuid())
+  organisationId           String
+  name                     String
+  description              String?
+  category                 String          @default("OTHER") // YOGA, STRENGTH, HIIT, SPIN, PILATES, BOXING, CROSSFIT, ZUMBA, OTHER
+  durationMinutes          Int             @default(60)
+  defaultCapacity          Int             @default(20)
+  bookingRequired          Boolean         @default(true)
+  membershipEntitlementKey String?         @default("GROUP_CLASSES")
+  status                   String          @default("ACTIVE") // ACTIVE, INACTIVE, ARCHIVED
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+
+  organisation             Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  templates                ClassTemplate[]
+  sessions                 ClassSession[]
+
+  @@index([organisationId])
+  @@index([category])
+  @@index([status])
+  @@map("class_types")
+}
+
+model ClassTemplate {
+  id                     String              @id @default(cuid())
+  organisationId         String
+  classTypeId            String
+  name                   String
+  description            String?
+  durationMinutes        Int                 @default(60)
+  defaultCapacity        Int                 @default(20)
+  defaultBookingPolicyId String?
+  status                 String              @default("ACTIVE") // ACTIVE, INACTIVE, ARCHIVED
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  organisation           Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  classType              ClassType           @relation(fields: [classTypeId], references: [id], onDelete: Cascade)
+  bookingPolicy          BookingPolicy?      @relation(fields: [defaultBookingPolicyId], references: [id], onDelete: SetNull)
+  sessions               ClassSession[]
+  recurringSchedules     RecurringSchedule[]
+
+  @@index([organisationId])
+  @@index([classTypeId])
+  @@map("class_templates")
+}
+
+model BookingPolicy {
+  id                             String          @id @default(cuid())
+  organisationId                 String
+  name                           String
+  maxAdvanceBookingHours         Int             @default(168) // 7 days in advance
+  minimumCancellationNoticeHours Int             @default(2)   // 2 hours before session
+  maxActiveBookings              Int             @default(5)   // Max concurrent future bookings
+  allowWaitlist                  Boolean         @default(true)
+  maxWaitlistSize                Int             @default(10)
+  allowLateBooking               Boolean         @default(true)
+  allowCancellation              Boolean         @default(true)
+  isDefault                      Boolean         @default(false)
+  createdAt                      DateTime        @default(now())
+  updatedAt                      DateTime        @updatedAt
+
+  organisation                   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  classTemplates                 ClassTemplate[]
+  classSessions                  ClassSession[]
+
+  @@index([organisationId])
+  @@map("booking_policies")
+}
+
+model Resource {
+  id                 String              @id @default(cuid())
+  organisationId     String
+  outletId           String
+  name               String
+  type               String              @default("STUDIO") // STUDIO, ROOM, COURT, AREA, EQUIPMENT_BAY
+  capacity           Int                 @default(30)
+  status             String              @default("ACTIVE") // ACTIVE, MAINTENANCE, DISABLED
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organisation       Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet              @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  classSessions      ClassSession[]
+  recurringSchedules RecurringSchedule[]
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([status])
+  @@map("resources")
+}
+
+model ClassSession {
+  id                   String          @id @default(cuid())
+  organisationId       String
+  outletId             String
+  classTemplateId      String?
+  classTypeId          String
+  trainerId            String?
+  resourceId           String?
+  bookingPolicyId      String?
+  name                 String?
+  startsAt             DateTime
+  endsAt               DateTime
+  capacity             Int             @default(20)
+  status               String          @default("SCHEDULED") // SCHEDULED, OPEN, FULL, IN_PROGRESS, COMPLETED, CANCELLED
+  bookingOpensAt       DateTime?
+  bookingClosesAt      DateTime?
+  cancellationClosesAt DateTime?
+  cancelledAt          DateTime?
+  cancellationReason   String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  organisation         Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet               Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  classTemplate        ClassTemplate?  @relation(fields: [classTemplateId], references: [id], onDelete: SetNull)
+  classType            ClassType       @relation(fields: [classTypeId], references: [id], onDelete: Restrict)
+  trainer              User?           @relation("TrainerSessions", fields: [trainerId], references: [id], onDelete: SetNull)
+  resource             Resource?       @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  bookingPolicy        BookingPolicy?  @relation(fields: [bookingPolicyId], references: [id], onDelete: SetNull)
+  bookings             Booking[]
+  waitlistEntries      WaitlistEntry[]
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([classTypeId])
+  @@index([trainerId])
+  @@index([resourceId])
+  @@index([startsAt])
+  @@index([status])
+  @@map("class_sessions")
+}
+
+model Booking {
+  id                 String         @id @default(cuid())
+  organisationId     String
+  outletId           String
+  memberProfileId    String
+  classSessionId     String
+  status             String         @default("CONFIRMED") // CONFIRMED, WAITLISTED, CANCELLED, CHECKED_IN, COMPLETED, NO_SHOW
+  bookedAt           DateTime       @default(now())
+  cancelledAt        DateTime?
+  cancellationReason String?
+  checkedInAt        DateTime?
+  noShowAt           DateTime?
+  waitlistPosition   Int?
+  idempotencyKey     String?
+  metadata           Json?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  organisation       Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile  @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  classSession       ClassSession   @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  waitlistEntry      WaitlistEntry?
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([memberProfileId])
+  @@index([classSessionId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@map("bookings")
+}
+
+model WaitlistEntry {
+  id              String        @id @default(cuid())
+  organisationId  String
+  outletId        String
+  classSessionId  String
+  memberProfileId String
+  bookingId       String?       @unique
+  position        Int
+  status          String        @default("PENDING") // PENDING, PROMOTED, CANCELLED, EXPIRED
+  joinedAt        DateTime      @default(now())
+  promotedAt      DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  classSession    ClassSession  @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  booking         Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([classSessionId])
+  @@index([memberProfileId])
+  @@index([status])
+  @@index([position])
+  @@map("waitlist_entries")
+}
+
+model TrainerAvailability {
+  id             String       @id @default(cuid())
+  organisationId String
+  trainerId      String
+  dayOfWeek      Int?         // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime      String?      // "09:00"
+  endTime        String?      // "17:00"
+  specificDate   DateTime?    // Specific date override
+  isAvailable    Boolean      @default(true) // true = available, false = blockout
+  timezone       String       @default("Australia/Perth")
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  trainer        User         @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([trainerId])
+  @@index([dayOfWeek])
+  @@index([specificDate])
+  @@map("trainer_availabilities")
+}
+
+model RecurringSchedule {
+  id              String         @id @default(cuid())
+  organisationId  String
+  outletId        String
+  classTemplateId String
+  trainerId       String?
+  resourceId      String?
+  dayOfWeek       Int            // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime       String         // "18:00"
+  durationMinutes Int            @default(60)
+  startDate       DateTime
+  endDate         DateTime?
+  timezone        String         @default("Australia/Perth")
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organisation    Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  classTemplate   ClassTemplate  @relation(fields: [classTemplateId], references: [id], onDelete: Cascade)
+  trainer         User?          @relation("TrainerRecurringSchedules", fields: [trainerId], references: [id], onDelete: SetNull)
+  resource        Resource?      @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([classTemplateId])
+  @@index([trainerId])
+  @@index([dayOfWeek])
+  @@index([isActive])
+  @@map("recurring_schedules")
+}
+
 

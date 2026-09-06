@@ -17,6 +17,9 @@ export type MemberStackParamList = {
   MemberHome: undefined;
   WorkoutSession: { workoutId: string };
   Bookings: undefined;
+  ClassDetails: { sessionId: string };
+  BookingConfirmation: { booking?: any; waitlist?: any; isWaitlisted?: boolean };
+  MyBookings: undefined;
   Progress: undefined;
   AICoach: undefined;
   MemberProfile: undefined;

@@ -168,7 +168,7 @@ export class MembershipAccessPolicy {
     }
 
     // Evaluate active memberships for entitlement and outlet scope
-    let missingEntitlement = false;
+    let hasMatchingEntitlement = false;
 
     for (const membership of activeMemberships) {
       // 1. Verify required entitlement exists on plan
@@ -177,9 +177,10 @@ export class MembershipAccessPolicy {
       );
 
       if (!hasEntitlement) {
-        missingEntitlement = true;
         continue;
       }
+
+      hasMatchingEntitlement = true;
 
       // 2. Verify outlet access scope
       if (membership.accessScope === 'ALL_ORGANISATION_OUTLETS') {
@@ -212,7 +213,7 @@ export class MembershipAccessPolicy {
       }
     }
 
-    if (missingEntitlement) {
+    if (!hasMatchingEntitlement) {
       return {
         allowed: false,
         reason: 'NO_GYM_ACCESS_ENTITLEMENT',
@@ -222,8 +223,8 @@ export class MembershipAccessPolicy {
 
     return {
       allowed: false,
-      reason: 'OUTLET_NOT_INCLUDED',
-      details: 'Active membership does not grant access to this specific facility outlet',
+      reason: 'OUTLET_NOT_IN_SCOPE',
+      details: 'Active membership does not permit access to requested outlet',
     };
   }
 }

@@ -1,6 +1,5 @@
-/**
- * Appointments & Booking Presentation Components
- * Reusable domain components for this feature module.
- */
-
-export {};
+export * from './CapacityIndicator';
+export * from './BookingStatusBadge';
+export * from './ClassCard';
+export * from './SessionFilterBar';
+export * from './WaitlistBanner';
