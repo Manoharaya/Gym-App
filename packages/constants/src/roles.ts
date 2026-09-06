@@ -1,0 +1,29 @@
+import type { UserRole } from '@fitcore/types';
+
+export const ROLES: Record<UserRole, UserRole> = {
+  SUPERADMIN: 'SUPERADMIN',
+  ORGANISATION_OWNER: 'ORGANISATION_OWNER',
+  OUTLET_MANAGER: 'OUTLET_MANAGER',
+  RECEPTION: 'RECEPTION',
+  TRAINER: 'TRAINER',
+  FINANCE: 'FINANCE',
+  MEMBER: 'MEMBER',
+} as const;
+
+export const ALL_ROLES: readonly UserRole[] = [
+  ROLES.SUPERADMIN,
+  ROLES.ORGANISATION_OWNER,
+  ROLES.OUTLET_MANAGER,
+  ROLES.RECEPTION,
+  ROLES.TRAINER,
+  ROLES.FINANCE,
+  ROLES.MEMBER,
+] as const;
+
+export const STAFF_ROLES: readonly UserRole[] = [
+  ROLES.ORGANISATION_OWNER,
+  ROLES.OUTLET_MANAGER,
+  ROLES.RECEPTION,
+  ROLES.TRAINER,
+  ROLES.FINANCE,
+] as const;
