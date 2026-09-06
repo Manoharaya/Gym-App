@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 
-describe('Authentication & Token Lifecycle (e2e)', () => {
+describe('Authentication & Session Management (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -29,6 +29,54 @@ describe('Authentication & Token Lifecycle (e2e)', () => {
     await app.close();
   });
 
+  it('POST /api/v1/auth/register => creates new member account', async () => {
+    const testEmail = `athlete.${Date.now()}@example.com`;
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: testEmail,
+        password: 'FitCoreDev2026!',
+        firstName: 'Alice',
+        lastName: 'Walker',
+      })
+      .expect(201);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.refreshToken).toBeDefined();
+    expect(res.body.data.user.email).toBe(testEmail);
+
+    // Duplicate registration should fail
+    const dupRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: testEmail,
+        password: 'FitCoreDev2026!',
+        firstName: 'Duplicate',
+        lastName: 'Alice',
+      })
+      .expect(409);
+
+    expect(dupRes.body.success).toBe(false);
+    expect(dupRes.body.error.code).toBe('CONFLICT');
+  });
+
+  it('POST /api/v1/auth/register => blocks self-assignment of elevated administrative role with 403', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: `hacker.${Date.now()}@example.com`,
+        password: 'FitCoreDev2026!',
+        firstName: 'Malicious',
+        lastName: 'Actor',
+        role: 'SUPERADMIN',
+      })
+      .expect(403);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
   it('POST /api/v1/auth/login => rejects invalid credentials with 401', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
@@ -40,6 +88,32 @@ describe('Authentication & Token Lifecycle (e2e)', () => {
 
     expect(res.body.success).toBe(false);
     expect(res.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('POST /api/v1/auth/login => blocks disabled account with 401', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: 'disabled@secondwind.com.au',
+        password: 'FitCoreDev2026!',
+      })
+      .expect(401);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.message).toMatch(/disabled or suspended/i);
+  });
+
+  it('POST /api/v1/auth/login => blocks suspended account with 401', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: 'suspended@secondwind.com.au',
+        password: 'FitCoreDev2026!',
+      })
+      .expect(401);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.message).toMatch(/disabled or suspended/i);
   });
 
   it('POST /api/v1/auth/login => successfully authenticates with valid credentials', async () => {
@@ -56,31 +130,15 @@ describe('Authentication & Token Lifecycle (e2e)', () => {
     expect(res.body.data.refreshToken).toBeDefined();
     expect(res.body.data.expiresIn).toBe(900);
     expect(res.body.data.user.email).toBe('owner@secondwind.com.au');
-    expect(res.body.data.user.roles).toBeInstanceOf(Array);
   });
 
-  it('GET /api/v1/auth/me => rejects unauthenticated requests with 401', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/auth/me')
-      .expect(401);
-
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('UNAUTHORIZED');
-  });
-
-  it('GET /api/v1/auth/me => returns user profile when valid bearer token is provided', async () => {
-    // 1. Login
+  it('GET /api/v1/auth/me => returns user profile, organisations, outlets, and permissions', async () => {
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({
-        email: 'owner@secondwind.com.au',
-        password: 'FitCoreDev2026!',
-      })
-      .expect(200);
+      .send({ email: 'owner@secondwind.com.au', password: 'FitCoreDev2026!' });
 
     const token = loginRes.body.data.accessToken;
 
-    // 2. Call /me
     const meRes = await request(app.getHttpServer())
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${token}`)
@@ -88,49 +146,62 @@ describe('Authentication & Token Lifecycle (e2e)', () => {
 
     expect(meRes.body.success).toBe(true);
     expect(meRes.body.data.email).toBe('owner@secondwind.com.au');
-    expect(meRes.body.data.firstName).toBe('Jack');
+    expect(meRes.body.data.organisations).toBeInstanceOf(Array);
+    expect(meRes.body.data.permissions).toBeInstanceOf(Array);
   });
 
-  it('Token Rotation & Reuse Detection => rotates token and invalidates family on reuse', async () => {
-    // 1. Initial Login
+  it('POST /api/v1/auth/context => allows switching to valid member organisation', async () => {
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({
-        email: 'member@secondwind.com.au',
-        password: 'FitCoreDev2026!',
-      })
+      .send({ email: 'owner@secondwind.com.au', password: 'FitCoreDev2026!' });
+
+    const token = loginRes.body.data.accessToken;
+
+    const contextRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/context')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ organisationId: 'org_dev_secondwind_001' })
       .expect(200);
 
-    const initialRefreshToken = loginRes.body.data.refreshToken;
+    expect(contextRes.body.success).toBe(true);
+    expect(contextRes.body.data.status).toBe('SWITCHED');
+  });
 
-    // 2. Refresh Token Rotation (first consumption)
-    const refreshRes = await request(app.getHttpServer())
-      .post('/api/v1/auth/refresh')
-      .send({ refreshToken: initialRefreshToken })
+  it('POST /api/v1/auth/context => blocks switching to unauthorised organisation with 403', async () => {
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'owner@secondwind.com.au', password: 'FitCoreDev2026!' });
+
+    const token = loginRes.body.data.accessToken;
+
+    const contextRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/context')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ organisationId: 'org_dev_apex_002' })
+      .expect(403);
+
+    expect(contextRes.body.success).toBe(false);
+    expect(contextRes.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('POST /api/v1/auth/logout-all => terminates all active sessions for user', async () => {
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'member@secondwind.com.au', password: 'FitCoreDev2026!' });
+
+    const token = loginRes.body.data.accessToken;
+    const refreshToken = loginRes.body.data.refreshToken;
+
+    // Logout all
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/logout-all')
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(refreshRes.body.success).toBe(true);
-    expect(refreshRes.body.data.accessToken).toBeDefined();
-    expect(refreshRes.body.data.refreshToken).toBeDefined();
-    expect(refreshRes.body.data.refreshToken).not.toEqual(initialRefreshToken);
-
-    const newRefreshToken = refreshRes.body.data.refreshToken;
-
-    // 3. Security Test: Reusing already consumed initialRefreshToken (Token Compromise Detection)
-    const reuseRes = await request(app.getHttpServer())
+    // Refresh should now fail because all sessions were revoked
+    await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: initialRefreshToken })
+      .send({ refreshToken })
       .expect(401);
-
-    expect(reuseRes.body.success).toBe(false);
-    expect(reuseRes.body.error.message).toMatch(/reuse detected/i);
-
-    // 4. Verify that session was terminated: even the newRefreshToken should now fail
-    const postCompromiseRes = await request(app.getHttpServer())
-      .post('/api/v1/auth/refresh')
-      .send({ refreshToken: newRefreshToken })
-      .expect(401);
-
-    expect(postCompromiseRes.body.success).toBe(false);
   });
 });

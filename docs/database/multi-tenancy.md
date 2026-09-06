@@ -38,7 +38,28 @@ Every request to the FitCore API is subject to runtime tenant boundary verificat
 
 ---
 
-## 2. PostgreSQL Row-Level Security (RLS) Migration Strategy
+## 2. Day 3 Multi-Tenant Access Control & IDOR Defense
+
+Day 3 introduces complete end-to-end tenant administration APIs with ironclad tenant protection:
+
+### A. Staff Invitations
+- Staff invitations (`invitations`) are strictly scoped by `organisationId` and optional `outletId`.
+- An organisation owner or outlet manager can only create invitations for their own tenant.
+- Listing pending invitations filters strictly by the authenticated tenant context.
+
+### B. Role Assignment Cross-Tenant Shielding
+- `PermissionsService.validateRoleAssignment()` blocks any attempt to grant or revoke roles for users outside the actor's tenant organization.
+- Privilege escalation is impossible: actors can never assign a role rank equal to or higher than their own.
+
+### C. Flat Endpoint Security (`validateOrgAccess`)
+- On flat routes like `GET /outlets/:id`, `PATCH /outlets/:id`, `GET /users/:userId`, and `PATCH /users/:userId`, the target resource is looked up and its `organisationId` is validated against the caller's permitted organizations. Cross-tenant access produces an immediate `403 Forbidden`.
+
+### D. Tenant-Safe Soft Deletion
+- All queries across `OrganisationsService` and `OutletsService` include `where: { deletedAt: null }`. Soft-deleting an organisation or outlet instantly invalidates access without corrupting relational audit history.
+
+---
+
+## 3. PostgreSQL Row-Level Security (RLS) Migration Strategy
 
 For defense-in-depth, FitCore's PostgreSQL database schema is architected to support **native PostgreSQL Row-Level Security (RLS)**.
 
@@ -55,10 +76,18 @@ Prisma runs queries against a shared connection pool. To enforce database-level 
 -- Enable RLS on tenant-partitioned tables
 ALTER TABLE outlets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Define RLS Isolation Policy
 CREATE POLICY tenant_isolation_outlets ON outlets
+  FOR ALL
+  USING (
+    organisation_id = NULLIF(current_setting('app.current_tenant_id', true), '')
+    OR current_setting('app.is_superadmin', true) = 'true'
+  );
+
+CREATE POLICY tenant_isolation_invitations ON invitations
   FOR ALL
   USING (
     organisation_id = NULLIF(current_setting('app.current_tenant_id', true), '')
@@ -74,4 +103,4 @@ CREATE POLICY tenant_isolation_audit ON audit_logs
 ```
 
 > [!NOTE]
-> Application-layer tenant isolation is actively validated by automated tests (`tenant-isolation.e2e-spec.ts`). Database-level RLS policies are scheduled for activation during the production database hardening milestone.
+> Application-layer tenant isolation is actively validated by automated tests (`tenant-isolation.e2e-spec.ts`, `idor-security.e2e-spec.ts`, and `day3-lifecycle.e2e-spec.ts`). Database-level RLS policies are scheduled for activation during the production database hardening milestone.

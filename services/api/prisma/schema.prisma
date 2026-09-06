@@ -11,7 +11,7 @@ model Organisation {
   id          String    @id @default(cuid())
   name        String
   slug        String    @unique
-  status      String    @default("ACTIVE") // ACTIVE, SUSPENDED, TRIAL
+  status      String    @default("ACTIVE") // ACTIVE, SUSPENDED, TRIAL, DELETED
   timezone    String    @default("Australia/Perth")
   currency    String    @default("AUD")
   country     String    @default("Australia")
@@ -23,6 +23,7 @@ model Organisation {
   outlets     Outlet[]
   userRoles   UserRole[]
   auditLogs   AuditLog[]
+  invitations Invitation[]
 
   @@index([slug])
   @@index([status])
@@ -35,7 +36,7 @@ model Outlet {
   name            String
   slug            String
   code            String
-  status          String        @default("ACTIVE") // ACTIVE, MAINTENANCE, COMING_SOON
+  status          String        @default("ACTIVE") // ACTIVE, MAINTENANCE, COMING_SOON, DELETED
   timezone        String        @default("Australia/Perth")
   address         String
   city            String
@@ -55,6 +56,7 @@ model Outlet {
   userRoles       UserRole[]
   userOutlets     UserOutlet[]
   auditLogs       AuditLog[]
+  invitations     Invitation[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -72,7 +74,7 @@ model User {
   lastName         String
   displayName      String?
   avatarUrl        String?
-  status           String        @default("ACTIVE") // ACTIVE, SUSPENDED, INACTIVE
+  status           String        @default("ACTIVE") // ACTIVE, INVITED, SUSPENDED, DISABLED, DELETED
   emailVerifiedAt  DateTime?
   phoneVerifiedAt  DateTime?
   lastLoginAt      DateTime?
@@ -85,6 +87,7 @@ model User {
   userOutlets      UserOutlet[]
   sessions         Session[]
   auditLogs        AuditLog[]
+  invitationsSent  Invitation[]  @relation("InvitationsSent")
 
   @@index([email])
   @@index([phone])
@@ -103,6 +106,7 @@ model Role {
   // Relations
   permissions   RolePermission[]
   userRoles     UserRole[]
+  invitations   Invitation[]
 
   @@map("roles")
 }
@@ -110,7 +114,7 @@ model Role {
 model Permission {
   id          String           @id @default(cuid())
   resource    String           // members, outlets, organisations, staff, appointments, etc.
-  action      String           // CREATE, READ, UPDATE, DELETE, MANAGE
+  action      String           // CREATE, READ, UPDATE, DELETE, MANAGE, ASSIGN, REVOKE
   scope       String           // PLATFORM, ORGANISATION, OUTLET, ASSIGNED_CLIENTS, SELF
   description String?
   createdAt   DateTime         @default(now())
@@ -177,6 +181,8 @@ model Session {
   userAgent     String?
   ipAddress     String?
   expiresAt     DateTime
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -201,6 +207,32 @@ model RefreshToken {
   @@index([sessionId])
   @@index([tokenHash])
   @@map("refresh_tokens")
+}
+
+model Invitation {
+  id              String        @id @default(cuid())
+  email           String
+  organisationId  String
+  outletId        String?
+  roleId          String
+  tokenHash       String        @unique
+  status          String        @default("PENDING") // PENDING, ACCEPTED, EXPIRED, REVOKED
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  invitedById     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  role            Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  invitedBy       User?         @relation("InvitationsSent", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([tokenHash])
+  @@index([email])
+  @@index([organisationId])
+  @@index([status])
+  @@map("invitations")
 }
 
 model AuditLog {

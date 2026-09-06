@@ -30,6 +30,16 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponseEn
           };
         }
 
+        // If data is a paginated result with { data, meta }
+        if (data && typeof data === 'object' && 'data' in data && 'meta' in data) {
+          return {
+            success: true,
+            data: data.data,
+            meta: data.meta,
+            requestId,
+          };
+        }
+
         return {
           success: true,
           data: data !== undefined ? data : null,

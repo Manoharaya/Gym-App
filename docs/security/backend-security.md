@@ -7,12 +7,14 @@ FitCore implements a stateless access token and stateful refresh token architect
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Mobile Client
+    actor Client as Mobile / Web Client
     participant API as FitCore API Gateway
     participant Auth as AuthService
+    participant RL as RateLimiterService
     participant DB as PostgreSQL
 
     Client->>API: POST /api/v1/auth/login (email, password)
+    API->>RL: Check rate limit for IP/email
     API->>Auth: validateUser() + bcrypt.compare()
     Auth->>DB: Create Session (tokenFamily: UUID)
     Auth->>DB: Store hashed refreshToken in RefreshToken table
@@ -44,7 +46,35 @@ sequenceDiagram
 
 ---
 
-## 2. Structured Logging & PII Redaction
+## 2. Brute-Force Rate Limiting (`RateLimiterService`)
+
+To safeguard authentication endpoints from credential-stuffing and password brute-force attacks:
+- **Rate Limiting Window**: Tracks failed attempts within a 15-minute sliding window.
+- **Threshold**: Accounts or IPs exceeding **5 consecutive failures** receive `429 Too Many Requests`.
+- **Hybrid Storage**: Backed by Redis with seamless local in-memory fallback to ensure protection even if cache infrastructure experiences momentary interruption.
+- **Success Reset**: Legitimate successful authentication clears failed counters immediately.
+
+---
+
+## 3. IDOR Defense & Tamper Prevention
+
+FitCore eliminates Insecure Direct Object References through multi-level controls:
+- **Relational Hierarchical Routing**: Endpoints like `/organisations/:orgId/outlets` enforce tenant boundary validation via `TenantGuard`.
+- **Flat Route Ownership Inspection**: Endpoints like `GET /outlets/:id` or `GET /users/:userId` verify that the requested entity belongs to an organisation where the caller holds active authorization.
+- **Immutability of Tenant Keys**: Client DTOs cannot supply or modify `organisationId` or `outletId` on updates.
+
+---
+
+## 4. Privilege Escalation Prevention
+
+The `PermissionsService.validateRoleAssignment` layer enforces:
+- **Strict Role Weight Hierarchy**: No user can grant or revoke a role whose rank is equal to or exceeds their own rank (`SUPERADMIN [100] > OWNER [80] > MANAGER [60] > STAFF [40] > MEMBER [10]`).
+- **Tenant Confinement**: Administrators can only administer roles within their designated organization.
+- **Target User Immunity**: Non-superadmin actors cannot alter the privileges of equal or higher-ranked users (e.g. managers cannot edit owners).
+
+---
+
+## 5. Structured Logging & PII Redaction
 
 To maintain compliance with privacy regulations (Australian Privacy Principles / GDPR / HIPAA) and prevent credential leakage:
 
@@ -58,7 +88,7 @@ To maintain compliance with privacy regulations (Australian Privacy Principles /
 
 ---
 
-## 3. Role-Based Access Control (RBAC) Matrix
+## 6. Role-Based Access Control (RBAC) Matrix
 
 | Role | Target Scope | Key Allowed Operations |
 | :--- | :--- | :--- |
@@ -69,3 +99,5 @@ To maintain compliance with privacy regulations (Australian Privacy Principles /
 | **TRAINER** | Assigned Clients | Client workout tracking, program assignment, appointment logs |
 | **FINANCE** | Organisation-wide | View billing, invoices, revenue streams, Xero sync |
 | **MEMBER** | Self | View personal profile, personal workout logs, book sessions |
+
+*(For complete RBAC rules and privilege escalation validation logic, see `docs/security/rbac.md`.)*

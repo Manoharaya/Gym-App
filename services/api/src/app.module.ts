@@ -4,6 +4,8 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
+import { CommonModule } from './common/common.module';
+import { PermissionsModule } from './permissions/permissions.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -16,6 +18,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { TenantGuard } from './tenancy/tenant.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
 import { PermissionsGuard } from './auth/guards/permissions.guard';
 
 @Module({
@@ -26,6 +29,8 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     }),
     DatabaseModule,
     RedisModule,
+    CommonModule,
+    PermissionsModule,
     TenancyModule,
     AuditModule,
     AuthModule,
@@ -42,6 +47,10 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     {
       provide: APP_GUARD,
       useClass: TenantGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     {
       provide: APP_GUARD,

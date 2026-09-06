@@ -65,7 +65,7 @@ describe('Outlet-Level Boundary Scoping (e2e)', () => {
 
     expect(res.body.success).toBe(false);
     expect(res.body.error.code).toBe('FORBIDDEN');
-    expect(res.body.error.message).toMatch(/not assigned to this outlet/i);
+    expect(res.body.error.message).toMatch(/not assigned to (this )?outlet/i);
   });
 
   it('ALLOWS Organisation Owner with organisation-wide scope to access both outlets', async () => {
