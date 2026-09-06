@@ -8,6 +8,7 @@ import { ReceptionNavigator } from './ReceptionNavigator';
 import { OutletManagerNavigator } from './OutletManagerNavigator';
 import { FinanceNavigator } from './FinanceNavigator';
 import { OrganisationOwnerNavigator } from './OrganisationOwnerNavigator';
+import { OnboardingGuard } from '../features/onboarding';
 import { AppShell } from '../app/AppShell';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -26,7 +27,15 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="VerificationShell" component={AppShell} />
 
       {/* Role-scoped subnavigators */}
-      {role === 'MEMBER' && <Stack.Screen name="MemberFlow" component={MemberNavigator} />}
+      {role === 'MEMBER' && (
+        <Stack.Screen name="MemberFlow">
+          {() => (
+            <OnboardingGuard>
+              <MemberNavigator />
+            </OnboardingGuard>
+          )}
+        </Stack.Screen>
+      )}
 
       {role === 'TRAINER' && <Stack.Screen name="TrainerFlow" component={TrainerNavigator} />}
 

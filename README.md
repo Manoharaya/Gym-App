@@ -167,6 +167,10 @@ Default development password for all seed accounts: `Password123!`
 | **TRAINER** | `trainer@secondwind.com.au` | Second Wind — Perth CBD Outlet |
 | **RECEPTION** | `reception@secondwind.com.au` | Second Wind — Perth CBD Outlet |
 | **MEMBER** | `member@secondwind.com.au` | Second Wind — Perth CBD Outlet |
+| **ONBOARDING MEMBER** | `onboarding.member@secondwind.com.au` | Second Wind — Incomplete Onboarding |
+| **PARQ MEMBER** | `parq.member@secondwind.com.au` | Second Wind — PARQ Completed |
+| **FLAGGED MEMBER** | `flagged.member@secondwind.com.au` | Second Wind — Risk Flagged (Requires Clearance) |
+| **ACTIVE MEMBER** | `active.member@secondwind.com.au` | Second Wind — Onboarding Complete (Active) |
 | **APEX OWNER** | `owner@apexstrength.com.au` | Apex Strength Co (Tenant B) |
 | **DISABLED USER** | `disabled@secondwind.com.au` | Blocked Account (403 Forbidden) |
 | **SUSPENDED USER** | `suspended@secondwind.com.au` | Blocked Account (403 Forbidden) |
@@ -175,14 +179,17 @@ Default development password for all seed accounts: `Password123!`
 
 ## 🧪 Testing & Validation
 
-All 60 automated tests across monorepo packages, mobile, and backend pass with zero warnings:
+All 88 automated tests across monorepo packages, mobile, and backend pass with zero warnings:
 
 ```bash
-# Run all unit and E2E tests across monorepo
+# Run all unit and E2E tests across monorepo (88 tests)
 pnpm test
 
-# Run backend E2E tests specifically (46 tests in 8 suites)
-pnpm --filter @fitcore/api test:e2e
+# Run backend E2E tests specifically (68 tests in 10 suites)
+pnpm --filter @fitcore/api test
+
+# Run mobile tests specifically (20 tests in 7 suites)
+pnpm --filter @fitcore/mobile test
 
 # Run strict TypeScript typecheck across all 16 packages
 pnpm typecheck
@@ -191,15 +198,26 @@ pnpm typecheck
 pnpm lint
 ```
 
-### Backend E2E Test Suite Breakdown
-1. `test/day3-lifecycle.e2e-spec.ts` — Full Day 3 end-to-end multi-tenant lifecycle (11 tests).
-2. `test/tenant-isolation.e2e-spec.ts` — Cross-tenant zero-trust isolation matrix (10 tests).
-3. `test/idor-security.e2e-spec.ts` — Insecure Direct Object Reference prevention (4 tests).
-4. `test/auth.e2e-spec.ts` — Registration, authentication, token rotation, context switching (10 tests).
-5. `test/permissions.e2e-spec.ts` — Granular permission checks and RBAC (5 tests).
-6. `test/outlet-isolation.e2e-spec.ts` — Cross-outlet isolation within same organization (3 tests).
-7. `test/health.e2e-spec.ts` — API liveness & readiness health probes (2 tests).
-8. `test/request-id.e2e-spec.ts` — Request ID correlation propagation (1 test).
+### Backend E2E Test Suite Breakdown (68 tests)
+1. `test/member-lifecycle.e2e-spec.ts` — Member profile, PAR-Q, health screening, injury tracking, consents, signatures, and complete onboarding flow (14 tests).
+2. `test/member-security.e2e-spec.ts` — Anti-IDOR, tenant isolation on member profiles, reception medical clearance restrictions, zero health logging (8 tests).
+3. `test/day3-lifecycle.e2e-spec.ts` — Full Day 3 end-to-end multi-tenant lifecycle (11 tests).
+4. `test/tenant-isolation.e2e-spec.ts` — Cross-tenant zero-trust isolation matrix (10 tests).
+5. `test/auth.e2e-spec.ts` — Registration, authentication, token rotation, context switching (10 tests).
+6. `test/permissions.e2e-spec.ts` — Granular permission checks and RBAC (5 tests).
+7. `test/idor-security.e2e-spec.ts` — Insecure Direct Object Reference prevention (4 tests).
+8. `test/outlet-isolation.e2e-spec.ts` — Cross-outlet isolation within same organization (3 tests).
+9. `test/health.e2e-spec.ts` — API liveness & readiness health probes (2 tests).
+10. `test/request-id.e2e-spec.ts` — Request ID correlation propagation (1 test).
+
+### Mobile Test Suite Breakdown (20 tests)
+1. `src/__tests__/onboarding.test.ts` — Onboarding Zustand state machine, step progression, validation, error states (6 tests).
+2. `src/__tests__/App.test.tsx` — App initialization, session validation, authentication state routing (3 tests).
+3. `src/__tests__/primitives.test.tsx` — Accessible UI primitives rendering and interaction (3 tests).
+4. `src/__tests__/tenant.test.ts` — Mobile tenant isolation and context resolution (2 tests).
+5. `src/__tests__/permissions.test.ts` — Mobile client-side RBAC and permission checking (2 tests).
+6. `src/__tests__/apiClient.test.ts` — Mobile HTTP client, token refresh, and request interceptors (2 tests).
+7. `src/__tests__/storage.test.ts` — Hardware enclave secure storage fallback and operations (2 tests).
 
 ---
 
@@ -207,7 +225,8 @@ pnpm lint
 
 FitCore enforces rigorous security standards across all layers:
 1. **Never commit secrets**: Database credentials and JWT secrets are injected strictly via validated environment variables.
-2. **Never log PII**: `StructuredLogger` automatically redacts credentials, authorization tokens, card details, and biometric records.
+2. **Never log PII or Health Data**: `StructuredLogger` automatically redacts credentials, authorization tokens, medical answers, conditions, and biometric records.
 3. **Zero-Trust Multi-Tenancy**: Every request is authenticated, tenant-scoped, and evaluated against strict RBAC rules.
 4. **Privilege Escalation Immune**: Hierarchical validation blocks self-promotion and tenant crossing.
 5. **Brute-Force Guarded**: Login endpoints rate limit failed attempts per email and IP address.
+6. **Signed URL Document Isolation**: Member clearance and compliance documents are stored out of public web roots, accessible only through signed, expiring URLs, with Reception staff strictly blocked from medical documents.

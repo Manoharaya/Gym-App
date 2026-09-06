@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding FitCore Multi-Tenant Database (Day 3)...');
+  console.log('🌱 Seeding FitCore Multi-Tenant Database (Day 4: Member Lifecycle & Onboarding)...');
 
   // 1. Seed Roles
   const rolesData = [
@@ -43,7 +43,7 @@ async function main() {
     { resource: 'outlets', action: 'READ', scope: 'OUTLET', description: 'Read assigned outlet details' },
     { resource: 'outlets', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update outlet within own organisation' },
     { resource: 'outlets', action: 'DELETE', scope: 'ORGANISATION', description: 'Soft-delete outlet within own organisation' },
-    // Users & Members
+    // Users
     { resource: 'users', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage users across organisation' },
     { resource: 'users', action: 'CREATE', scope: 'ORGANISATION', description: 'Create/invite users within organisation' },
     { resource: 'users', action: 'READ', scope: 'ORGANISATION', description: 'Read users across organisation' },
@@ -59,6 +59,54 @@ async function main() {
     { resource: 'invitations', action: 'READ', scope: 'ORGANISATION', description: 'View staff invitations' },
     // Audit Logs
     { resource: 'audit_logs', action: 'READ', scope: 'ORGANISATION', description: 'Read compliance audit logs' },
+
+    // DAY 4: Members & Onboarding
+    { resource: 'members', action: 'CREATE', scope: 'ORGANISATION', description: 'Create member in organisation' },
+    { resource: 'members', action: 'READ', scope: 'ORGANISATION', description: 'View members across organisation' },
+    { resource: 'members', action: 'READ', scope: 'OUTLET', description: 'View members at assigned outlet' },
+    { resource: 'members', action: 'READ', scope: 'SELF', description: 'View own member profile' },
+    { resource: 'members', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update member in organisation' },
+    { resource: 'members', action: 'UPDATE', scope: 'SELF', description: 'Update own member profile' },
+    
+    // Onboarding
+    { resource: 'onboarding', action: 'MANAGE', scope: 'SELF', description: 'Manage own onboarding progress' },
+    { resource: 'onboarding', action: 'READ', scope: 'SELF', description: 'View own onboarding status' },
+    { resource: 'onboarding', action: 'READ', scope: 'ORGANISATION', description: 'View member onboarding status' },
+
+    // PAR-Q
+    { resource: 'parq', action: 'CREATE', scope: 'SELF', description: 'Submit own PAR-Q response' },
+    { resource: 'parq', action: 'READ', scope: 'SELF', description: 'View own PAR-Q history' },
+    { resource: 'parq', action: 'READ', scope: 'ORGANISATION', description: 'Review tenant member PAR-Qs' },
+    { resource: 'parq', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'Review assigned client PAR-Qs' },
+
+    // Health Screening & Injuries
+    { resource: 'health', action: 'READ', scope: 'SELF', description: 'View own health screening' },
+    { resource: 'health', action: 'UPDATE', scope: 'SELF', description: 'Update own health screening' },
+    { resource: 'health', action: 'READ', scope: 'ORGANISATION', description: 'View member health screening' },
+    { resource: 'health', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View assigned client health screening' },
+
+    { resource: 'injuries', action: 'CREATE', scope: 'SELF', description: 'Log own injury' },
+    { resource: 'injuries', action: 'READ', scope: 'SELF', description: 'View own injuries' },
+    { resource: 'injuries', action: 'UPDATE', scope: 'SELF', description: 'Update own injury status' },
+    { resource: 'injuries', action: 'READ', scope: 'ORGANISATION', description: 'View member injuries' },
+    { resource: 'injuries', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View assigned client injuries' },
+
+    // Consents
+    { resource: 'consents', action: 'CREATE', scope: 'SELF', description: 'Grant consent' },
+    { resource: 'consents', action: 'READ', scope: 'SELF', description: 'View own consents' },
+    { resource: 'consents', action: 'WITHDRAW', scope: 'SELF', description: 'Withdraw consent' },
+    { resource: 'consents', action: 'READ', scope: 'ORGANISATION', description: 'View member consent audit records' },
+
+    // Documents
+    { resource: 'documents', action: 'CREATE', scope: 'SELF', description: 'Upload own member documents' },
+    { resource: 'documents', action: 'READ', scope: 'SELF', description: 'View own member documents' },
+    { resource: 'documents', action: 'READ', scope: 'ORGANISATION', description: 'View member documents' },
+    { resource: 'documents', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View assigned client documents' },
+
+    // Signatures
+    { resource: 'signatures', action: 'CREATE', scope: 'SELF', description: 'Create electronic signature' },
+    { resource: 'signatures', action: 'READ', scope: 'SELF', description: 'View own signatures' },
+    { resource: 'signatures', action: 'READ', scope: 'ORGANISATION', description: 'View member signatures' },
   ];
 
   const permMap = new Map<string, string>();
@@ -77,7 +125,6 @@ async function main() {
     permMap.set(`${p.resource}:${p.action}:${p.scope}`, perm.id);
   }
 
-  // Helper to link role and permission
   const linkRolePerm = async (roleName: string, permKey: string) => {
     const roleId = rolesMap.get(roleName);
     const permissionId = permMap.get(permKey);
@@ -90,7 +137,7 @@ async function main() {
     }
   };
 
-  // Assign permissions to SUPERADMIN
+  // Assign permissions to SUPERADMIN (all)
   for (const key of permMap.keys()) {
     await linkRolePerm('SUPERADMIN', key);
   }
@@ -115,6 +162,19 @@ async function main() {
     'invitations:CREATE:ORGANISATION',
     'invitations:READ:ORGANISATION',
     'audit_logs:READ:ORGANISATION',
+    // Day 4
+    'members:CREATE:ORGANISATION',
+    'members:READ:ORGANISATION',
+    'members:UPDATE:ORGANISATION',
+    'members:READ:SELF',
+    'members:UPDATE:SELF',
+    'onboarding:READ:ORGANISATION',
+    'parq:READ:ORGANISATION',
+    'health:READ:ORGANISATION',
+    'injuries:READ:ORGANISATION',
+    'consents:READ:ORGANISATION',
+    'documents:READ:ORGANISATION',
+    'signatures:READ:ORGANISATION',
   ];
   for (const k of ownerPerms) {
     await linkRolePerm('ORGANISATION_OWNER', k);
@@ -130,18 +190,30 @@ async function main() {
     'invitations:READ:ORGANISATION',
     'users:READ:SELF',
     'users:UPDATE:SELF',
+    // Day 4
+    'members:READ:OUTLET',
+    'members:READ:SELF',
+    'members:UPDATE:SELF',
+    'onboarding:READ:ORGANISATION',
+    'parq:READ:ORGANISATION',
+    'health:READ:ORGANISATION',
+    'injuries:READ:ORGANISATION',
+    'documents:READ:ORGANISATION',
   ];
   for (const k of managerPerms) {
     await linkRolePerm('OUTLET_MANAGER', k);
   }
 
-  // Assign permissions to RECEPTION
+  // Assign permissions to RECEPTION (Strictly NO broad health or sensitive medical document permissions)
   const receptionPerms = [
     'organisations:READ:ORGANISATION',
     'outlets:READ:OUTLET',
     'users:READ:OUTLET',
     'users:READ:SELF',
     'users:UPDATE:SELF',
+    'members:READ:OUTLET', // Profile and check-in only
+    'members:READ:SELF',
+    'members:UPDATE:SELF',
   ];
   for (const k of receptionPerms) {
     await linkRolePerm('RECEPTION', k);
@@ -153,21 +225,45 @@ async function main() {
     'outlets:READ:OUTLET',
     'users:READ:SELF',
     'users:UPDATE:SELF',
+    'members:READ:SELF',
+    'members:UPDATE:SELF',
+    'parq:READ:ASSIGNED_CLIENTS',
+    'health:READ:ASSIGNED_CLIENTS',
+    'injuries:READ:ASSIGNED_CLIENTS',
+    'documents:READ:ASSIGNED_CLIENTS',
   ];
   for (const k of trainerPerms) {
     await linkRolePerm('TRAINER', k);
   }
 
-  // Assign permissions to MEMBER
+  // Assign permissions to MEMBER (Self-service only)
   const memberPerms = [
     'users:READ:SELF',
     'users:UPDATE:SELF',
+    'members:READ:SELF',
+    'members:UPDATE:SELF',
+    'onboarding:MANAGE:SELF',
+    'onboarding:READ:SELF',
+    'parq:CREATE:SELF',
+    'parq:READ:SELF',
+    'health:READ:SELF',
+    'health:UPDATE:SELF',
+    'injuries:CREATE:SELF',
+    'injuries:READ:SELF',
+    'injuries:UPDATE:SELF',
+    'consents:CREATE:SELF',
+    'consents:READ:SELF',
+    'consents:WITHDRAW:SELF',
+    'documents:CREATE:SELF',
+    'documents:READ:SELF',
+    'signatures:CREATE:SELF',
+    'signatures:READ:SELF',
   ];
   for (const k of memberPerms) {
     await linkRolePerm('MEMBER', k);
   }
 
-  // 3. Seed Primary Demo Tenant: Second Wind Athletic Club
+  // 3. Seed Organizations & Outlets
   const secondWind = await prisma.organisation.upsert({
     where: { slug: 'second-wind' },
     update: {},
@@ -202,7 +298,7 @@ async function main() {
     },
   });
 
-  const outletFremantle = await prisma.outlet.upsert({
+  await prisma.outlet.upsert({
     where: { organisationId_slug: { organisationId: secondWind.id, slug: 'fremantle' } },
     update: {},
     create: {
@@ -222,7 +318,6 @@ async function main() {
     },
   });
 
-  // 4. Seed Secondary Tenant (Apex Strength Co)
   const apexStrength = await prisma.organisation.upsert({
     where: { slug: 'apex-strength' },
     update: {},
@@ -237,7 +332,7 @@ async function main() {
     },
   });
 
-  await prisma.outlet.upsert({
+  const outletSydney = await prisma.outlet.upsert({
     where: { organisationId_slug: { organisationId: apexStrength.id, slug: 'sydney-cbd' } },
     update: {},
     create: {
@@ -257,7 +352,135 @@ async function main() {
     },
   });
 
-  // 5. Seed Users
+  // 4. Seed PAR-Q Questionnaire (v2024.1)
+  const parq = await prisma.questionnaire.upsert({
+    where: { type_version: { type: 'PARQ', version: '2024.1' } },
+    update: {},
+    create: {
+      type: 'PARQ',
+      name: 'Physical Activity Readiness Questionnaire (PAR-Q+ 2024)',
+      version: '2024.1',
+      status: 'ACTIVE',
+      effectiveFrom: new Date('2024-01-01'),
+    },
+  });
+
+  const parqQuestions = [
+    {
+      questionKey: 'heart_condition',
+      text: 'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
+      sortOrder: 1,
+    },
+    {
+      questionKey: 'chest_pain_activity',
+      text: 'Do you feel pain in your chest when you do physical activity?',
+      sortOrder: 2,
+    },
+    {
+      questionKey: 'chest_pain_rest',
+      text: 'In the past month, have you had chest pain when you were not doing physical activity?',
+      sortOrder: 3,
+    },
+    {
+      questionKey: 'dizziness_balance',
+      text: 'Do you lose your balance because of dizziness or do you ever lose consciousness?',
+      sortOrder: 4,
+    },
+    {
+      questionKey: 'bone_joint_problem',
+      text: 'Do you have a bone or joint problem that could be made worse by a change in your physical activity?',
+      sortOrder: 5,
+    },
+    {
+      questionKey: 'blood_pressure_meds',
+      text: 'Is your doctor currently prescribing drugs (for example, water pills) for your blood pressure or heart condition?',
+      sortOrder: 6,
+    },
+    {
+      questionKey: 'other_reason',
+      text: 'Do you know of any other reason why you should not do physical activity?',
+      sortOrder: 7,
+    },
+  ];
+
+  for (const q of parqQuestions) {
+    await prisma.question.upsert({
+      where: { questionnaireId_questionKey: { questionnaireId: parq.id, questionKey: q.questionKey } },
+      update: { text: q.text, sortOrder: q.sortOrder },
+      create: {
+        questionnaireId: parq.id,
+        questionKey: q.questionKey,
+        text: q.text,
+        type: 'BOOLEAN',
+        required: true,
+        sortOrder: q.sortOrder,
+        metadata: { triggersReviewOnYes: true },
+      },
+    });
+  }
+
+  // 5. Seed Consent Types & Versions
+  const consentTypesData = [
+    {
+      key: 'TERMS_AND_CONDITIONS',
+      name: 'Terms and Conditions',
+      description: 'FitCore and athletic facility membership agreements.',
+      isMandatory: true,
+      content: 'By accepting, you agree to abide by all club rules, access protocols, and payment terms of Second Wind Athletic Club.',
+    },
+    {
+      key: 'PRIVACY_POLICY',
+      name: 'Privacy Policy',
+      description: 'Collection and handling of personal information according to Australian Privacy Principles.',
+      isMandatory: true,
+      content: 'We respect your personal privacy. Data is protected, tenant-isolated, and never sold to third-party brokers.',
+    },
+    {
+      key: 'HEALTH_DATA_PROCESSING',
+      name: 'Health Data Processing',
+      description: 'Consent to collect PAR-Q and injury notes for exercise safety.',
+      isMandatory: true,
+      content: 'I consent to the secure collection and processing of my PAR-Q and injury information strictly for fitness readiness and coaching safety.',
+    },
+    {
+      key: 'WEARABLE_DATA',
+      name: 'Wearable Biometric Sync',
+      description: 'Optional synchronization with Apple Health, Health Connect, or smart devices.',
+      isMandatory: false,
+      content: 'Allow FitCore to read daily step count, active calories, and heart rate telemetry to personalize fitness insights.',
+    },
+    {
+      key: 'AI_PROCESSING',
+      name: 'AI Coaching Insights',
+      description: 'Optional anonymized fitness trend coaching recommendations.',
+      isMandatory: false,
+      content: 'Allow FitCore AI to analyze logged workouts to generate customized recovery recommendations.',
+    },
+  ];
+
+  const consentVersionMap = new Map<string, string>();
+  for (const c of consentTypesData) {
+    const cType = await prisma.consentType.upsert({
+      where: { key: c.key },
+      update: { name: c.name, description: c.description, isMandatory: c.isMandatory },
+      create: { key: c.key, name: c.name, description: c.description, isMandatory: c.isMandatory },
+    });
+
+    const cVer = await prisma.consentVersion.upsert({
+      where: { consentTypeId_version: { consentTypeId: cType.id, version: '1.0' } },
+      update: { content: c.content },
+      create: {
+        consentTypeId: cType.id,
+        version: '1.0',
+        content: c.content,
+        effectiveFrom: new Date('2024-01-01'),
+      },
+    });
+
+    consentVersionMap.set(c.key, cVer.id);
+  }
+
+  // 6. Seed Users & Member Profiles
   const passwordHash = await bcrypt.hash('FitCoreDev2026!', 10);
 
   const testUsers = [
@@ -267,12 +490,20 @@ async function main() {
     { email: 'reception@secondwind.com.au', role: 'RECEPTION', firstName: 'Emma', lastName: 'Watson', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE' },
     { email: 'trainer@secondwind.com.au', role: 'TRAINER', firstName: 'Marcus', lastName: 'Vance', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE' },
     { email: 'finance@secondwind.com.au', role: 'FINANCE', firstName: 'Oliver', lastName: 'Queen', orgId: secondWind.id, outletId: null, status: 'ACTIVE' },
-    { email: 'member@secondwind.com.au', role: 'MEMBER', firstName: 'Alex', lastName: 'Mercer', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE' },
-    // Apex Strength member for isolation tests
-    { email: 'member@apexstrength.com.au', role: 'MEMBER', firstName: 'Chloe', lastName: 'Price', orgId: apexStrength.id, outletId: null, status: 'ACTIVE' },
-    // Disabled and suspended accounts for security tests
-    { email: 'disabled@secondwind.com.au', role: 'MEMBER', firstName: 'Dave', lastName: 'Disabled', orgId: secondWind.id, outletId: outletPerth.id, status: 'DISABLED' },
-    { email: 'suspended@secondwind.com.au', role: 'MEMBER', firstName: 'Sam', lastName: 'Suspended', orgId: secondWind.id, outletId: outletPerth.id, status: 'SUSPENDED' },
+    
+    // Member A: Second Wind — Onboarding NOT_STARTED
+    { email: 'member@secondwind.com.au', role: 'MEMBER', firstName: 'Alex', lastName: 'Mercer', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'NOT_STARTED' },
+    // Member B: Second Wind — Onboarding IN_PROGRESS
+    { email: 'in-progress@secondwind.com.au', role: 'MEMBER', firstName: 'Bella', lastName: 'Swan', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'IN_PROGRESS' },
+    // Member C: Second Wind — Onboarding COMPLETED
+    { email: 'completed@secondwind.com.au', role: 'MEMBER', firstName: 'Chris', lastName: 'Evans', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'COMPLETED' },
+
+    // Apex Member: Apex Strength — For cross-tenant tests
+    { email: 'member@apexstrength.com.au', role: 'MEMBER', firstName: 'Chloe', lastName: 'Price', orgId: apexStrength.id, outletId: outletSydney.id, status: 'ACTIVE', onboardingStatus: 'COMPLETED' },
+
+    // Security Test Accounts
+    { email: 'disabled@secondwind.com.au', role: 'MEMBER', firstName: 'Dave', lastName: 'Disabled', orgId: secondWind.id, outletId: outletPerth.id, status: 'DISABLED', onboardingStatus: 'NOT_STARTED' },
+    { email: 'suspended@secondwind.com.au', role: 'MEMBER', firstName: 'Sam', lastName: 'Suspended', orgId: secondWind.id, outletId: outletPerth.id, status: 'SUSPENDED', onboardingStatus: 'NOT_STARTED' },
   ];
 
   for (const u of testUsers) {
@@ -315,9 +546,109 @@ async function main() {
         });
       }
     }
+
+    // If role is MEMBER, create MemberProfile + MemberOutlet + MemberOnboarding
+    if (u.role === 'MEMBER') {
+      const memberProfile = await prisma.memberProfile.upsert({
+        where: { userId: user.id },
+        update: { onboardingStatus: u.onboardingStatus, status: u.status === 'ACTIVE' ? 'ACTIVE' : 'SUSPENDED' },
+        create: {
+          userId: user.id,
+          organisationId: u.orgId,
+          preferredName: u.firstName,
+          dateOfBirth: new Date('1995-05-15'),
+          gender: 'MALE',
+          timezone: 'Australia/Perth',
+          status: u.status === 'ACTIVE' ? (u.onboardingStatus === 'COMPLETED' ? 'ACTIVE' : 'ONBOARDING') : 'SUSPENDED',
+          onboardingStatus: u.onboardingStatus,
+        },
+      });
+
+      if (u.outletId) {
+        await prisma.memberOutlet.upsert({
+          where: { memberProfileId_outletId: { memberProfileId: memberProfile.id, outletId: u.outletId } },
+          update: {},
+          create: {
+            memberProfileId: memberProfile.id,
+            outletId: u.outletId,
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      const onboarding = await prisma.memberOnboarding.upsert({
+        where: { memberProfileId: memberProfile.id },
+        update: {
+          status: u.onboardingStatus,
+          currentStep: u.onboardingStatus === 'COMPLETED' ? 'COMPLETE' : (u.onboardingStatus === 'IN_PROGRESS' ? 'PARQ' : 'PROFILE'),
+        },
+        create: {
+          memberProfileId: memberProfile.id,
+          status: u.onboardingStatus,
+          currentStep: u.onboardingStatus === 'COMPLETED' ? 'COMPLETE' : (u.onboardingStatus === 'IN_PROGRESS' ? 'PARQ' : 'PROFILE'),
+          startedAt: u.onboardingStatus !== 'NOT_STARTED' ? new Date() : null,
+          completedAt: u.onboardingStatus === 'COMPLETED' ? new Date() : null,
+        },
+      });
+
+      // For completed member, seed completed PAR-Q submission, consents, and signature
+      if (u.onboardingStatus === 'COMPLETED') {
+        const parqSub = await prisma.parqSubmission.create({
+          data: {
+            memberProfileId: memberProfile.id,
+            questionnaireId: parq.id,
+            status: 'APPROVED',
+            submittedAt: new Date(),
+          },
+        });
+
+        const questions = await prisma.question.findMany({ where: { questionnaireId: parq.id } });
+        for (const q of questions) {
+          await prisma.parqResponse.create({
+            data: {
+              submissionId: parqSub.id,
+              questionId: q.id,
+              answer: { value: false },
+            },
+          });
+        }
+
+        // Mandatory consents
+        for (const c of consentTypesData.filter(ct => ct.isMandatory)) {
+          const vId = consentVersionMap.get(c.key);
+          const cType = await prisma.consentType.findUnique({ where: { key: c.key } });
+          if (vId && cType) {
+            await prisma.consentRecord.create({
+              data: {
+                memberProfileId: memberProfile.id,
+                consentTypeId: cType.id,
+                consentVersionId: vId,
+                status: 'CONSENTED',
+                consentedAt: new Date(),
+                ipAddress: '127.0.0.1',
+                userAgent: 'FitCore Mobile iOS/1.0',
+              },
+            });
+          }
+        }
+
+        // Digital signature
+        await prisma.signature.create({
+          data: {
+            memberProfileId: memberProfile.id,
+            documentType: 'ONBOARDING_AGREEMENT',
+            documentVersion: '2024.1',
+            signatureMethod: 'ELECTRONIC_ACCEPTANCE',
+            signerName: `${u.firstName} ${u.lastName}`,
+            signatureReference: 'sha256_mock_evidence_reference_123',
+            signedAt: new Date(),
+          },
+        });
+      }
+    }
   }
 
-  console.log('✅ FitCore Database Seeding Completed.');
+  console.log('✅ FitCore Database Seeding Completed (Day 4).');
 }
 
 main()

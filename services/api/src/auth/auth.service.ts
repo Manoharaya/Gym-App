@@ -112,6 +112,63 @@ export class AuthService {
       },
     });
 
+    // Resolve target organisation for member registration
+    let org = dto.organisationId
+      ? await this.prisma.organisation.findUnique({ where: { id: dto.organisationId } })
+      : null;
+
+    if (!org) {
+      org = await this.prisma.organisation.findFirst({ where: { status: 'ACTIVE' } });
+    }
+
+    if (org && memberRole) {
+      await this.prisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: memberRole.id,
+          organisationId: org.id,
+          outletId: dto.outletId ?? null,
+        },
+      });
+
+      if (dto.outletId) {
+        await this.prisma.userOutlet.create({
+          data: {
+            userId: user.id,
+            outletId: dto.outletId,
+          },
+        });
+      }
+
+      const memberProfile = await this.prisma.memberProfile.create({
+        data: {
+          userId: user.id,
+          organisationId: org.id,
+          preferredName: user.firstName,
+          status: 'ONBOARDING',
+          onboardingStatus: 'NOT_STARTED',
+        },
+      });
+
+      if (dto.outletId) {
+        await this.prisma.memberOutlet.create({
+          data: {
+            memberProfileId: memberProfile.id,
+            outletId: dto.outletId,
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      await this.prisma.memberOnboarding.create({
+        data: {
+          memberProfileId: memberProfile.id,
+          currentStep: 'PROFILE',
+          status: 'NOT_STARTED',
+        },
+      });
+    }
+
     // Create default Session
     const tokenFamily = crypto.randomUUID();
     const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -171,7 +228,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         displayName: user.displayName,
-        roles: memberRole ? [{ role: memberRole.name, organisationId: '', outletId: null }] : [],
+        roles: memberRole ? [{ role: memberRole.name, organisationId: org?.id ?? '', outletId: dto.outletId ?? null }] : [],
       },
     };
   }

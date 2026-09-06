@@ -20,10 +20,11 @@ model Organisation {
   deletedAt   DateTime?
 
   // Relations
-  outlets     Outlet[]
-  userRoles   UserRole[]
-  auditLogs   AuditLog[]
-  invitations Invitation[]
+  outlets        Outlet[]
+  userRoles      UserRole[]
+  auditLogs      AuditLog[]
+  invitations    Invitation[]
+  memberProfiles MemberProfile[]
 
   @@index([slug])
   @@index([status])
@@ -57,6 +58,7 @@ model Outlet {
   userOutlets     UserOutlet[]
   auditLogs       AuditLog[]
   invitations     Invitation[]
+  memberOutlets   MemberOutlet[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -87,7 +89,8 @@ model User {
   userOutlets      UserOutlet[]
   sessions         Session[]
   auditLogs        AuditLog[]
-  invitationsSent  Invitation[]  @relation("InvitationsSent")
+  invitationsSent  Invitation[]   @relation("InvitationsSent")
+  memberProfile    MemberProfile?
 
   @@index([email])
   @@index([phone])
@@ -258,4 +261,326 @@ model AuditLog {
   @@index([outletId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ==========================================
+// DAY 4: MEMBER & ONBOARDING DOMAIN MODELS
+// ==========================================
+
+model MemberProfile {
+  id                           String    @id @default(cuid())
+  userId                       String    @unique
+  organisationId               String
+  preferredName                String?
+  dateOfBirth                  DateTime?
+  gender                       String?   // MALE, FEMALE, NON_BINARY, PREFER_NOT_TO_SAY, OTHER
+  profilePhotoUrl              String?
+  emergencyContactName         String?
+  emergencyContactPhone        String?
+  emergencyContactRelationship String?
+  timezone                     String    @default("Australia/Perth")
+  status                       String    @default("ONBOARDING") // INVITED, ONBOARDING, ACTIVE, SUSPENDED, INACTIVE, ARCHIVED
+  onboardingStatus             String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, REQUIRES_ACTION, READY_FOR_REVIEW, COMPLETED
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+  deletedAt                    DateTime?
+
+  // Relations
+  user                         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation                 Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberOutlets                MemberOutlet[]
+  onboarding                   MemberOnboarding?
+  parqSubmissions              ParqSubmission[]
+  healthScreenings             HealthScreening[]
+  injuries                     Injury[]
+  medicalClearances            MedicalClearance[]
+  consentRecords               ConsentRecord[]
+  documents                    MemberDocument[]
+  signatures                   Signature[]
+
+  @@index([userId])
+  @@index([organisationId])
+  @@index([status])
+  @@index([onboardingStatus])
+  @@map("member_profiles")
+}
+
+model MemberOutlet {
+  id              String        @id @default(cuid())
+  memberProfileId String
+  outletId        String
+  status          String        @default("ACTIVE") // ACTIVE, INACTIVE, TRANSFERRED
+  joinedAt        DateTime      @default(now())
+  leftAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  outlet          Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@unique([memberProfileId, outletId])
+  @@index([memberProfileId])
+  @@index([outletId])
+  @@index([status])
+  @@map("member_outlets")
+}
+
+model MemberOnboarding {
+  id              String        @id @default(cuid())
+  memberProfileId String        @unique
+  currentStep     String        @default("PROFILE") // PROFILE, PARQ, HEALTH_SCREENING, INJURIES, CONSENTS, DOCUMENTS, SIGNATURE, REVIEW, COMPLETE
+  status          String        @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, REQUIRES_ACTION, READY_FOR_REVIEW, COMPLETED
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+
+  @@index([memberProfileId])
+  @@index([status])
+  @@map("member_onboardings")
+}
+
+// ------------------------------------------
+// PAR-Q (Physical Activity Readiness)
+// ------------------------------------------
+
+model Questionnaire {
+  id            String           @id @default(cuid())
+  type          String           @default("PARQ") // PARQ, HEALTH_SCREENING
+  name          String
+  version       String           // e.g. "2024.1"
+  status        String           @default("ACTIVE") // DRAFT, ACTIVE, ARCHIVED
+  effectiveFrom DateTime         @default(now())
+  effectiveTo   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  questions     Question[]
+  submissions   ParqSubmission[]
+
+  @@unique([type, version])
+  @@map("questionnaires")
+}
+
+model Question {
+  id              String         @id @default(cuid())
+  questionnaireId String
+  questionKey     String         // e.g. "chest_pain", "balance_dizziness"
+  text            String
+  type            String         @default("BOOLEAN") // BOOLEAN, SINGLE_SELECT, MULTI_SELECT, TEXT, NUMBER, DATE
+  required        Boolean        @default(true)
+  sortOrder       Int            @default(0)
+  metadata        Json?          // Options, hint, triggers_review flag, etc.
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  questionnaire   Questionnaire  @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  responses       ParqResponse[]
+
+  @@unique([questionnaireId, questionKey])
+  @@index([questionnaireId])
+  @@map("questions")
+}
+
+model ParqSubmission {
+  id              String         @id @default(cuid())
+  memberProfileId String
+  questionnaireId String
+  status          String         @default("DRAFT") // DRAFT, SUBMITTED, REQUIRES_REVIEW, APPROVED, REJECTED
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  memberProfile   MemberProfile  @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  questionnaire   Questionnaire  @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  responses       ParqResponse[]
+
+  @@index([memberProfileId])
+  @@index([questionnaireId])
+  @@index([status])
+  @@map("parq_submissions")
+}
+
+model ParqResponse {
+  id           String         @id @default(cuid())
+  submissionId String
+  questionId   String
+  answer       Json           // e.g. { "value": true } or { "value": false }
+  notes        String?
+  createdAt    DateTime       @default(now())
+
+  submission   ParqSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question     Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
+  @@map("parq_responses")
+}
+
+// ------------------------------------------
+// Health Screening & Injury Domains
+// ------------------------------------------
+
+model HealthScreening {
+  id               String        @id @default(cuid())
+  memberProfileId  String
+  screeningVersion String        @default("1.0")
+  status           String        @default("COMPLETED") // PENDING, COMPLETED, REQUIRES_CLEARANCE
+  completedAt      DateTime?
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  memberProfile    MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+
+  @@index([memberProfileId])
+  @@map("health_screenings")
+}
+
+model Injury {
+  id              String        @id @default(cuid())
+  memberProfileId String
+  bodyArea        String        // SHOULDER, KNEE, LOWER_BACK, ANKLE, HIP, WRIST, NECK, OTHER
+  description     String
+  status          String        @default("ACTIVE") // ACTIVE, RECOVERING, RESOLVED
+  startDate       DateTime?
+  endDate         DateTime?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+
+  @@index([memberProfileId])
+  @@index([status])
+  @@map("injuries")
+}
+
+model MedicalClearance {
+  id              String        @id @default(cuid())
+  memberProfileId String
+  status          String        @default("NOT_REQUIRED") // NOT_REQUIRED, PENDING, SUBMITTED, VERIFIED, EXPIRED, REJECTED
+  issuedDate      DateTime?
+  expiryDate      DateTime?
+  documentId      String?
+  notes           String?
+  verifiedAt      DateTime?
+  verifiedById    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+
+  @@index([memberProfileId])
+  @@index([status])
+  @@map("medical_clearances")
+}
+
+// ------------------------------------------
+// Compliance Consent Domain
+// ------------------------------------------
+
+model ConsentType {
+  id          String           @id @default(cuid())
+  key         String           @unique // TERMS_AND_CONDITIONS, PRIVACY_POLICY, HEALTH_DATA_PROCESSING, WEARABLE_DATA, AI_PROCESSING, MARKETING, COMMUNICATION
+  name        String
+  description String?
+  isMandatory Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  versions    ConsentVersion[]
+  records     ConsentRecord[]
+
+  @@map("consent_types")
+}
+
+model ConsentVersion {
+  id            String          @id @default(cuid())
+  consentTypeId String
+  version       String          // e.g. "1.0", "2.0"
+  content       String          // Summary/URL of policy text
+  effectiveFrom DateTime        @default(now())
+  effectiveTo   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  consentType   ConsentType     @relation(fields: [consentTypeId], references: [id], onDelete: Cascade)
+  records       ConsentRecord[]
+
+  @@unique([consentTypeId, version])
+  @@index([consentTypeId])
+  @@map("consent_versions")
+}
+
+model ConsentRecord {
+  id               String         @id @default(cuid())
+  memberProfileId  String
+  consentTypeId    String
+  consentVersionId String
+  status           String         @default("CONSENTED") // CONSENTED, DECLINED, WITHDRAWN
+  consentedAt      DateTime       @default(now())
+  withdrawnAt      DateTime?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  memberProfile    MemberProfile  @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  consentType      ConsentType    @relation(fields: [consentTypeId], references: [id], onDelete: Cascade)
+  consentVersion   ConsentVersion @relation(fields: [consentVersionId], references: [id], onDelete: Cascade)
+
+  @@index([memberProfileId])
+  @@index([consentTypeId])
+  @@index([status])
+  @@map("consent_records")
+}
+
+// ------------------------------------------
+// Digital Signature & Documents
+// ------------------------------------------
+
+model Signature {
+  id                 String        @id @default(cuid())
+  memberProfileId    String
+  documentType       String        // ONBOARDING_AGREEMENT, PARQ_DECLARATION, CONSENT_FORM
+  documentVersion    String
+  signatureMethod    String        @default("ELECTRONIC_ACCEPTANCE") // ELECTRONIC_ACCEPTANCE, TYPED_NAME
+  signerName         String
+  signedAt           DateTime      @default(now())
+  ipAddress          String?
+  userAgent          String?
+  signatureReference String        // SHA-256 evidence hash
+  createdAt          DateTime      @default(now())
+
+  memberProfile      MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+
+  @@index([memberProfileId])
+  @@index([documentType])
+  @@map("signatures")
+}
+
+model MemberDocument {
+  id              String        @id @default(cuid())
+  memberProfileId String
+  documentType    String        // MEDICAL_CLEARANCE, CONSENT_DOCUMENT, IDENTITY_DOCUMENT, OTHER
+  storageKey      String
+  fileName        String
+  mimeType        String
+  size            Int
+  status          String        @default("UPLOADED") // PENDING, UPLOADED, VERIFIED, REJECTED
+  uploadedAt      DateTime      @default(now())
+  uploadedById    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+
+  @@index([memberProfileId])
+  @@index([documentType])
+  @@map("member_documents")
 }

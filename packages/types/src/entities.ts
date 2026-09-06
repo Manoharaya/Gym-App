@@ -37,9 +37,10 @@ export interface User extends BaseEntity {
   email: string;
   firstName: string;
   lastName: string;
+  displayName?: string;
   phone?: string;
   avatarUrl?: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  status: 'ACTIVE' | 'INVITED' | 'INACTIVE' | 'SUSPENDED' | 'DISABLED';
 }
 
 export interface Role extends BaseEntity {
@@ -53,14 +54,190 @@ export interface Permission extends BaseEntity {
   scope: string;
 }
 
-export interface MemberProfile extends TenantScopedEntity {
+// ==========================================
+// DAY 4: MEMBER LIFECYCLE & ONBOARDING
+// ==========================================
+
+export type MemberLifecycleStatus =
+  | 'INVITED'
+  | 'ONBOARDING'
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'INACTIVE'
+  | 'ARCHIVED';
+
+export type OnboardingStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'REQUIRES_ACTION'
+  | 'READY_FOR_REVIEW'
+  | 'COMPLETED';
+
+export type OnboardingStep =
+  | 'PROFILE'
+  | 'PARQ'
+  | 'HEALTH_SCREENING'
+  | 'INJURIES'
+  | 'CONSENTS'
+  | 'DOCUMENTS'
+  | 'SIGNATURE'
+  | 'REVIEW'
+  | 'COMPLETE';
+
+export interface MemberProfile extends BaseEntity {
   userId: string;
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
+  organisationId: string;
+  preferredName?: string;
   dateOfBirth?: string;
   gender?: string;
-  medicalConditions?: string[];
-  fitnessGoals?: string[];
+  profilePhotoUrl?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
+  timezone: string;
+  status: MemberLifecycleStatus;
+  onboardingStatus: OnboardingStatus;
+  user?: User;
+  onboarding?: MemberOnboarding;
+  memberOutlets?: MemberOutlet[];
+}
+
+export interface MemberOutlet extends BaseEntity {
+  memberProfileId: string;
+  outletId: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'TRANSFERRED';
+  joinedAt: string;
+  leftAt?: string;
+  outlet?: Outlet;
+}
+
+export interface MemberOnboarding extends BaseEntity {
+  memberProfileId: string;
+  currentStep: OnboardingStep;
+  status: OnboardingStatus;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface Questionnaire extends BaseEntity {
+  type: string;
+  name: string;
+  version: string;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  effectiveFrom: string;
+  effectiveTo?: string;
+  questions?: Question[];
+}
+
+export interface Question extends BaseEntity {
+  questionnaireId: string;
+  questionKey: string;
+  text: string;
+  type: 'BOOLEAN' | 'SINGLE_SELECT' | 'MULTI_SELECT' | 'TEXT' | 'NUMBER' | 'DATE';
+  required: boolean;
+  sortOrder: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ParqSubmission extends BaseEntity {
+  memberProfileId: string;
+  questionnaireId: string;
+  status: 'DRAFT' | 'SUBMITTED' | 'REQUIRES_REVIEW' | 'APPROVED' | 'REJECTED';
+  submittedAt?: string;
+  reviewedAt?: string;
+  reviewedById?: string;
+  questionnaire?: Questionnaire;
+  responses?: ParqResponse[];
+}
+
+export interface ParqResponse extends BaseEntity {
+  submissionId: string;
+  questionId: string;
+  answer: { value: boolean | string | number | string[] };
+  notes?: string;
+  question?: Question;
+}
+
+export interface HealthScreening extends BaseEntity {
+  memberProfileId: string;
+  screeningVersion: string;
+  status: 'PENDING' | 'COMPLETED' | 'REQUIRES_CLEARANCE';
+  completedAt?: string;
+  notes?: string;
+}
+
+export interface Injury extends BaseEntity {
+  memberProfileId: string;
+  bodyArea: string;
+  description: string;
+  status: 'ACTIVE' | 'RECOVERING' | 'RESOLVED';
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+}
+
+export interface MedicalClearance extends BaseEntity {
+  memberProfileId: string;
+  status: 'NOT_REQUIRED' | 'PENDING' | 'SUBMITTED' | 'VERIFIED' | 'EXPIRED' | 'REJECTED';
+  issuedDate?: string;
+  expiryDate?: string;
+  documentId?: string;
+  notes?: string;
+  verifiedAt?: string;
+  verifiedById?: string;
+}
+
+export interface ConsentType extends BaseEntity {
+  key: string;
+  name: string;
+  description?: string;
+  isMandatory: boolean;
+  versions?: ConsentVersion[];
+}
+
+export interface ConsentVersion extends BaseEntity {
+  consentTypeId: string;
+  version: string;
+  content: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+}
+
+export interface ConsentRecord extends BaseEntity {
+  memberProfileId: string;
+  consentTypeId: string;
+  consentVersionId: string;
+  status: 'CONSENTED' | 'DECLINED' | 'WITHDRAWN';
+  consentedAt: string;
+  withdrawnAt?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  consentType?: ConsentType;
+  consentVersion?: ConsentVersion;
+}
+
+export interface Signature extends BaseEntity {
+  memberProfileId: string;
+  documentType: string;
+  documentVersion: string;
+  signatureMethod: string;
+  signerName: string;
+  signedAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+  signatureReference: string;
+}
+
+export interface MemberDocument extends BaseEntity {
+  memberProfileId: string;
+  documentType: 'MEDICAL_CLEARANCE' | 'CONSENT_DOCUMENT' | 'IDENTITY_DOCUMENT' | 'OTHER';
+  storageKey: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  status: 'PENDING' | 'UPLOADED' | 'VERIFIED' | 'REJECTED';
+  uploadedAt: string;
+  uploadedById?: string;
 }
 
 export interface StaffProfile extends TenantScopedEntity {
@@ -175,30 +352,6 @@ export interface HealthRecord extends TenantScopedEntity {
   bloodPressureDiastolic?: number;
   vo2Max?: number;
   recordedAt: string;
-}
-
-export interface MedicalDocument extends TenantScopedEntity {
-  userId: string;
-  documentId: string;
-  clearedByDoctor: boolean;
-  doctorName?: string;
-  clearanceExpiryDate?: string;
-}
-
-export interface Consent extends TenantScopedEntity {
-  userId: string;
-  consentType:
-    'TERMS_OF_SERVICE' | 'PRIVACY_POLICY' | 'HEALTH_DATA_COLLECTION' | 'LIABILITY_WAIVER';
-  version: string;
-  consentedAt: string;
-  ipAddress?: string;
-}
-
-export interface Signature extends TenantScopedEntity {
-  userId: string;
-  documentId: string;
-  signatureUrl: string;
-  signedAt: string;
 }
 
 export interface WearableConnection extends TenantScopedEntity {

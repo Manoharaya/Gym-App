@@ -31,4 +31,14 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   role?: string;
+
+  @ApiPropertyOptional({ description: 'Optional organisation ID' })
+  @IsOptional()
+  @IsString()
+  organisationId?: string;
+
+  @ApiPropertyOptional({ description: 'Optional outlet ID' })
+  @IsOptional()
+  @IsString()
+  outletId?: string;
 }
