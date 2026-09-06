@@ -48,6 +48,9 @@ export type MemberStackParamList = {
   CheckIn: undefined;
   VisitHistory: undefined;
   AccessStatus: undefined;
+  ClassCheckIn: { sessionId: string; bookingId?: string };
+  AttendanceConfirmation: { attendanceRecord: any };
+  AttendanceHistory: undefined;
 };
 
 export type TrainerStackParamList = {

@@ -49,6 +49,12 @@ import {
   WaitlistStatusScreen,
 } from '../features/booking';
 
+import {
+  ClassCheckInScreen,
+  AttendanceConfirmationScreen,
+  AttendanceHistoryScreen,
+} from '../features/attendance';
+
 const Stack = createNativeStackNavigator<MemberStackParamList>();
 
 export const MemberNavigator: React.FC = () => {
@@ -108,6 +114,11 @@ export const MemberNavigator: React.FC = () => {
       <Stack.Screen name="CheckIn" component={CheckInScreen} />
       <Stack.Screen name="VisitHistory" component={VisitHistoryScreen} />
       <Stack.Screen name="AccessStatus" component={AccessStatusScreen} />
+
+      {/* Class Attendance */}
+      <Stack.Screen name="ClassCheckIn" component={ClassCheckInScreen} />
+      <Stack.Screen name="AttendanceConfirmation" component={AttendanceConfirmationScreen} />
+      <Stack.Screen name="AttendanceHistory" component={AttendanceHistoryScreen} />
     </Stack.Navigator>
   );
 };

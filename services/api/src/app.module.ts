@@ -17,6 +17,7 @@ import { MembershipsModule } from './memberships/memberships.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AccessModule } from './access/access.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { AttendanceModule } from './attendance/attendance.module';
 import { HealthModule } from './health/health.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -47,6 +48,7 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     PaymentsModule,
     AccessModule,
     BookingsModule,
+    AttendanceModule,
     HealthModule,
   ],
   providers: [

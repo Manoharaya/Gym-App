@@ -228,6 +228,17 @@ export const BookingDetailScreen: React.FC = () => {
         )}
 
         {/* Actions */}
+        {isConfirmed && session?.id && (
+          <Button
+            testID="check-in-nav-btn"
+            title="Check In to Class"
+            variant="primary"
+            size="lg"
+            onPress={() => navigation.navigate('ClassCheckIn', { sessionId: session.id, bookingId: booking.id })}
+            style={styles.actionBtn}
+          />
+        )}
+
         {(isConfirmed || isWaitlisted) && (
           <Button
             title={cancelling ? 'Cancelling...' : isWaitlisted ? 'Leave Waitlist' : 'Cancel Booking'}

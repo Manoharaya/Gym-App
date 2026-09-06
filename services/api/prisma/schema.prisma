@@ -51,6 +51,7 @@ model Organisation {
   waitlistEntries      WaitlistEntry[]
   trainerAvailabilities TrainerAvailability[]
   recurringSchedules   RecurringSchedule[]
+  attendanceRecords    AttendanceRecord[]
 
   @@index([slug])
   @@index([status])
@@ -100,6 +101,7 @@ model Outlet {
   bookings             Booking[]
   waitlistEntries      WaitlistEntry[]
   recurringSchedules   RecurringSchedule[]
+  attendanceRecords    AttendanceRecord[]
 
 
   @@unique([organisationId, slug])
@@ -138,6 +140,8 @@ model User {
   trainerSessions           ClassSession[]        @relation("TrainerSessions")
   trainerAvailabilities     TrainerAvailability[]
   trainerRecurringSchedules RecurringSchedule[]   @relation("TrainerRecurringSchedules")
+  substituteTrainerSessions ClassSession[]        @relation("SubstituteTrainerSessions")
+  attendanceRecordsMarked   AttendanceRecord[]    @relation("AttendanceMarkedByUser")
 
   @@index([email])
   @@index([phone])
@@ -355,6 +359,7 @@ model MemberProfile {
   accessEvents                 AccessEvent[]
   bookings                     Booking[]
   waitlistEntries              WaitlistEntry[]
+  attendanceRecords            AttendanceRecord[]
 
 
   @@index([userId])
@@ -1406,6 +1411,10 @@ model ClassSession {
   cancellationClosesAt DateTime?
   cancelledAt          DateTime?
   cancellationReason   String?
+  substituteTrainerId  String?
+  trainerCheckedInAt   DateTime?
+  trainerCheckedOutAt  DateTime?
+  trainerAttendanceStatus String? // PENDING, PRESENT, SUBSTITUTED, ABSENT
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -1414,16 +1423,19 @@ model ClassSession {
   classTemplate        ClassTemplate?     @relation(fields: [classTemplateId], references: [id], onDelete: SetNull)
   classType            ClassType          @relation(fields: [classTypeId], references: [id], onDelete: Restrict)
   trainer              User?              @relation("TrainerSessions", fields: [trainerId], references: [id], onDelete: SetNull)
+  substituteTrainer    User?              @relation("SubstituteTrainerSessions", fields: [substituteTrainerId], references: [id], onDelete: SetNull)
   resource             Resource?          @relation(fields: [resourceId], references: [id], onDelete: SetNull)
   bookingPolicy        BookingPolicy?     @relation(fields: [bookingPolicyId], references: [id], onDelete: SetNull)
   recurringSchedule    RecurringSchedule? @relation(fields: [recurringScheduleId], references: [id], onDelete: SetNull)
   bookings             Booking[]
   waitlistEntries      WaitlistEntry[]
+  attendanceRecords    AttendanceRecord[]
 
   @@index([organisationId])
   @@index([outletId])
   @@index([classTypeId])
   @@index([trainerId])
+  @@index([substituteTrainerId])
   @@index([resourceId])
   @@index([recurringScheduleId])
   @@index([startsAt])
@@ -1455,6 +1467,7 @@ model Booking {
   memberProfile      MemberProfile  @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
   classSession       ClassSession   @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
   waitlistEntry      WaitlistEntry?
+  attendanceRecord   AttendanceRecord?
 
   @@index([organisationId])
   @@index([outletId])
@@ -1558,4 +1571,41 @@ model RecurringSchedule {
   @@map("recurring_schedules")
 }
 
+model AttendanceRecord {
+  id              String        @id @default(cuid())
+  organisationId  String
+  outletId        String
+  classSessionId  String
+  memberProfileId String
+  bookingId       String?       @unique
+  status          String        @default("CHECKED_IN") // CHECKED_IN, LATE, LEFT_EARLY, COMPLETED, NO_SHOW, CANCELLED, EXCUSED, WALK_IN
+  checkInMethod   String        @default("STAFF")      // STAFF, MEMBER_SELF_SERVICE, QR, ACCESS_EVENT, KIOSK, MANUAL, SYSTEM
+  checkOutMethod  String?
+  checkedInAt     DateTime?
+  checkedOutAt    DateTime?
+  lateMinutes     Int?
+  durationMinutes Int?
+  markedByUserId  String?
+  isOverride      Boolean       @default(false)
+  overrideReason  String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  classSession    ClassSession  @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  booking         Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  markedByUser    User?         @relation("AttendanceMarkedByUser", fields: [markedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([classSessionId, memberProfileId])
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([classSessionId])
+  @@index([memberProfileId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([checkedInAt])
+  @@map("attendance_records")
+}

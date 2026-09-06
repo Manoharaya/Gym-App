@@ -1192,4 +1192,57 @@ export interface BookingEligibilityResult {
   memberMembershipId?: string;
 }
 
+export type AttendanceStatus =
+  | 'EXPECTED'
+  | 'CHECKED_IN'
+  | 'LATE'
+  | 'LEFT_EARLY'
+  | 'COMPLETED'
+  | 'NO_SHOW'
+  | 'CANCELLED'
+  | 'EXCUSED'
+  | 'WALK_IN';
+
+export type ClassCheckInMethod =
+  | 'STAFF'
+  | 'MEMBER_SELF_SERVICE'
+  | 'QR'
+  | 'ACCESS_EVENT'
+  | 'KIOSK'
+  | 'MANUAL'
+  | 'SYSTEM';
+
+export type TrainerAttendanceStatus = 'PENDING' | 'PRESENT' | 'SUBSTITUTED' | 'ABSENT';
+
+export interface AttendanceRecord extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  classSessionId: string;
+  memberProfileId: string;
+  bookingId?: string | null;
+  status: AttendanceStatus;
+  checkInMethod: ClassCheckInMethod;
+  checkOutMethod?: string | null;
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+  lateMinutes?: number | null;
+  durationMinutes?: number | null;
+  markedByUserId?: string | null;
+  isOverride?: boolean;
+  overrideReason?: string | null;
+  notes?: string | null;
+  memberProfile?: {
+    id: string;
+    userId: string;
+    preferredName?: string | null;
+    user?: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string | null;
+    };
+  };
+  classSession?: ClassSession;
+  booking?: Booking;
+}
 
