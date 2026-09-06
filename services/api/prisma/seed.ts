@@ -154,6 +154,21 @@ async function main() {
 
     { resource: 'discounts', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage promotional discount codes' },
     { resource: 'discounts', action: 'READ', scope: 'ORGANISATION', description: 'Read discount codes' },
+
+    // Day 7: Physical Access, Check-In/Out & Door Access
+    { resource: 'access', action: 'VIEW', scope: 'ORGANISATION', description: 'View access rules and status' },
+    { resource: 'access', action: 'VIEW', scope: 'SELF', description: 'View own physical access status' },
+    { resource: 'access', action: 'CHECK', scope: 'ORGANISATION', description: 'Evaluate physical access decisions' },
+    { resource: 'access', action: 'MANUAL_CHECKIN', scope: 'ORGANISATION', description: 'Perform receptionist manual check-in' },
+    { resource: 'access', action: 'MANUAL_CHECKOUT', scope: 'ORGANISATION', description: 'Perform receptionist manual check-out' },
+    { resource: 'access', action: 'OVERRIDE', scope: 'ORGANISATION', description: 'Create temporary staff access override' },
+    { resource: 'access', action: 'EVENT_VIEW', scope: 'ORGANISATION', description: 'View physical access audit events' },
+    { resource: 'access_credentials', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage member access credentials' },
+    { resource: 'access_credentials', action: 'MANAGE', scope: 'SELF', description: 'Manage own access credentials' },
+    { resource: 'access_credentials', action: 'READ', scope: 'SELF', description: 'View own access credentials' },
+    { resource: 'access_credentials', action: 'READ', scope: 'ORGANISATION', description: 'View member access credentials' },
+    { resource: 'access_devices', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage hardware turnstiles and doors' },
+    { resource: 'access_devices', action: 'READ', scope: 'ORGANISATION', description: 'View access hardware devices' },
   ];
 
 
@@ -249,6 +264,17 @@ async function main() {
     'payment_methods:READ:ORGANISATION',
     'discounts:MANAGE:ORGANISATION',
     'discounts:READ:ORGANISATION',
+    // Day 7
+    'access:VIEW:ORGANISATION',
+    'access:CHECK:ORGANISATION',
+    'access:MANUAL_CHECKIN:ORGANISATION',
+    'access:MANUAL_CHECKOUT:ORGANISATION',
+    'access:OVERRIDE:ORGANISATION',
+    'access:EVENT_VIEW:ORGANISATION',
+    'access_credentials:MANAGE:ORGANISATION',
+    'access_credentials:READ:ORGANISATION',
+    'access_devices:MANAGE:ORGANISATION',
+    'access_devices:READ:ORGANISATION',
   ];
 
   for (const k of ownerPerms) {
@@ -285,6 +311,15 @@ async function main() {
     'invoices:READ:ORGANISATION',
     'payments:CREATE:ORGANISATION',
     'payments:READ:ORGANISATION',
+    // Day 7
+    'access:VIEW:ORGANISATION',
+    'access:CHECK:ORGANISATION',
+    'access:MANUAL_CHECKIN:ORGANISATION',
+    'access:MANUAL_CHECKOUT:ORGANISATION',
+    'access:OVERRIDE:ORGANISATION',
+    'access:EVENT_VIEW:ORGANISATION',
+    'access_credentials:READ:ORGANISATION',
+    'access_devices:READ:ORGANISATION',
   ];
 
   for (const k of managerPerms) {
@@ -312,6 +347,15 @@ async function main() {
     'invoices:READ:ORGANISATION',
     'payments:CREATE:ORGANISATION',
     'payments:READ:ORGANISATION',
+    // Day 7
+    'access:VIEW:ORGANISATION',
+    'access:CHECK:ORGANISATION',
+    'access:MANUAL_CHECKIN:ORGANISATION',
+    'access:MANUAL_CHECKOUT:ORGANISATION',
+    'access:OVERRIDE:ORGANISATION',
+    'access_credentials:MANAGE:ORGANISATION',
+    'access_credentials:READ:ORGANISATION',
+    'access_devices:READ:ORGANISATION',
   ];
 
   for (const k of receptionPerms) {
@@ -395,6 +439,10 @@ async function main() {
     'payments:READ:SELF',
     'payment_methods:MANAGE:SELF',
     'payment_methods:READ:SELF',
+    // Day 7
+    'access:VIEW:SELF',
+    'access_credentials:MANAGE:SELF',
+    'access_credentials:READ:SELF',
   ];
 
   for (const k of memberPerms) {
@@ -1153,95 +1201,321 @@ async function main() {
       });
 
       // Invoice 1: Fully Paid Membership Invoice
-      const paidInvoice = await prisma.invoice.create({
-        data: {
-          organisationId: secondWind.id,
-          memberProfileId: activeProfile.id,
-          invoiceNumber: 'INV-202608-0001-SW',
-          status: 'PAID',
-          currency: 'AUD',
-          subtotalMinor: 11999,
-          discountMinor: 0,
-          taxMinor: 1091,
-          feeMinor: 0,
-          totalMinor: 11999,
-          amountPaidMinor: 11999,
-          amountDueMinor: 0,
-          dueDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-          paidAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-          description: 'Second Wind Premium All-Access Monthly Dues',
-          lineItems: {
-            create: [
-              {
-                description: 'Second Wind Premium Monthly Membership',
-                quantity: 1,
-                unitAmountMinor: 11999,
-                discountMinor: 0,
-                taxMinor: 1091,
-                totalMinor: 11999,
-                membershipPlanId: premiumPlan.id,
-              },
-            ],
-          },
-        },
+      let paidInvoice = await prisma.invoice.findFirst({
+        where: { organisationId: secondWind.id, invoiceNumber: 'INV-202608-0001-SW' },
       });
+
+      if (!paidInvoice) {
+        paidInvoice = await prisma.invoice.create({
+          data: {
+            organisationId: secondWind.id,
+            memberProfileId: activeProfile.id,
+            invoiceNumber: 'INV-202608-0001-SW',
+            status: 'PAID',
+            currency: 'AUD',
+            subtotalMinor: 11999,
+            discountMinor: 0,
+            taxMinor: 1091,
+            feeMinor: 0,
+            totalMinor: 11999,
+            amountPaidMinor: 11999,
+            amountDueMinor: 0,
+            dueDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+            paidAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+            description: 'Second Wind Premium All-Access Monthly Dues',
+            lineItems: {
+              create: [
+                {
+                  description: 'Second Wind Premium Monthly Membership',
+                  quantity: 1,
+                  unitAmountMinor: 11999,
+                  discountMinor: 0,
+                  taxMinor: 1091,
+                  totalMinor: 11999,
+                  membershipPlanId: premiumPlan.id,
+                },
+              ],
+            },
+          },
+        });
+      }
 
       // Succeeded Transaction for Invoice 1
-      await prisma.paymentTransaction.create({
-        data: {
-          organisationId: secondWind.id,
-          memberProfileId: activeProfile.id,
-          invoiceId: paidInvoice.id,
-          paymentMethodId: defaultCard.id,
-          amountMinor: 11999,
-          currency: 'AUD',
-          status: 'SUCCEEDED',
-          provider: 'MOCK',
-          providerTransactionId: 'mock_tx_seed_paid_001',
-          paymentMethodType: 'CARD',
-          description: 'Payment for INV-202608-0001-SW',
-          processedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-          metadata: {
-            receiptUrl: 'https://fitcore.local/receipts/mock_tx_seed_paid_001',
+      const existingTx = await prisma.paymentTransaction.findFirst({
+        where: { organisationId: secondWind.id, providerTransactionId: 'mock_tx_seed_paid_001' },
+      });
+
+      if (!existingTx) {
+        await prisma.paymentTransaction.create({
+          data: {
+            organisationId: secondWind.id,
+            memberProfileId: activeProfile.id,
+            invoiceId: paidInvoice.id,
+            paymentMethodId: defaultCard.id,
+            amountMinor: 11999,
+            currency: 'AUD',
+            status: 'SUCCEEDED',
+            provider: 'MOCK',
+            providerTransactionId: 'mock_tx_seed_paid_001',
+            paymentMethodType: 'CARD',
+            description: 'Payment for INV-202608-0001-SW',
+            processedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+            metadata: {
+              receiptUrl: 'https://fitcore.local/receipts/mock_tx_seed_paid_001',
+            },
           },
+        });
+      }
+
+      // Invoice 2: Open Assessment Invoice
+      const existingInv2 = await prisma.invoice.findFirst({
+        where: { organisationId: secondWind.id, invoiceNumber: 'INV-202609-0002-SW' },
+      });
+
+      if (!existingInv2) {
+        await prisma.invoice.create({
+          data: {
+            organisationId: secondWind.id,
+            memberProfileId: activeProfile.id,
+            invoiceNumber: 'INV-202609-0002-SW',
+            status: 'OPEN',
+            currency: 'AUD',
+            subtotalMinor: 5000,
+            discountMinor: 0,
+            taxMinor: 455,
+            feeMinor: 0,
+            totalMinor: 5000,
+            amountPaidMinor: 0,
+            amountDueMinor: 5000,
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            description: 'Personal Training Physical Performance Assessment',
+            lineItems: {
+              create: [
+                {
+                  description: 'Initial 60-Minute Biomechanics & Conditioning Assessment',
+                  quantity: 1,
+                  unitAmountMinor: 5000,
+                  discountMinor: 0,
+                  taxMinor: 455,
+                  totalMinor: 5000,
+                },
+              ],
+            },
+          },
+        });
+      }
+
+      // ==========================================
+      // DAY 7 SEED: PHYSICAL ACCESS & HARDWARE
+      // ==========================================
+      console.log('🚪 Seeding Day 7 Physical Access, Points, Devices & Credentials...');
+
+      // 1. Access Policies (Standard Facility Hours: 06:00 to 22:00, 7 days)
+      const perthPolicy = await prisma.accessPolicy.upsert({
+        where: { id: 'policy_seed_perth_cbd' },
+        update: {},
+        create: {
+          id: 'policy_seed_perth_cbd',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          name: 'Perth CBD Standard Operating Hours',
+          enabled: true,
+          allowedStartTime: '06:00',
+          allowedEndTime: '22:00',
+          allowedDays: [1, 2, 3, 4, 5, 6, 7],
+          guestAllowed: false,
+          staffOverrideAllowed: true,
         },
       });
 
-      // Invoice 2: Open Assessment Invoice
-      await prisma.invoice.create({
-        data: {
+      // 2. Access Points
+      const perthMainPoint = await prisma.accessPoint.upsert({
+        where: { id: 'point_seed_perth_main' },
+        update: {},
+        create: {
+          id: 'point_seed_perth_main',
           organisationId: secondWind.id,
-          memberProfileId: activeProfile.id,
-          invoiceNumber: 'INV-202609-0002-SW',
-          status: 'OPEN',
-          currency: 'AUD',
-          subtotalMinor: 5000,
-          discountMinor: 0,
-          taxMinor: 455,
-          feeMinor: 0,
-          totalMinor: 5000,
-          amountPaidMinor: 0,
-          amountDueMinor: 5000,
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          description: 'Personal Training Physical Performance Assessment',
-          lineItems: {
-            create: [
-              {
-                description: 'Initial 60-Minute Biomechanics & Conditioning Assessment',
-                quantity: 1,
-                unitAmountMinor: 5000,
-                discountMinor: 0,
-                taxMinor: 455,
-                totalMinor: 5000,
-              },
-            ],
-          },
+          outletId: perthCbd.id,
+          name: 'Ground Floor Main Turnstile Entry',
+          type: 'TURNSTILE',
+          location: 'Main Lobby',
+          status: 'ACTIVE',
         },
       });
+
+      const perthStudioPoint = await prisma.accessPoint.upsert({
+        where: { id: 'point_seed_perth_studio' },
+        update: {},
+        create: {
+          id: 'point_seed_perth_studio',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          name: 'Level 2 Reformer Studio Access',
+          type: 'DOOR',
+          location: 'Level 2',
+          status: 'ACTIVE',
+        },
+      });
+
+      const fremantleMainPoint = await prisma.accessPoint.upsert({
+        where: { id: 'point_seed_freo_main' },
+        update: {},
+        create: {
+          id: 'point_seed_freo_main',
+          organisationId: secondWind.id,
+          outletId: fremantle.id,
+          name: 'Harbor Gate Front Entrance',
+          type: 'GATE',
+          location: 'Courtyard Entrance',
+          status: 'ACTIVE',
+        },
+      });
+
+      // 3. Access Devices (Mock Turnstiles & Doors)
+      const perthTurnstile = await prisma.accessDevice.upsert({
+        where: { provider_providerDeviceId: { provider: 'MOCK', providerDeviceId: 'mock_dev_turnstile_perth_01' } },
+        update: {},
+        create: {
+          id: 'dev_seed_turnstile_perth_01',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          accessPointId: perthMainPoint.id,
+          name: 'SpeedGate Lane 1 (Entry)',
+          type: 'TURNSTILE',
+          status: 'ONLINE',
+          provider: 'MOCK',
+          providerDeviceId: 'mock_dev_turnstile_perth_01',
+          direction: 'ENTRY',
+          location: 'Lobby Lane 1',
+          lastHeartbeatAt: new Date(),
+        },
+      });
+
+      const perthStudioDoor = await prisma.accessDevice.upsert({
+        where: { provider_providerDeviceId: { provider: 'MOCK', providerDeviceId: 'mock_dev_door_perth_studio' } },
+        update: {},
+        create: {
+          id: 'dev_seed_door_perth_studio',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          accessPointId: perthStudioPoint.id,
+          name: 'Studio Smart MagLock Reader',
+          type: 'DOOR',
+          status: 'ONLINE',
+          provider: 'MOCK',
+          providerDeviceId: 'mock_dev_door_perth_studio',
+          direction: 'BOTH',
+          location: 'Level 2 Door',
+          lastHeartbeatAt: new Date(),
+        },
+      });
+
+      const fremantleTurnstile = await prisma.accessDevice.upsert({
+        where: { provider_providerDeviceId: { provider: 'MOCK', providerDeviceId: 'mock_dev_gate_freo_01' } },
+        update: {},
+        create: {
+          id: 'dev_seed_gate_freo_01',
+          organisationId: secondWind.id,
+          outletId: fremantle.id,
+          accessPointId: fremantleMainPoint.id,
+          name: 'Harbor Entry RFID Scanner',
+          type: 'READER',
+          status: 'ONLINE',
+          provider: 'MOCK',
+          providerDeviceId: 'mock_dev_gate_freo_01',
+          direction: 'ENTRY',
+          location: 'Main Gate',
+          lastHeartbeatAt: new Date(),
+        },
+      });
+
+      // 4. Access Credentials for Active Member
+      const qrCredHash = require('crypto').createHash('sha256').update('seed_qr_token_active_member').digest('hex');
+      const rfidCredHash = require('crypto').createHash('sha256').update('RFID_A1B2C3D4_ACTIVE').digest('hex');
+
+      const qrCred = await prisma.accessCredential.upsert({
+        where: { organisationId_credentialReference: { organisationId: secondWind.id, credentialReference: qrCredHash } },
+        update: {},
+        create: {
+          id: 'cred_seed_qr_active_member',
+          organisationId: secondWind.id,
+          memberProfileId: activeProfile.id,
+          type: 'QR_CODE',
+          status: 'ACTIVE',
+          credentialReference: qrCredHash,
+          displayIdentifier: 'Dynamic Pass Active',
+          issuedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          activatedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      const rfidCred = await prisma.accessCredential.upsert({
+        where: { organisationId_credentialReference: { organisationId: secondWind.id, credentialReference: rfidCredHash } },
+        update: {},
+        create: {
+          id: 'cred_seed_rfid_active_member',
+          organisationId: secondWind.id,
+          memberProfileId: activeProfile.id,
+          type: 'RFID',
+          status: 'ACTIVE',
+          credentialReference: rfidCredHash,
+          displayIdentifier: '••••C3D4 (Key Fob)',
+          issuedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          activatedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      // 5. Seed Historical Check-Ins and Completed Visit
+      await prisma.checkIn.upsert({
+        where: { id: 'checkin_seed_completed_001' },
+        update: {},
+        create: {
+          id: 'checkin_seed_completed_001',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: activeProfile.id,
+          credentialId: qrCred.id,
+          accessPointId: perthMainPoint.id,
+          deviceId: perthTurnstile.id,
+          method: 'QR',
+          status: 'SUCCESS',
+          checkedInAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          checkedOutAt: new Date(Date.now() - 24 * 60 * 60 * 1000 + 75 * 60 * 1000), // 75 minute workout
+          source: 'TURNSTILE',
+          deviceEventId: 'dev_event_seed_yesterday_001',
+        },
+      });
+
+      // Seed Access Event
+      const existingEvent = await prisma.accessEvent.findFirst({
+        where: {
+          organisationId: secondWind.id,
+          memberProfileId: activeProfile.id,
+          deviceId: perthTurnstile.id,
+          eventType: 'CHECK_IN',
+        },
+      });
+
+      if (!existingEvent) {
+        await prisma.accessEvent.create({
+          data: {
+            organisationId: secondWind.id,
+            outletId: perthCbd.id,
+            memberProfileId: activeProfile.id,
+            credentialId: qrCred.id,
+            deviceId: perthTurnstile.id,
+            accessPointId: perthMainPoint.id,
+            eventType: 'CHECK_IN',
+            decision: 'ALLOWED',
+            reason: 'ALLOWED',
+            occurredAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        });
+      }
     }
   }
 
-  console.log('✅ FitCore Database Seeding Completed (Day 6: Payments & Billing Foundation).');
+  console.log('✅ FitCore Database Seeding Completed (Day 7: Physical Access & Turnstiles Foundation).');
 }
 
 main()

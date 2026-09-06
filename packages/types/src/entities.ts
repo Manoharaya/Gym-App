@@ -358,28 +358,52 @@ export interface MemberMembershipHistory extends BaseEntity {
   metadata?: Record<string, unknown>;
 }
 
-export type AccessReasonCode =
-  | 'ACTIVE_MEMBERSHIP'
+export type AccessDecisionReason =
+  | 'ALLOWED'
+  | 'ALLOWED_BY_OVERRIDE'
+  | 'MEMBER_NOT_FOUND'
+  | 'MEMBER_INACTIVE'
   | 'NO_ACTIVE_MEMBERSHIP'
-  | 'OUTLET_NOT_INCLUDED'
-  | 'OUTLET_NOT_IN_SCOPE'
-  | 'NO_GYM_ACCESS_ENTITLEMENT'
-  | 'MISSING_ENTITLEMENT'
   | 'MEMBERSHIP_EXPIRED'
   | 'MEMBERSHIP_SUSPENDED'
   | 'MEMBERSHIP_CANCELLED'
   | 'MEMBERSHIP_PAUSED'
   | 'MEMBERSHIP_PENDING'
+  | 'OUTLET_NOT_AUTHORIZED'
+  | 'OUTLET_NOT_FOUND'
+  | 'OUTLET_NOT_INCLUDED'
+  | 'OUTLET_NOT_IN_SCOPE'
+  | 'NO_GYM_ACCESS_ENTITLEMENT'
+  | 'MISSING_ENTITLEMENT'
+  | 'CREDENTIAL_NOT_FOUND'
+  | 'CREDENTIAL_REVOKED'
+  | 'CREDENTIAL_EXPIRED'
+  | 'CREDENTIAL_SUSPENDED'
+  | 'ACCESS_POLICY_DENIED'
+  | 'OUTSIDE_ALLOWED_HOURS'
+  | 'ACCESS_POINT_DISABLED'
+  | 'DEVICE_OFFLINE'
+  | 'DEVICE_DISABLED'
   | 'ORGANISATION_MISMATCH'
-  | 'MEMBER_NOT_FOUND'
-  | 'OUTLET_NOT_FOUND';
+  | 'INVALID_REQUEST'
+  | 'ACTIVE_MEMBERSHIP';
+
+export type AccessReasonCode = AccessDecisionReason;
 
 export interface AccessDecisionResult {
   allowed: boolean;
-  reason: AccessReasonCode;
+  reason: AccessDecisionReason;
+  memberProfileId?: string;
+  memberId?: string;
+  outletId?: string;
   membershipId?: string;
+  credentialId?: string;
+  accessPointId?: string;
+  deviceId?: string;
   accessScope?: MembershipAccessScope;
+  timestamp?: string;
   details?: string;
+  allowedByOverride?: boolean;
 }
 
 
@@ -687,3 +711,239 @@ export interface AuditLog extends TenantScopedEntity {
   userAgent?: string;
   timestamp: string;
 }
+
+// ==========================================
+// DAY 7: PHYSICAL ACCESS, CHECK-IN & DOOR ACCESS
+// ==========================================
+
+export type CredentialType =
+  | 'QR_CODE'
+  | 'RFID'
+  | 'NFC'
+  | 'MOBILE'
+  | 'PIN'
+  | 'BIOMETRIC_REFERENCE'
+  | 'EXTERNAL';
+
+export type CredentialStatus =
+  | 'ACTIVE'
+  | 'INACTIVE'
+  | 'SUSPENDED'
+  | 'REVOKED'
+  | 'EXPIRED';
+
+export type AccessPointType =
+  | 'MAIN_ENTRANCE'
+  | 'TURNSTILE'
+  | 'DOOR'
+  | 'GATE'
+  | 'RESTRICTED_ZONE';
+
+export type AccessPointStatus = 'ACTIVE' | 'MAINTENANCE' | 'DISABLED';
+
+export type DeviceType =
+  | 'DOOR'
+  | 'TURNSTILE'
+  | 'GATE'
+  | 'READER'
+  | 'SCANNER'
+  | 'LOCK'
+  | 'OTHER';
+
+export type DeviceStatus =
+  | 'ONLINE'
+  | 'OFFLINE'
+  | 'MAINTENANCE'
+  | 'DISABLED'
+  | 'UNKNOWN';
+
+export type DeviceDirection = 'ENTRY' | 'EXIT' | 'BOTH';
+
+export type CheckInMethod =
+  | 'QR'
+  | 'RFID'
+  | 'NFC'
+  | 'MOBILE'
+  | 'MANUAL'
+  | 'DEVICE'
+  | 'OTHER';
+
+export type CheckInStatus = 'SUCCESS' | 'DENIED' | 'CANCELLED' | 'ERROR';
+
+export type AccessEventType =
+  | 'ACCESS_REQUESTED'
+  | 'ACCESS_GRANTED'
+  | 'ACCESS_DENIED'
+  | 'DOOR_UNLOCKED'
+  | 'DOOR_LOCKED'
+  | 'CHECK_IN'
+  | 'CHECK_OUT'
+  | 'CREDENTIAL_USED'
+  | 'DEVICE_ERROR';
+
+export type AccessOverrideReason =
+  | 'MANAGER_APPROVAL'
+  | 'TECHNICAL_FAILURE'
+  | 'SPECIAL_EVENT'
+  | 'TEMPORARY_ACCESS'
+  | 'OTHER';
+
+export type AccessOverrideStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+
+export interface AccessCredential extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  type: CredentialType;
+  status: CredentialStatus;
+  credentialReference: string;
+  displayIdentifier?: string;
+  issuedAt: string;
+  activatedAt?: string;
+  revokedAt?: string;
+  expiresAt?: string;
+  lastUsedAt?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AccessPoint extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  name: string;
+  type: AccessPointType;
+  location?: string;
+  status: AccessPointStatus;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AccessDevice extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  accessPointId?: string;
+  name: string;
+  type: DeviceType;
+  status: DeviceStatus;
+  provider: string;
+  providerDeviceId?: string;
+  direction: DeviceDirection;
+  location?: string;
+  lastHeartbeatAt?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AccessPolicy extends BaseEntity {
+  organisationId: string;
+  outletId?: string;
+  name: string;
+  enabled: boolean;
+  allowedStartTime: string;
+  allowedEndTime: string;
+  allowedDays: number[];
+  membershipRequirements?: Record<string, unknown>;
+  guestAllowed: boolean;
+  staffOverrideAllowed: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AccessOverride extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  memberProfileId: string;
+  createdById: string;
+  reason: AccessOverrideReason;
+  startsAt: string;
+  expiresAt: string;
+  status: AccessOverrideStatus;
+  notes?: string;
+}
+
+export interface CheckIn extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  memberProfileId: string;
+  memberMembershipId?: string;
+  credentialId?: string;
+  accessPointId?: string;
+  deviceId?: string;
+  method: CheckInMethod;
+  status: CheckInStatus;
+  checkedInAt: string;
+  checkedOutAt?: string;
+  source: string;
+  deviceEventId?: string;
+  denialReason?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AccessEvent extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  memberProfileId?: string;
+  credentialId?: string;
+  deviceId?: string;
+  accessPointId?: string;
+  eventType: AccessEventType;
+  decision?: 'ALLOWED' | 'DENIED';
+  reason?: AccessDecisionReason;
+  occurredAt: string;
+  providerEventId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GuestAccessPass extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  passCode: string;
+  guestName?: string;
+  guestEmail?: string;
+  validFrom: string;
+  validUntil: string;
+  status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
+  createdById: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface MemberAccessStatusResponse {
+  memberProfileId: string;
+  canAccessCurrentOutlet: boolean;
+  currentOutlet?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  activeMembership?: {
+    id: string;
+    planName: string;
+    status: string;
+    accessScope: string;
+    startDate: string;
+    endDate: string;
+  };
+  authorizedOutlets: Array<{
+    id: string;
+    name: string;
+    code: string;
+  }>;
+  activeVisit?: {
+    id: string;
+    outletId: string;
+    outletName?: string;
+    checkedInAt: string;
+    durationMinutes: number;
+  };
+  primaryCredential?: {
+    id: string;
+    type: CredentialType;
+    status: CredentialStatus;
+    displayIdentifier?: string;
+  };
+  denialReason?: AccessDecisionReason;
+  userFacingMessage: string;
+}
+
+export interface DynamicQRCredentialResponse {
+  token: string;
+  displayIdentifier: string;
+  expiresAt: string;
+  refreshIntervalSeconds: number;
+}
+

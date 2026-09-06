@@ -19,6 +19,14 @@ import {
   AddPaymentMethodScreen,
 } from '../features/payments';
 
+import {
+  AccessHomeScreen,
+  QRCodeScreen,
+  CheckInScreen,
+  VisitHistoryScreen,
+  AccessStatusScreen,
+} from '../features/access';
+
 const Stack = createNativeStackNavigator<MemberStackParamList>();
 
 export const MemberNavigator: React.FC = () => {
@@ -138,6 +146,31 @@ export const MemberNavigator: React.FC = () => {
         name="AddPaymentMethod"
         component={AddPaymentMethodScreen}
         options={{ title: 'Add Card' }}
+      />
+      <Stack.Screen
+        name="AccessHome"
+        component={AccessHomeScreen}
+        options={{ title: 'Physical Access' }}
+      />
+      <Stack.Screen
+        name="QRCode"
+        component={QRCodeScreen}
+        options={{ title: 'Digital Pass' }}
+      />
+      <Stack.Screen
+        name="CheckIn"
+        component={CheckInScreen}
+        options={{ title: 'Check In' }}
+      />
+      <Stack.Screen
+        name="VisitHistory"
+        component={VisitHistoryScreen}
+        options={{ title: 'Visit History' }}
+      />
+      <Stack.Screen
+        name="AccessStatus"
+        component={AccessStatusScreen}
+        options={{ title: 'Access Diagnostics' }}
       />
     </Stack.Navigator>
   );

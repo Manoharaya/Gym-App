@@ -34,6 +34,14 @@ model Organisation {
   paymentRefunds       PaymentRefund[]
   discounts            Discount[]
   idempotencyRecords   IdempotencyRecord[]
+  accessCredentials    AccessCredential[]
+  accessPoints         AccessPoint[]
+  accessDevices        AccessDevice[]
+  accessPolicies       AccessPolicy[]
+  accessOverrides      AccessOverride[]
+  checkIns             CheckIn[]
+  accessEvents         AccessEvent[]
+  guestAccessPasses    GuestAccessPass[]
 
 
   @@index([slug])
@@ -72,6 +80,13 @@ model Outlet {
   planOutlets          MembershipPlanOutlet[]
   originMemberships    MemberMembership[]     @relation("OriginOutlet")
   membershipAccesses   MemberMembershipOutlet[]
+  accessPoints         AccessPoint[]
+  accessDevices        AccessDevice[]
+  accessPolicies       AccessPolicy[]
+  accessOverrides      AccessOverride[]
+  checkIns             CheckIn[]
+  accessEvents         AccessEvent[]
+  guestAccessPasses    GuestAccessPass[]
 
 
   @@unique([organisationId, slug])
@@ -103,8 +118,10 @@ model User {
   userOutlets      UserOutlet[]
   sessions         Session[]
   auditLogs        AuditLog[]
-  invitationsSent  Invitation[]   @relation("InvitationsSent")
-  memberProfile    MemberProfile?
+  invitationsSent        Invitation[]     @relation("InvitationsSent")
+  memberProfile          MemberProfile?
+  accessOverridesCreated AccessOverride[] @relation("AccessOverridesCreated")
+  guestPassesCreated     GuestAccessPass[] @relation("GuestPassesCreated")
 
   @@index([email])
   @@index([phone])
@@ -316,6 +333,10 @@ model MemberProfile {
   paymentMethods               PaymentMethod[]
   invoices                     Invoice[]
   paymentTransactions          PaymentTransaction[]
+  accessCredentials            AccessCredential[]
+  accessOverrides              AccessOverride[]
+  checkIns                     CheckIn[]
+  accessEvents                 AccessEvent[]
 
 
   @@index([userId])
@@ -715,6 +736,7 @@ model MemberMembership {
   invoices                Invoice[]
   paymentTransactions     PaymentTransaction[]
   invoiceLineItems        InvoiceLineItem[]
+  checkIns                CheckIn[]
 
   @@index([organisationId])
   @@index([memberProfileId])
@@ -1008,5 +1030,238 @@ model IdempotencyRecord {
   @@index([organisationId])
   @@index([expiresAt])
   @@map("idempotency_records")
+}
+
+model AccessCredential {
+  id                   String        @id @default(cuid())
+  organisationId       String
+  memberProfileId      String
+  type                 String        @default("QR_CODE") // QR_CODE, RFID, NFC, MOBILE, PIN, BIOMETRIC_REFERENCE, EXTERNAL
+  status               String        @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, REVOKED, EXPIRED
+  credentialReference  String        // Opaque token or hashed identifier (never raw biometric/PIN)
+  displayIdentifier    String?       // Masked string e.g. "•••4821" or "QR-Active"
+  issuedAt             DateTime      @default(now())
+  activatedAt          DateTime?
+  revokedAt            DateTime?
+  expiresAt            DateTime?
+  lastUsedAt           DateTime?
+  metadata             Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  organisation         Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile        MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  checkIns             CheckIn[]
+  accessEvents         AccessEvent[]
+
+  @@unique([organisationId, credentialReference])
+  @@index([organisationId])
+  @@index([memberProfileId])
+  @@index([type])
+  @@index([status])
+  @@map("access_credentials")
+}
+
+model AccessPoint {
+  id             String        @id @default(cuid())
+  organisationId String
+  outletId       String
+  name           String
+  type           String        @default("MAIN_ENTRANCE") // MAIN_ENTRANCE, TURNSTILE, DOOR, GATE, RESTRICTED_ZONE
+  location       String?
+  status         String        @default("ACTIVE") // ACTIVE, MAINTENANCE, DISABLED
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet         Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  devices        AccessDevice[]
+  checkIns       CheckIn[]
+  accessEvents   AccessEvent[]
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([status])
+  @@map("access_points")
+}
+
+model AccessDevice {
+  id               String        @id @default(cuid())
+  organisationId   String
+  outletId         String
+  accessPointId    String?
+  name             String
+  type             String        @default("TURNSTILE") // DOOR, TURNSTILE, GATE, READER, SCANNER, LOCK, OTHER
+  status           String        @default("ONLINE") // ONLINE, OFFLINE, MAINTENANCE, DISABLED, UNKNOWN
+  provider         String        @default("MOCK") // MOCK, GENERIC_IOT, RFID, TURNSTILE, SMART_LOCK
+  providerDeviceId String?
+  direction        String        @default("ENTRY") // ENTRY, EXIT, BOTH
+  location         String?
+  deviceSecretHash String?
+  lastHeartbeatAt  DateTime?
+  metadata         Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organisation     Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet           Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  accessPoint      AccessPoint?  @relation(fields: [accessPointId], references: [id], onDelete: SetNull)
+  checkIns         CheckIn[]
+  accessEvents     AccessEvent[]
+
+  @@unique([provider, providerDeviceId])
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([accessPointId])
+  @@index([status])
+  @@index([provider])
+  @@map("access_devices")
+}
+
+model AccessPolicy {
+  id                   String        @id @default(cuid())
+  organisationId       String
+  outletId             String?
+  name                 String
+  enabled              Boolean       @default(true)
+  allowedStartTime     String        @default("06:00") // HH:mm format
+  allowedEndTime       String        @default("22:00") // HH:mm format
+  allowedDays          Int[]         @default([1, 2, 3, 4, 5, 6, 7]) // 1=Mon, 7=Sun
+  membershipRequirements Json?
+  guestAllowed         Boolean       @default(false)
+  staffOverrideAllowed Boolean       @default(true)
+  metadata             Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  organisation         Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet               Outlet?       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([enabled])
+  @@map("access_policies")
+}
+
+model AccessOverride {
+  id              String        @id @default(cuid())
+  organisationId  String
+  outletId        String
+  memberProfileId String
+  createdById     String
+  reason          String        @default("MANAGER_APPROVAL") // MANAGER_APPROVAL, TECHNICAL_FAILURE, SPECIAL_EVENT, TEMPORARY_ACCESS, OTHER
+  startsAt        DateTime      @default(now())
+  expiresAt       DateTime
+  status          String        @default("ACTIVE") // ACTIVE, EXPIRED, REVOKED
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  createdBy       User          @relation("AccessOverridesCreated", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([memberProfileId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("access_overrides")
+}
+
+model CheckIn {
+  id                 String            @id @default(cuid())
+  organisationId     String
+  outletId           String
+  memberProfileId    String
+  memberMembershipId String?
+  credentialId       String?
+  accessPointId      String?
+  deviceId           String?
+  method             String            @default("QR") // QR, RFID, NFC, MOBILE, MANUAL, DEVICE, OTHER
+  status             String            @default("SUCCESS") // SUCCESS, DENIED, CANCELLED, ERROR
+  checkedInAt        DateTime          @default(now())
+  checkedOutAt       DateTime?
+  source             String            @default("TURNSTILE") // TURNSTILE, RECEPTION, MOBILE, API
+  deviceEventId      String?
+  denialReason       String?
+  metadata           Json?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  organisation       Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet            @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile     @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  memberMembership   MemberMembership? @relation(fields: [memberMembershipId], references: [id], onDelete: SetNull)
+  credential         AccessCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  accessPoint        AccessPoint?      @relation(fields: [accessPointId], references: [id], onDelete: SetNull)
+  device             AccessDevice?     @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@unique([deviceId, deviceEventId])
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([memberProfileId])
+  @@index([status])
+  @@index([checkedInAt])
+  @@index([checkedOutAt])
+  @@map("check_ins")
+}
+
+model AccessEvent {
+  id              String            @id @default(cuid())
+  organisationId  String
+  outletId        String
+  memberProfileId String?
+  credentialId    String?
+  deviceId        String?
+  accessPointId   String?
+  eventType       String            // ACCESS_REQUESTED, ACCESS_GRANTED, ACCESS_DENIED, DOOR_UNLOCKED, DOOR_LOCKED, CHECK_IN, CHECK_OUT, CREDENTIAL_USED, DEVICE_ERROR
+  decision        String?           // ALLOWED, DENIED
+  reason          String?           // AccessDecisionReason
+  occurredAt      DateTime          @default(now())
+  providerEventId String?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+
+  organisation    Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet            @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile?    @relation(fields: [memberProfileId], references: [id], onDelete: SetNull)
+  credential      AccessCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  device          AccessDevice?     @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  accessPoint     AccessPoint?      @relation(fields: [accessPointId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([memberProfileId])
+  @@index([eventType])
+  @@index([occurredAt])
+  @@map("access_events")
+}
+
+model GuestAccessPass {
+  id             String        @id @default(cuid())
+  organisationId String
+  outletId       String
+  passCode       String        @unique
+  guestName      String?
+  guestEmail     String?
+  validFrom      DateTime
+  validUntil     DateTime
+  status         String        @default("ACTIVE") // ACTIVE, USED, EXPIRED, REVOKED
+  createdById    String
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet         Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  createdBy      User          @relation("GuestPassesCreated", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([status])
+  @@map("guest_access_passes")
 }
 

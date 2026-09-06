@@ -31,6 +31,11 @@ export type MemberStackParamList = {
   PaymentDetails: { transactionId: string };
   PaymentMethods: undefined;
   AddPaymentMethod: undefined;
+  AccessHome: undefined;
+  QRCode: undefined;
+  CheckIn: undefined;
+  VisitHistory: undefined;
+  AccessStatus: undefined;
 };
 
 export type TrainerStackParamList = {
