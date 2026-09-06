@@ -3,6 +3,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { MemberStackParamList } from './types';
 import { NavigationPlaceholderScreen } from './PlaceholderScreen';
 import { themeColors } from '../theme';
+import {
+  MembershipHomeScreen,
+  MembershipDetailsScreen,
+  MembershipHistoryScreen,
+  MembershipPlansScreen,
+} from '../features/membership';
 
 const Stack = createNativeStackNavigator<MemberStackParamList>();
 
@@ -69,6 +75,26 @@ export const MemberNavigator: React.FC = () => {
           />
         )}
       </Stack.Screen>
+      <Stack.Screen
+        name="MembershipHome"
+        component={MembershipHomeScreen}
+        options={{ title: 'Membership & Access' }}
+      />
+      <Stack.Screen
+        name="MembershipDetails"
+        component={MembershipDetailsScreen}
+        options={{ title: 'Contract Details' }}
+      />
+      <Stack.Screen
+        name="MembershipHistory"
+        component={MembershipHistoryScreen}
+        options={{ title: 'Membership History' }}
+      />
+      <Stack.Screen
+        name="MembershipPlans"
+        component={MembershipPlansScreen}
+        options={{ title: 'Available Plans' }}
+      />
     </Stack.Navigator>
   );
 };

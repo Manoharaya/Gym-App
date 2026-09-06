@@ -107,7 +107,36 @@ async function main() {
     { resource: 'signatures', action: 'CREATE', scope: 'SELF', description: 'Create electronic signature' },
     { resource: 'signatures', action: 'READ', scope: 'SELF', description: 'View own signatures' },
     { resource: 'signatures', action: 'READ', scope: 'ORGANISATION', description: 'View member signatures' },
+
+    // Day 5: Membership Plans, Memberships & Entitlements
+    { resource: 'membership_plans', action: 'CREATE', scope: 'ORGANISATION', description: 'Create membership plans' },
+    { resource: 'membership_plans', action: 'READ', scope: 'GLOBAL', description: 'Read membership plans' },
+    { resource: 'membership_plans', action: 'READ', scope: 'ORGANISATION', description: 'Read organisation membership plans' },
+    { resource: 'membership_plans', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update membership plans' },
+    { resource: 'membership_plans', action: 'ARCHIVE', scope: 'ORGANISATION', description: 'Archive membership plans' },
+
+    { resource: 'memberships', action: 'CREATE', scope: 'ORGANISATION', description: 'Assign membership to member' },
+    { resource: 'memberships', action: 'CREATE', scope: 'OUTLET', description: 'Assign membership within outlet' },
+    { resource: 'memberships', action: 'READ', scope: 'SELF', description: 'View own memberships' },
+    { resource: 'memberships', action: 'READ', scope: 'ORGANISATION', description: 'View organisation memberships' },
+    { resource: 'memberships', action: 'READ', scope: 'OUTLET', description: 'View outlet memberships' },
+    { resource: 'memberships', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update memberships' },
+    { resource: 'memberships', action: 'ACTIVATE', scope: 'ORGANISATION', description: 'Activate memberships' },
+    { resource: 'memberships', action: 'PAUSE', scope: 'ORGANISATION', description: 'Pause memberships' },
+    { resource: 'memberships', action: 'PAUSE', scope: 'OUTLET', description: 'Pause outlet memberships' },
+    { resource: 'memberships', action: 'RESUME', scope: 'ORGANISATION', description: 'Resume memberships' },
+    { resource: 'memberships', action: 'RESUME', scope: 'OUTLET', description: 'Resume outlet memberships' },
+    { resource: 'memberships', action: 'SUSPEND', scope: 'ORGANISATION', description: 'Suspend memberships' },
+    { resource: 'memberships', action: 'CANCEL', scope: 'SELF', description: 'Cancel own membership' },
+    { resource: 'memberships', action: 'CANCEL', scope: 'ORGANISATION', description: 'Cancel memberships' },
+    { resource: 'memberships', action: 'RENEW', scope: 'SELF', description: 'Renew own membership' },
+    { resource: 'memberships', action: 'RENEW', scope: 'ORGANISATION', description: 'Renew memberships' },
+
+    { resource: 'entitlements', action: 'READ', scope: 'SELF', description: 'View own membership entitlements' },
+    { resource: 'entitlements', action: 'READ', scope: 'ORGANISATION', description: 'View organisation entitlements' },
+    { resource: 'entitlements', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage plan entitlements' },
   ];
+
 
   const permMap = new Map<string, string>();
   for (const p of permissionsData) {
@@ -175,7 +204,24 @@ async function main() {
     'consents:READ:ORGANISATION',
     'documents:READ:ORGANISATION',
     'signatures:READ:ORGANISATION',
+    // Day 5
+    'membership_plans:CREATE:ORGANISATION',
+    'membership_plans:READ:ORGANISATION',
+    'membership_plans:UPDATE:ORGANISATION',
+    'membership_plans:ARCHIVE:ORGANISATION',
+    'memberships:CREATE:ORGANISATION',
+    'memberships:READ:ORGANISATION',
+    'memberships:UPDATE:ORGANISATION',
+    'memberships:ACTIVATE:ORGANISATION',
+    'memberships:PAUSE:ORGANISATION',
+    'memberships:RESUME:ORGANISATION',
+    'memberships:SUSPEND:ORGANISATION',
+    'memberships:CANCEL:ORGANISATION',
+    'memberships:RENEW:ORGANISATION',
+    'entitlements:READ:ORGANISATION',
+    'entitlements:MANAGE:ORGANISATION',
   ];
+
   for (const k of ownerPerms) {
     await linkRolePerm('ORGANISATION_OWNER', k);
   }
@@ -199,7 +245,15 @@ async function main() {
     'health:READ:ORGANISATION',
     'injuries:READ:ORGANISATION',
     'documents:READ:ORGANISATION',
+    // Day 5
+    'membership_plans:READ:ORGANISATION',
+    'memberships:CREATE:OUTLET',
+    'memberships:READ:OUTLET',
+    'memberships:PAUSE:OUTLET',
+    'memberships:RESUME:OUTLET',
+    'entitlements:READ:ORGANISATION',
   ];
+
   for (const k of managerPerms) {
     await linkRolePerm('OUTLET_MANAGER', k);
   }
@@ -214,7 +268,15 @@ async function main() {
     'members:READ:OUTLET', // Profile and check-in only
     'members:READ:SELF',
     'members:UPDATE:SELF',
+    // Day 5
+    'membership_plans:READ:ORGANISATION',
+    'memberships:READ:OUTLET',
+    'memberships:CREATE:OUTLET',
+    'memberships:PAUSE:OUTLET',
+    'memberships:RESUME:OUTLET',
+    'entitlements:READ:ORGANISATION',
   ];
+
   for (const k of receptionPerms) {
     await linkRolePerm('RECEPTION', k);
   }
@@ -231,7 +293,12 @@ async function main() {
     'health:READ:ASSIGNED_CLIENTS',
     'injuries:READ:ASSIGNED_CLIENTS',
     'documents:READ:ASSIGNED_CLIENTS',
+    // Day 5
+    'membership_plans:READ:ORGANISATION',
+    'memberships:READ:OUTLET',
+    'entitlements:READ:ORGANISATION',
   ];
+
   for (const k of trainerPerms) {
     await linkRolePerm('TRAINER', k);
   }
@@ -258,7 +325,14 @@ async function main() {
     'documents:READ:SELF',
     'signatures:CREATE:SELF',
     'signatures:READ:SELF',
+    // Day 5
+    'membership_plans:READ:ORGANISATION',
+    'memberships:READ:SELF',
+    'memberships:CANCEL:SELF',
+    'memberships:RENEW:SELF',
+    'entitlements:READ:SELF',
   ];
+
   for (const k of memberPerms) {
     await linkRolePerm('MEMBER', k);
   }
@@ -497,9 +571,13 @@ async function main() {
     { email: 'in-progress@secondwind.com.au', role: 'MEMBER', firstName: 'Bella', lastName: 'Swan', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'IN_PROGRESS' },
     // Member C: Second Wind — Onboarding COMPLETED
     { email: 'completed@secondwind.com.au', role: 'MEMBER', firstName: 'Chris', lastName: 'Evans', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'COMPLETED' },
+    { email: 'active.member@secondwind.com.au', role: 'MEMBER', firstName: 'Active', lastName: 'Member', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'COMPLETED' },
+    { email: 'parq.member@secondwind.com.au', role: 'MEMBER', firstName: 'Parq', lastName: 'Member', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'COMPLETED' },
+    { email: 'flagged.member@secondwind.com.au', role: 'MEMBER', firstName: 'Flagged', lastName: 'Member', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE', onboardingStatus: 'COMPLETED' },
 
     // Apex Member: Apex Strength — For cross-tenant tests
     { email: 'member@apexstrength.com.au', role: 'MEMBER', firstName: 'Chloe', lastName: 'Price', orgId: apexStrength.id, outletId: outletSydney.id, status: 'ACTIVE', onboardingStatus: 'COMPLETED' },
+    { email: 'owner@apexstrength.com.au', role: 'ORGANISATION_OWNER', firstName: 'Apex', lastName: 'Owner', orgId: apexStrength.id, outletId: null, status: 'ACTIVE' },
 
     // Security Test Accounts
     { email: 'disabled@secondwind.com.au', role: 'MEMBER', firstName: 'Dave', lastName: 'Disabled', orgId: secondWind.id, outletId: outletPerth.id, status: 'DISABLED', onboardingStatus: 'NOT_STARTED' },
@@ -648,7 +726,309 @@ async function main() {
     }
   }
 
-  console.log('✅ FitCore Database Seeding Completed (Day 4).');
+  // ==========================================
+  // DAY 5: SEED MEMBERSHIP PLANS & TEST MEMBERSHIPS
+  // ==========================================
+  console.log('Seeding Day 5 Membership Plans & Subscriptions...');
+
+  // 1. Seed Membership Plans for Second Wind
+  const basicPlan = await prisma.membershipPlan.upsert({
+    where: { organisationId_code: { organisationId: secondWind.id, code: 'SW-BASIC-M' } },
+    update: {},
+    create: {
+      organisationId: secondWind.id,
+      name: 'Second Wind Basic',
+      description: 'Single-facility access to Second Wind Perth CBD with all standard equipment.',
+      code: 'SW-BASIC-M',
+      status: 'ACTIVE',
+      membershipType: 'STANDARD',
+      billingType: 'RECURRING',
+      durationValue: 1,
+      durationUnit: 'MONTH',
+      price: 69.99,
+      currency: 'AUD',
+      isPublic: true,
+      requiresApproval: false,
+    },
+  });
+
+  const premiumPlan = await prisma.membershipPlan.upsert({
+    where: { organisationId_code: { organisationId: secondWind.id, code: 'SW-PREM-M' } },
+    update: {},
+    create: {
+      organisationId: secondWind.id,
+      name: 'Second Wind Premium All-Access',
+      description: 'Unlimited access to all Second Wind athletic clubs, group training, recovery suites, and AI coach.',
+      code: 'SW-PREM-M',
+      status: 'ACTIVE',
+      membershipType: 'STANDARD',
+      billingType: 'RECURRING',
+      durationValue: 1,
+      durationUnit: 'MONTH',
+      price: 119.99,
+      currency: 'AUD',
+      isPublic: true,
+      requiresApproval: false,
+    },
+  });
+
+  const trialPlan = await prisma.membershipPlan.upsert({
+    where: { organisationId_code: { organisationId: secondWind.id, code: 'SW-TRIAL-7D' } },
+    update: {},
+    create: {
+      organisationId: secondWind.id,
+      name: '7-Day Experience Pass',
+      description: 'Complimentary 7-day trial access to experience Second Wind facilities.',
+      code: 'SW-TRIAL-7D',
+      status: 'ACTIVE',
+      membershipType: 'TRIAL',
+      billingType: 'ONE_TIME',
+      durationValue: 7,
+      durationUnit: 'DAY',
+      price: 0.0,
+      currency: 'AUD',
+      trialDuration: 7,
+      isPublic: true,
+      requiresApproval: false,
+    },
+  });
+
+  const eliteAnnualPlan = await prisma.membershipPlan.upsert({
+    where: { organisationId_code: { organisationId: secondWind.id, code: 'SW-ELITE-Y' } },
+    update: {},
+    create: {
+      organisationId: secondWind.id,
+      name: 'Second Wind Annual Elite',
+      description: 'Annual VIP membership including unlimited multi-outlet access, classes, sauna, and priority PT.',
+      code: 'SW-ELITE-Y',
+      status: 'ACTIVE',
+      membershipType: 'STANDARD',
+      billingType: 'ONE_TIME',
+      durationValue: 1,
+      durationUnit: 'YEAR',
+      price: 1199.0,
+      currency: 'AUD',
+      isPublic: true,
+      requiresApproval: false,
+    },
+  });
+
+  // 2. Link Plans to Outlets
+  const perthCbd = await prisma.outlet.findFirstOrThrow({ where: { organisationId: secondWind.id, slug: 'perth-cbd' } });
+  const fremantle = await prisma.outlet.findFirstOrThrow({ where: { organisationId: secondWind.id, slug: 'fremantle' } });
+
+  // Basic: Perth CBD only
+  await prisma.membershipPlanOutlet.upsert({
+    where: { membershipPlanId_outletId: { membershipPlanId: basicPlan.id, outletId: perthCbd.id } },
+
+    update: {},
+    create: { membershipPlanId: basicPlan.id, outletId: perthCbd.id },
+  });
+
+  // Premium & Elite: Perth CBD + Fremantle
+  for (const plan of [premiumPlan, eliteAnnualPlan]) {
+    await prisma.membershipPlanOutlet.upsert({
+      where: { membershipPlanId_outletId: { membershipPlanId: plan.id, outletId: perthCbd.id } },
+      update: {},
+      create: { membershipPlanId: plan.id, outletId: perthCbd.id },
+    });
+    await prisma.membershipPlanOutlet.upsert({
+      where: { membershipPlanId_outletId: { membershipPlanId: plan.id, outletId: fremantle.id } },
+      update: {},
+      create: { membershipPlanId: plan.id, outletId: fremantle.id },
+    });
+  }
+
+  // Trial: Perth CBD
+  await prisma.membershipPlanOutlet.upsert({
+    where: { membershipPlanId_outletId: { membershipPlanId: trialPlan.id, outletId: perthCbd.id } },
+    update: {},
+    create: { membershipPlanId: trialPlan.id, outletId: perthCbd.id },
+  });
+
+  // 3. Seed Entitlements
+  const entitlementsData = [
+    { planId: basicPlan.id, type: 'GYM_ACCESS', name: 'Standard Gym Access', value: null, metadata: { access: 'standard' } },
+    { planId: premiumPlan.id, type: 'GYM_ACCESS', name: 'Multi-Outlet Gym Access', value: null, metadata: { allOutlets: true } },
+    { planId: premiumPlan.id, type: 'GROUP_CLASSES', name: 'High-Performance Group Classes', value: 12, metadata: { period: 'MONTH' } },
+    { planId: premiumPlan.id, type: 'SAUNA', name: 'Infrared & Traditional Sauna', value: null, metadata: { unlimited: true } },
+    { planId: premiumPlan.id, type: 'AI_COACH', name: 'FitCore Adaptive AI Coach', value: null, metadata: { fullAccess: true } },
+    { planId: trialPlan.id, type: 'GYM_ACCESS', name: 'Trial Gym Access', value: null, metadata: { trial: true } },
+    { planId: eliteAnnualPlan.id, type: 'GYM_ACCESS', name: 'VIP All-Facility Access', value: null, metadata: { vip: true } },
+    { planId: eliteAnnualPlan.id, type: 'GROUP_CLASSES', name: 'Unlimited Group Classes', value: null, metadata: { unlimited: true } },
+    { planId: eliteAnnualPlan.id, type: 'SAUNA', name: 'Recovery Suite Access', value: null, metadata: { unlimited: true } },
+    { planId: eliteAnnualPlan.id, type: 'AI_COACH', name: 'FitCore Adaptive AI Coach', value: null, metadata: { fullAccess: true } },
+  ];
+
+  for (const ent of entitlementsData) {
+    const existing = await prisma.membershipEntitlement.findFirst({
+      where: { membershipPlanId: ent.planId, type: ent.type },
+    });
+    if (!existing) {
+      await prisma.membershipEntitlement.create({
+        data: {
+          membershipPlanId: ent.planId,
+          type: ent.type,
+          name: ent.name,
+          value: ent.value,
+          metadata: ent.metadata,
+        },
+      });
+    }
+  }
+
+  // 4. Seed MemberMemberships for Test Accounts
+  const activeUser = await prisma.user.findUnique({ where: { email: 'active.member@secondwind.com.au' } });
+  const parqUser = await prisma.user.findUnique({ where: { email: 'parq.member@secondwind.com.au' } });
+  const flaggedUser = await prisma.user.findUnique({ where: { email: 'flagged.member@secondwind.com.au' } });
+
+  if (activeUser) {
+    const profile = await prisma.memberProfile.findUnique({ where: { userId: activeUser.id } });
+    if (profile) {
+      // Historical expired membership (preserve history)
+      const pastStart = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const pastEnd = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+      const pastM = await prisma.memberMembership.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: profile.id,
+          membershipPlanId: basicPlan.id,
+          status: 'EXPIRED',
+          accessScope: 'SINGLE_OUTLET',
+          originOutletId: perthCbd.id,
+          startDate: pastStart,
+          endDate: pastEnd,
+          activatedAt: pastStart,
+          autoRenew: false,
+          planNameAtPurchase: basicPlan.name,
+          priceAtPurchase: basicPlan.price,
+          currencyAtPurchase: basicPlan.currency,
+          billingTypeAtPurchase: basicPlan.billingType,
+          durationValueAtPurchase: basicPlan.durationValue,
+          durationUnitAtPurchase: basicPlan.durationUnit,
+        },
+      });
+
+      await prisma.memberMembershipHistory.create({
+        data: {
+          memberMembershipId: pastM.id,
+          fromStatus: 'ACTIVE',
+          toStatus: 'EXPIRED',
+          action: 'EXPIRE',
+          reason: 'Term completed without renewal',
+        },
+      });
+
+      // Current active membership (Premium All-Access)
+      const currentStart = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+      const currentEnd = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+      const currentM = await prisma.memberMembership.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: profile.id,
+          membershipPlanId: premiumPlan.id,
+          status: 'ACTIVE',
+          accessScope: 'ALL_ORGANISATION_OUTLETS',
+          originOutletId: perthCbd.id,
+          startDate: currentStart,
+          endDate: currentEnd,
+          activatedAt: currentStart,
+          autoRenew: true,
+          planNameAtPurchase: premiumPlan.name,
+          priceAtPurchase: premiumPlan.price,
+          currencyAtPurchase: premiumPlan.currency,
+          billingTypeAtPurchase: premiumPlan.billingType,
+          durationValueAtPurchase: premiumPlan.durationValue,
+          durationUnitAtPurchase: premiumPlan.durationUnit,
+        },
+      });
+
+      await prisma.memberMembershipHistory.create({
+        data: {
+          memberMembershipId: currentM.id,
+          fromStatus: 'PENDING',
+          toStatus: 'ACTIVE',
+          action: 'ACTIVATE',
+          reason: 'Initial activation upon completion of onboarding',
+        },
+      });
+    }
+  }
+
+  if (parqUser) {
+    const profile = await prisma.memberProfile.findUnique({ where: { userId: parqUser.id } });
+    if (profile) {
+      const trialStart = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+      const trialEnd = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+      const trialM = await prisma.memberMembership.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: profile.id,
+          membershipPlanId: trialPlan.id,
+          status: 'TRIAL',
+          accessScope: 'SINGLE_OUTLET',
+          originOutletId: perthCbd.id,
+          startDate: trialStart,
+          endDate: trialEnd,
+          activatedAt: trialStart,
+          trialEndsAt: trialEnd,
+          autoRenew: false,
+          planNameAtPurchase: trialPlan.name,
+          priceAtPurchase: trialPlan.price,
+          currencyAtPurchase: trialPlan.currency,
+          billingTypeAtPurchase: trialPlan.billingType,
+          durationValueAtPurchase: trialPlan.durationValue,
+          durationUnitAtPurchase: trialPlan.durationUnit,
+        },
+      });
+
+      await prisma.memberMembershipOutlet.create({
+        data: {
+          memberMembershipId: trialM.id,
+          outletId: perthCbd.id,
+        },
+      });
+
+      await prisma.memberMembershipHistory.create({
+        data: {
+          memberMembershipId: trialM.id,
+          fromStatus: 'PENDING',
+          toStatus: 'TRIAL',
+          action: 'ACTIVATE',
+          reason: '7-Day Experience Pass activated',
+        },
+      });
+    }
+  }
+
+  if (flaggedUser) {
+    const profile = await prisma.memberProfile.findUnique({ where: { userId: flaggedUser.id } });
+    if (profile) {
+      const now = new Date();
+      const in30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      await prisma.memberMembership.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: profile.id,
+          membershipPlanId: basicPlan.id,
+          status: 'PENDING',
+          accessScope: 'SINGLE_OUTLET',
+          originOutletId: perthCbd.id,
+          startDate: now,
+          endDate: in30,
+          autoRenew: false,
+          planNameAtPurchase: basicPlan.name,
+          priceAtPurchase: basicPlan.price,
+          currencyAtPurchase: basicPlan.currency,
+          billingTypeAtPurchase: basicPlan.billingType,
+          durationValueAtPurchase: basicPlan.durationValue,
+          durationUnitAtPurchase: basicPlan.durationUnit,
+        },
+      });
+    }
+  }
+
+  console.log('✅ FitCore Database Seeding Completed (Day 5).');
 }
 
 main()
@@ -659,3 +1039,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

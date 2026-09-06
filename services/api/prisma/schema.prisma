@@ -25,6 +25,9 @@ model Organisation {
   auditLogs      AuditLog[]
   invitations    Invitation[]
   memberProfiles MemberProfile[]
+  membershipPlans      MembershipPlan[]
+  memberMemberships    MemberMembership[]
+
 
   @@index([slug])
   @@index([status])
@@ -59,6 +62,10 @@ model Outlet {
   auditLogs       AuditLog[]
   invitations     Invitation[]
   memberOutlets   MemberOutlet[]
+  planOutlets          MembershipPlanOutlet[]
+  originMemberships    MemberMembership[]     @relation("OriginOutlet")
+  membershipAccesses   MemberMembershipOutlet[]
+
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -297,6 +304,8 @@ model MemberProfile {
   consentRecords               ConsentRecord[]
   documents                    MemberDocument[]
   signatures                   Signature[]
+  memberships                  MemberMembership[]
+
 
   @@index([userId])
   @@index([organisationId])
@@ -584,3 +593,154 @@ model MemberDocument {
   @@index([documentType])
   @@map("member_documents")
 }
+
+// ==========================================
+// DAY 5: MEMBERSHIP, PLANS & SUBSCRIPTIONS
+// ==========================================
+
+model MembershipPlan {
+  id                 String                  @id @default(cuid())
+  organisationId     String
+  name               String
+  description        String?
+  code               String
+  status             String                  @default("ACTIVE") // DRAFT, ACTIVE, PAUSED, ARCHIVED
+  membershipType     String                  @default("STANDARD") // STANDARD, TRIAL, INTRODUCTORY, CORPORATE, STUDENT, FAMILY, CUSTOM
+  billingType        String                  @default("RECURRING") // ONE_TIME, RECURRING
+  durationValue      Int                     @default(1)
+  durationUnit       String                  @default("MONTH") // DAY, WEEK, MONTH, YEAR
+  price              Float                   @default(0)
+  currency           String                  @default("AUD")
+  trialDuration      Int?                    // in days
+  isPublic           Boolean                 @default(true)
+  requiresApproval   Boolean                 @default(false)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  archivedAt         DateTime?
+
+  // Relations
+  organisation       Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  planOutlets        MembershipPlanOutlet[]
+  entitlements       MembershipEntitlement[]
+  memberMemberships  MemberMembership[]
+
+  @@unique([organisationId, code])
+  @@index([organisationId])
+  @@index([status])
+  @@index([membershipType])
+  @@map("membership_plans")
+}
+
+model MembershipPlanOutlet {
+  id               String         @id @default(cuid())
+  membershipPlanId String
+  outletId         String
+  createdAt        DateTime       @default(now())
+
+  membershipPlan   MembershipPlan @relation(fields: [membershipPlanId], references: [id], onDelete: Cascade)
+  outlet           Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipPlanId, outletId])
+  @@index([membershipPlanId])
+  @@index([outletId])
+  @@map("membership_plan_outlets")
+}
+
+model MembershipEntitlement {
+  id               String         @id @default(cuid())
+  membershipPlanId String
+  type             String         // GYM_ACCESS, GROUP_CLASSES, PERSONAL_TRAINING, SAUNA, POOL, LOCKER, PREMIUM_AREA, DIGITAL_TRAINING, AI_COACH, NUTRITION
+  name             String
+  description      String?
+  value            Float?         // Quantity limit (e.g. 8 for classes, null for unlimited)
+  metadata         Json?          // e.g. { "period": "MONTH", "unlimited": true }
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  membershipPlan   MembershipPlan @relation(fields: [membershipPlanId], references: [id], onDelete: Cascade)
+
+  @@index([membershipPlanId])
+  @@index([type])
+  @@map("membership_entitlements")
+}
+
+model MemberMembership {
+  id                      String                    @id @default(cuid())
+  organisationId          String
+  memberProfileId         String
+  membershipPlanId        String
+  status                  String                    @default("PENDING") // PENDING, ACTIVE, TRIAL, PAUSED, SUSPENDED, EXPIRED, CANCELLED
+  accessScope             String                    @default("SINGLE_OUTLET") // SINGLE_OUTLET, MULTI_OUTLET, ALL_ORGANISATION_OUTLETS
+  originOutletId          String?
+  startDate               DateTime
+  endDate                 DateTime
+  activatedAt             DateTime?
+  pausedAt                DateTime?
+  suspendedAt             DateTime?
+  cancelledAt             DateTime?
+  cancelledReason         String?
+  autoRenew               Boolean                   @default(false)
+  trialEndsAt             DateTime?
+
+  // Commercial Snapshot (historical integrity preserved when plan changes)
+  planNameAtPurchase      String
+  priceAtPurchase         Float
+  currencyAtPurchase      String
+  billingTypeAtPurchase   String
+  durationValueAtPurchase Int
+  durationUnitAtPurchase  String
+
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  // Relations
+  organisation            Organisation              @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile           MemberProfile             @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  membershipPlan          MembershipPlan            @relation(fields: [membershipPlanId], references: [id], onDelete: Restrict)
+  originOutlet            Outlet?                   @relation("OriginOutlet", fields: [originOutletId], references: [id], onDelete: SetNull)
+  accessOutlets           MemberMembershipOutlet[]
+  history                 MemberMembershipHistory[]
+
+  @@index([organisationId])
+  @@index([memberProfileId])
+  @@index([membershipPlanId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("member_memberships")
+}
+
+model MemberMembershipOutlet {
+  id                 String           @id @default(cuid())
+  memberMembershipId String
+  outletId           String
+  createdAt          DateTime         @default(now())
+
+  memberMembership   MemberMembership @relation(fields: [memberMembershipId], references: [id], onDelete: Cascade)
+  outlet             Outlet           @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@unique([memberMembershipId, outletId])
+  @@index([memberMembershipId])
+  @@index([outletId])
+  @@map("member_membership_outlets")
+}
+
+model MemberMembershipHistory {
+  id                 String           @id @default(cuid())
+  memberMembershipId String
+  fromStatus         String?
+  toStatus           String
+  action             String           // CREATE, ACTIVATE, PAUSE, RESUME, SUSPEND, CANCEL, RENEW, EXPIRE
+  reason             String?
+  actorId            String?
+  actorRole          String?
+  metadata           Json?
+  createdAt          DateTime         @default(now())
+
+  memberMembership   MemberMembership @relation(fields: [memberMembershipId], references: [id], onDelete: Cascade)
+
+  @@index([memberMembershipId])
+  @@index([action])
+  @@map("member_membership_history")
+}
+

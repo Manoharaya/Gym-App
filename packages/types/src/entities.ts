@@ -249,24 +249,133 @@ export interface StaffProfile extends TenantScopedEntity {
   activeOutletIds: string[];
 }
 
-export interface MembershipPlan extends TenantScopedEntity {
+export type MembershipPlanStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+export type MembershipType =
+  | 'STANDARD'
+  | 'TRIAL'
+  | 'INTRODUCTORY'
+  | 'CORPORATE'
+  | 'STUDENT'
+  | 'FAMILY'
+  | 'CUSTOM';
+export type BillingType = 'ONE_TIME' | 'RECURRING';
+export type DurationUnit = 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
+
+export interface MembershipPlan extends BaseEntity {
+  organisationId: string;
   name: string;
   description?: string;
-  billingInterval: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
-  priceCents: number;
+  code: string;
+  status: MembershipPlanStatus;
+  membershipType: MembershipType;
+  billingType: BillingType;
+  durationValue: number;
+  durationUnit: DurationUnit;
+  price: number;
   currency: string;
-  accessAllOutlets: boolean;
-  active: boolean;
+  trialDuration?: number;
+  isPublic: boolean;
+  requiresApproval: boolean;
+  archivedAt?: string;
+  planOutlets?: MembershipPlanOutlet[];
+  entitlements?: MembershipEntitlement[];
 }
 
-export interface Membership extends TenantScopedEntity {
-  userId: string;
-  planId: string;
-  status: 'ACTIVE' | 'PAUSED' | 'CANCELLED' | 'PENDING';
-  startDate: string;
-  renewalDate?: string;
-  cancellationDate?: string;
+export interface MembershipPlanOutlet extends BaseEntity {
+  membershipPlanId: string;
+  outletId: string;
+  outlet?: Outlet;
 }
+
+export interface MembershipEntitlement extends BaseEntity {
+  membershipPlanId: string;
+  type: string;
+  name: string;
+  description?: string;
+  value?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export type MemberMembershipStatus =
+  | 'PENDING'
+  | 'ACTIVE'
+  | 'TRIAL'
+  | 'PAUSED'
+  | 'SUSPENDED'
+  | 'EXPIRED'
+  | 'CANCELLED';
+
+export type MembershipAccessScope =
+  | 'SINGLE_OUTLET'
+  | 'MULTI_OUTLET'
+  | 'ALL_ORGANISATION_OUTLETS';
+
+export interface MemberMembership extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  membershipPlanId: string;
+  status: MemberMembershipStatus;
+  accessScope: MembershipAccessScope;
+  originOutletId?: string;
+  startDate: string;
+  endDate: string;
+  activatedAt?: string;
+  pausedAt?: string;
+  suspendedAt?: string;
+  cancelledAt?: string;
+  cancelledReason?: string;
+  autoRenew: boolean;
+  trialEndsAt?: string;
+
+  // Commercial Snapshot
+  planNameAtPurchase: string;
+  priceAtPurchase: number;
+  currencyAtPurchase: string;
+  billingTypeAtPurchase: string;
+  durationValueAtPurchase: number;
+  durationUnitAtPurchase: string;
+
+  membershipPlan?: MembershipPlan;
+  originOutlet?: Outlet;
+  accessOutlets?: MemberMembershipOutlet[];
+  history?: MemberMembershipHistory[];
+}
+
+export interface MemberMembershipOutlet extends BaseEntity {
+  memberMembershipId: string;
+  outletId: string;
+  outlet?: Outlet;
+}
+
+export interface MemberMembershipHistory extends BaseEntity {
+  memberMembershipId: string;
+  fromStatus?: string;
+  toStatus: string;
+  action: string;
+  reason?: string;
+  actorId?: string;
+  actorRole?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type AccessReasonCode =
+  | 'ACTIVE_MEMBERSHIP'
+  | 'NO_ACTIVE_MEMBERSHIP'
+  | 'OUTLET_NOT_IN_SCOPE'
+  | 'MISSING_ENTITLEMENT'
+  | 'MEMBERSHIP_EXPIRED'
+  | 'MEMBERSHIP_SUSPENDED'
+  | 'MEMBERSHIP_PAUSED'
+  | 'MEMBERSHIP_PENDING';
+
+export interface AccessDecisionResult {
+  allowed: boolean;
+  reason: AccessReasonCode;
+  membershipId?: string;
+  accessScope?: MembershipAccessScope;
+  details?: string;
+}
+
 
 export interface Payment extends TenantScopedEntity {
   userId: string;

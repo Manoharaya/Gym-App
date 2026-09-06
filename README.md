@@ -179,16 +179,16 @@ Default development password for all seed accounts: `Password123!`
 
 ## 🧪 Testing & Validation
 
-All 88 automated tests across monorepo packages, mobile, and backend pass with zero warnings:
+All 114 automated tests across monorepo packages, mobile, and backend pass with zero warnings:
 
 ```bash
-# Run all unit and E2E tests across monorepo (88 tests)
+# Run all unit and E2E tests across monorepo (114 tests)
 pnpm test
 
-# Run backend E2E tests specifically (68 tests in 10 suites)
+# Run backend E2E tests specifically (89 tests in 12 suites)
 pnpm --filter @fitcore/api test
 
-# Run mobile tests specifically (20 tests in 7 suites)
+# Run mobile tests specifically (25 tests in 8 suites)
 pnpm --filter @fitcore/mobile test
 
 # Run strict TypeScript typecheck across all 16 packages
@@ -198,26 +198,29 @@ pnpm typecheck
 pnpm lint
 ```
 
-### Backend E2E Test Suite Breakdown (68 tests)
-1. `test/member-lifecycle.e2e-spec.ts` — Member profile, PAR-Q, health screening, injury tracking, consents, signatures, and complete onboarding flow (14 tests).
-2. `test/member-security.e2e-spec.ts` — Anti-IDOR, tenant isolation on member profiles, reception medical clearance restrictions, zero health logging (8 tests).
-3. `test/day3-lifecycle.e2e-spec.ts` — Full Day 3 end-to-end multi-tenant lifecycle (11 tests).
-4. `test/tenant-isolation.e2e-spec.ts` — Cross-tenant zero-trust isolation matrix (10 tests).
-5. `test/auth.e2e-spec.ts` — Registration, authentication, token rotation, context switching (10 tests).
-6. `test/permissions.e2e-spec.ts` — Granular permission checks and RBAC (5 tests).
-7. `test/idor-security.e2e-spec.ts` — Insecure Direct Object Reference prevention (4 tests).
-8. `test/outlet-isolation.e2e-spec.ts` — Cross-outlet isolation within same organization (3 tests).
-9. `test/health.e2e-spec.ts` — API liveness & readiness health probes (2 tests).
-10. `test/request-id.e2e-spec.ts` — Request ID correlation propagation (1 test).
+### Backend E2E Test Suite Breakdown (89 tests in 12 suites)
+1. `test/membership-lifecycle.e2e-spec.ts` — Plan creation, staff assignment, purchase snapshotting, lifecycle transitions (pause/resume/cancel/renew), auto-expiration, and facility access rules (13 tests).
+2. `test/membership-security.e2e-spec.ts` — Cross-tenant plan isolation (404), member self-service anti-IDOR, staff assignment permission guards, turnstile facility access policy verification (8 tests).
+3. `test/member-lifecycle.e2e-spec.ts` — Member profile, PAR-Q, health screening, injury tracking, consents, signatures, and complete onboarding flow (14 tests).
+4. `test/member-security.e2e-spec.ts` — Anti-IDOR, tenant isolation on member profiles, reception medical clearance restrictions, zero health logging (8 tests).
+5. `test/day3-lifecycle.e2e-spec.ts` — Full Day 3 end-to-end multi-tenant lifecycle (11 tests).
+6. `test/tenant-isolation.e2e-spec.ts` — Cross-tenant zero-trust isolation matrix (10 tests).
+7. `test/auth.e2e-spec.ts` — Registration, authentication, token rotation, context switching (10 tests).
+8. `test/permissions.e2e-spec.ts` — Granular permission checks and RBAC (5 tests).
+9. `test/idor-security.e2e-spec.ts` — Insecure Direct Object Reference prevention (4 tests).
+10. `test/outlet-isolation.e2e-spec.ts` — Cross-outlet isolation within same organization (3 tests).
+11. `test/health.e2e-spec.ts` — API liveness & readiness health probes (2 tests).
+12. `test/request-id.e2e-spec.ts` — Request ID correlation propagation (1 test).
 
-### Mobile Test Suite Breakdown (20 tests)
-1. `src/__tests__/onboarding.test.ts` — Onboarding Zustand state machine, step progression, validation, error states (6 tests).
-2. `src/__tests__/App.test.tsx` — App initialization, session validation, authentication state routing (3 tests).
-3. `src/__tests__/primitives.test.tsx` — Accessible UI primitives rendering and interaction (3 tests).
-4. `src/__tests__/tenant.test.ts` — Mobile tenant isolation and context resolution (2 tests).
-5. `src/__tests__/permissions.test.ts` — Mobile client-side RBAC and permission checking (2 tests).
-6. `src/__tests__/apiClient.test.ts` — Mobile HTTP client, token refresh, and request interceptors (2 tests).
-7. `src/__tests__/storage.test.ts` — Hardware enclave secure storage fallback and operations (2 tests).
+### Mobile Test Suite Breakdown (25 tests in 8 suites)
+1. `src/__tests__/membership.test.ts` — Membership Zustand store, active membership resolution, plans retrieval, status calculation, days remaining math, entitlement mapping (5 tests).
+2. `src/__tests__/onboarding.test.ts` — Onboarding Zustand state machine, step progression, validation, error states (6 tests).
+3. `src/__tests__/App.test.tsx` — App initialization, session validation, authentication state routing (3 tests).
+4. `src/__tests__/primitives.test.tsx` — Accessible UI primitives rendering and interaction (3 tests).
+5. `src/__tests__/tenant.test.ts` — Mobile tenant isolation and context resolution (2 tests).
+6. `src/__tests__/permissions.test.ts` — Mobile client-side RBAC and permission checking (2 tests).
+7. `src/__tests__/apiClient.test.ts` — Mobile HTTP client, token refresh, and request interceptors (2 tests).
+8. `src/__tests__/storage.test.ts` — Hardware enclave secure storage fallback and operations (2 tests).
 
 ---
 
@@ -226,7 +229,8 @@ pnpm lint
 FitCore enforces rigorous security standards across all layers:
 1. **Never commit secrets**: Database credentials and JWT secrets are injected strictly via validated environment variables.
 2. **Never log PII or Health Data**: `StructuredLogger` automatically redacts credentials, authorization tokens, medical answers, conditions, and biometric records.
-3. **Zero-Trust Multi-Tenancy**: Every request is authenticated, tenant-scoped, and evaluated against strict RBAC rules.
-4. **Privilege Escalation Immune**: Hierarchical validation blocks self-promotion and tenant crossing.
-5. **Brute-Force Guarded**: Login endpoints rate limit failed attempts per email and IP address.
-6. **Signed URL Document Isolation**: Member clearance and compliance documents are stored out of public web roots, accessible only through signed, expiring URLs, with Reception staff strictly blocked from medical documents.
+3. **Zero-Trust Multi-Tenancy**: Every request is authenticated, tenant-scoped, and evaluated against strict RBAC rules. Cross-tenant access returns 404 to prevent resource enumeration.
+4. **Immutable Commercial Snapshotting**: Membership agreements snapshot price, currency, duration, and plan names at purchase to ensure billing compliance and prevent retroactive plan mutation.
+5. **Privilege Escalation Immune**: Hierarchical validation blocks self-promotion and tenant crossing.
+6. **Brute-Force Guarded**: Login endpoints rate limit failed attempts per email and IP address.
+7. **Signed URL Document Isolation**: Member clearance and compliance documents are stored out of public web roots, accessible only through signed, expiring URLs, with Reception staff strictly blocked from medical documents.

@@ -20,6 +20,10 @@ export type MemberStackParamList = {
   Progress: undefined;
   AICoach: undefined;
   MemberProfile: undefined;
+  MembershipHome: undefined;
+  MembershipDetails: { membershipId: string };
+  MembershipHistory: undefined;
+  MembershipPlans: undefined;
 };
 
 export type TrainerStackParamList = {
