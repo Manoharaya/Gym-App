@@ -9,6 +9,15 @@ import {
   MembershipHistoryScreen,
   MembershipPlansScreen,
 } from '../features/membership';
+import {
+  BillingScreen,
+  InvoicesScreen,
+  InvoiceDetailsScreen,
+  PaymentHistoryScreen,
+  PaymentDetailsScreen,
+  PaymentMethodsScreen,
+  AddPaymentMethodScreen,
+} from '../features/payments';
 
 const Stack = createNativeStackNavigator<MemberStackParamList>();
 
@@ -94,6 +103,41 @@ export const MemberNavigator: React.FC = () => {
         name="MembershipPlans"
         component={MembershipPlansScreen}
         options={{ title: 'Available Plans' }}
+      />
+      <Stack.Screen
+        name="Billing"
+        component={BillingScreen}
+        options={{ title: 'Billing & Payments' }}
+      />
+      <Stack.Screen
+        name="Invoices"
+        component={InvoicesScreen}
+        options={{ title: 'Invoices' }}
+      />
+      <Stack.Screen
+        name="InvoiceDetails"
+        component={InvoiceDetailsScreen}
+        options={{ title: 'Invoice Details' }}
+      />
+      <Stack.Screen
+        name="PaymentHistory"
+        component={PaymentHistoryScreen}
+        options={{ title: 'Payment Receipts' }}
+      />
+      <Stack.Screen
+        name="PaymentDetails"
+        component={PaymentDetailsScreen}
+        options={{ title: 'Receipt Details' }}
+      />
+      <Stack.Screen
+        name="PaymentMethods"
+        component={PaymentMethodsScreen}
+        options={{ title: 'Payment Methods' }}
+      />
+      <Stack.Screen
+        name="AddPaymentMethod"
+        component={AddPaymentMethodScreen}
+        options={{ title: 'Add Card' }}
       />
     </Stack.Navigator>
   );

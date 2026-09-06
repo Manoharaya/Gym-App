@@ -24,6 +24,13 @@ export type MemberStackParamList = {
   MembershipDetails: { membershipId: string };
   MembershipHistory: undefined;
   MembershipPlans: undefined;
+  Billing: undefined;
+  Invoices: undefined;
+  InvoiceDetails: { invoiceId: string };
+  PaymentHistory: undefined;
+  PaymentDetails: { transactionId: string };
+  PaymentMethods: undefined;
+  AddPaymentMethod: undefined;
 };
 
 export type TrainerStackParamList = {

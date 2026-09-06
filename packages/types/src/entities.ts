@@ -383,24 +383,171 @@ export interface AccessDecisionResult {
 }
 
 
-export interface Payment extends TenantScopedEntity {
-  userId: string;
-  invoiceId?: string;
-  amountCents: number;
-  currency: string;
-  status: 'SUCCEEDED' | 'PENDING' | 'FAILED' | 'REFUNDED';
-  paymentMethod: 'CREDIT_CARD' | 'DIRECT_DEBIT' | 'APPLE_PAY' | 'GOOGLE_PAY';
-  processedAt: string;
+export type PaymentStatus =
+  | 'PENDING'
+  | 'REQUIRES_PAYMENT_METHOD'
+  | 'REQUIRES_CONFIRMATION'
+  | 'REQUIRES_ACTION'
+  | 'PROCESSING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED';
+
+export type InvoiceStatus =
+  | 'DRAFT'
+  | 'OPEN'
+  | 'PAID'
+  | 'UNCOLLECTIBLE'
+  | 'VOID';
+
+export type PaymentMethodType =
+  | 'CARD'
+  | 'BANK_TRANSFER'
+  | 'MOCK'
+  | 'MANUAL_CASH'
+  | 'MANUAL_POS'
+  | 'MANUAL_OTHER';
+
+export type RefundStatus =
+  | 'PENDING'
+  | 'SUCCEEDED'
+  | 'FAILED';
+
+export type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
+
+export interface PaymentCustomer extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  provider: string;
+  providerCustomerId: string;
+  email?: string;
+  metadata?: Record<string, unknown>;
 }
 
-export interface Invoice extends TenantScopedEntity {
-  userId: string;
+export interface PaymentMethod extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  paymentCustomerId?: string;
+  type: PaymentMethodType;
+  provider: string;
+  providerPaymentMethodId: string;
+  brand?: string;
+  last4?: string;
+  expiryMonth?: number;
+  expiryYear?: number;
+  isDefault: boolean;
+  status: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface InvoiceLineItem extends BaseEntity {
+  invoiceId: string;
+  description: string;
+  quantity: number;
+  unitAmountMinor: number;
+  discountMinor: number;
+  taxMinor: number;
+  totalMinor: number;
+  membershipPlanId?: string;
+  memberMembershipId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface Invoice extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
   invoiceNumber: string;
-  amountDueCents: number;
-  amountPaidCents: number;
+  status: InvoiceStatus;
+  currency: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  taxMinor: number;
+  feeMinor: number;
+  totalMinor: number;
+  amountPaidMinor: number;
+  amountDueMinor: number;
   dueDate: string;
-  status: 'DRAFT' | 'OPEN' | 'PAID' | 'VOID' | 'UNCOLLECTIBLE';
-  xeroInvoiceId?: string;
+  paidAt?: string;
+  voidedAt?: string;
+  description?: string;
+  notes?: string;
+  idempotencyKey?: string;
+  lineItems?: InvoiceLineItem[];
+  transactions?: PaymentTransaction[];
+}
+
+export interface PaymentRefund extends BaseEntity {
+  organisationId: string;
+  paymentTransactionId: string;
+  amountMinor: number;
+  currency: string;
+  status: RefundStatus;
+  reason?: string;
+  providerRefundId?: string;
+  requestedById?: string;
+  failureReason?: string;
+}
+
+export interface PaymentTransaction extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  invoiceId?: string;
+  paymentMethodId?: string;
+  amountMinor: number;
+  currency: string;
+  status: PaymentStatus;
+  provider: string;
+  providerTransactionId?: string;
+  paymentMethodType: PaymentMethodType;
+  description?: string;
+  failureCode?: string;
+  failureMessage?: string;
+  receiptUrl?: string;
+  metadata?: Record<string, unknown>;
+  refunds?: PaymentRefund[];
+  invoice?: Invoice;
+  paymentMethod?: PaymentMethod;
+}
+
+export interface Discount extends BaseEntity {
+  organisationId: string;
+  code: string;
+  name: string;
+  description?: string;
+  type: DiscountType;
+  valueMinor?: number;
+  percentage?: number;
+  validFrom: string;
+  validUntil?: string;
+  usageLimit?: number;
+  usedCount: number;
+  isActive: boolean;
+}
+
+export interface PaymentWebhookEvent extends BaseEntity {
+  organisationId?: string;
+  provider: string;
+  providerEventId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  signatureVerified: boolean;
+  processingStatus: 'PENDING' | 'PROCESSED' | 'FAILED' | 'IGNORED';
+  processedAt?: string;
+  failureReason?: string;
+  retryCount: number;
+}
+
+export interface IdempotencyRecord extends BaseEntity {
+  organisationId: string;
+  idempotencyKey: string;
+  requestPath: string;
+  requestMethod: string;
+  requestParams?: Record<string, unknown>;
+  responseStatus: number;
+  responseBody: Record<string, unknown>;
+  expiresAt: string;
 }
 
 export interface Trainer extends TenantScopedEntity {

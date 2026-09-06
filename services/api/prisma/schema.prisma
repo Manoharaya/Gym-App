@@ -27,6 +27,13 @@ model Organisation {
   memberProfiles MemberProfile[]
   membershipPlans      MembershipPlan[]
   memberMemberships    MemberMembership[]
+  paymentCustomers     PaymentCustomer[]
+  paymentMethods       PaymentMethod[]
+  invoices             Invoice[]
+  paymentTransactions  PaymentTransaction[]
+  paymentRefunds       PaymentRefund[]
+  discounts            Discount[]
+  idempotencyRecords   IdempotencyRecord[]
 
 
   @@index([slug])
@@ -305,6 +312,10 @@ model MemberProfile {
   documents                    MemberDocument[]
   signatures                   Signature[]
   memberships                  MemberMembership[]
+  paymentCustomers             PaymentCustomer[]
+  paymentMethods               PaymentMethod[]
+  invoices                     Invoice[]
+  paymentTransactions          PaymentTransaction[]
 
 
   @@index([userId])
@@ -623,6 +634,7 @@ model MembershipPlan {
   planOutlets        MembershipPlanOutlet[]
   entitlements       MembershipEntitlement[]
   memberMemberships  MemberMembership[]
+  invoiceLineItems   InvoiceLineItem[]
 
   @@unique([organisationId, code])
   @@index([organisationId])
@@ -700,6 +712,9 @@ model MemberMembership {
   originOutlet            Outlet?                   @relation("OriginOutlet", fields: [originOutletId], references: [id], onDelete: SetNull)
   accessOutlets           MemberMembershipOutlet[]
   history                 MemberMembershipHistory[]
+  invoices                Invoice[]
+  paymentTransactions     PaymentTransaction[]
+  invoiceLineItems        InvoiceLineItem[]
 
   @@index([organisationId])
   @@index([memberProfileId])
@@ -742,5 +757,256 @@ model MemberMembershipHistory {
   @@index([memberMembershipId])
   @@index([action])
   @@map("member_membership_history")
+}
+
+// ==========================================
+// DAY 6: PAYMENTS, BILLING & FINANCIAL TRANSACTIONS
+// ==========================================
+
+model PaymentCustomer {
+  id                 String           @id @default(cuid())
+  organisationId     String
+  memberProfileId    String
+  provider           String           @default("MOCK") // MOCK, MANUAL, STRIPE, PAYPAL, etc.
+  providerCustomerId String
+  status             String           @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  email              String
+  name               String?
+  currency           String           @default("AUD")
+  metadata           Json?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  organisation       Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile    @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  paymentMethods     PaymentMethod[]
+  paymentTransactions PaymentTransaction[]
+
+  @@unique([organisationId, provider, providerCustomerId])
+  @@index([organisationId])
+  @@index([memberProfileId])
+  @@map("payment_customers")
+}
+
+model PaymentMethod {
+  id                      String              @id @default(cuid())
+  organisationId          String
+  memberProfileId         String
+  paymentCustomerId       String?
+  provider                String              @default("MOCK") // MOCK, MANUAL, STRIPE, etc.
+  providerPaymentMethodId String
+  type                    String              @default("CARD") // CARD, BANK_TRANSFER, CASH, POS, DIRECT_DEBIT, WALLET, OTHER
+  status                  String              @default("ACTIVE") // ACTIVE, EXPIRED, REVOKED, FAILED
+  brand                   String?             // visa, mastercard, amex
+  last4                   String?             // 4242
+  expiryMonth             Int?
+  expiryYear              Int?
+  isDefault               Boolean             @default(false)
+  metadata                Json?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  organisation            Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile           MemberProfile       @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  paymentCustomer         PaymentCustomer?    @relation(fields: [paymentCustomerId], references: [id], onDelete: SetNull)
+  transactions            PaymentTransaction[]
+
+  @@index([organisationId])
+  @@index([memberProfileId])
+  @@index([paymentCustomerId])
+  @@map("payment_methods")
+}
+
+model Invoice {
+  id                  String               @id @default(cuid())
+  organisationId      String
+  memberProfileId     String
+  memberMembershipId  String?
+  invoiceNumber       String
+  status              String               @default("OPEN") // DRAFT, OPEN, PAID, PARTIALLY_PAID, OVERDUE, VOID, UNCOLLECTIBLE
+  currency            String               @default("AUD")
+  subtotalMinor       Int                  @default(0)
+  discountMinor       Int                  @default(0)
+  taxMinor            Int                  @default(0)
+  feeMinor            Int                  @default(0)
+  totalMinor          Int                  @default(0)
+  amountPaidMinor     Int                  @default(0)
+  amountDueMinor      Int                  @default(0)
+  dueDate             DateTime
+  issuedAt            DateTime             @default(now())
+  paidAt              DateTime?
+  voidedAt            DateTime?
+  description         String?
+  metadata            Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  organisation        Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile       MemberProfile        @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  memberMembership    MemberMembership?    @relation(fields: [memberMembershipId], references: [id], onDelete: SetNull)
+  lineItems           InvoiceLineItem[]
+  transactions        PaymentTransaction[]
+
+  @@unique([organisationId, invoiceNumber])
+  @@index([organisationId])
+  @@index([memberProfileId])
+  @@index([memberMembershipId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id                  String            @id @default(cuid())
+  invoiceId           String
+  description         String
+  quantity            Int               @default(1)
+  unitAmountMinor     Int
+  discountMinor       Int               @default(0)
+  taxMinor            Int               @default(0)
+  totalMinor          Int
+  membershipPlanId    String?
+  memberMembershipId  String?
+  metadata            Json?
+  createdAt           DateTime          @default(now())
+
+  invoice             Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  membershipPlan      MembershipPlan?   @relation(fields: [membershipPlanId], references: [id], onDelete: SetNull)
+  memberMembership    MemberMembership? @relation(fields: [memberMembershipId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+model PaymentTransaction {
+  id                      String            @id @default(cuid())
+  organisationId          String
+  memberProfileId         String
+  invoiceId               String?
+  memberMembershipId      String?
+  paymentCustomerId       String?
+  paymentMethodId         String?
+  provider                String            @default("MOCK") // MOCK, MANUAL, STRIPE, etc.
+  providerTransactionId   String
+  providerPaymentIntentId String?
+  amountMinor             Int
+  currency                String            @default("AUD")
+  status                  String            @default("PENDING") // PENDING, PROCESSING, REQUIRES_ACTION, AUTHORIZED, SUCCEEDED, FAILED, CANCELLED, REFUNDED, PARTIALLY_REFUNDED, DISPUTED
+  paymentMethodType       String            @default("CARD") // CARD, BANK_TRANSFER, CASH, POS, DIRECT_DEBIT, WALLET, OTHER
+  description             String?
+  failureCode             String?
+  failureMessage          String?
+  metadata                Json?
+  processedAt             DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  organisation            Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile           MemberProfile     @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  invoice                 Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  memberMembership        MemberMembership? @relation(fields: [memberMembershipId], references: [id], onDelete: SetNull)
+  paymentCustomer         PaymentCustomer?  @relation(fields: [paymentCustomerId], references: [id], onDelete: SetNull)
+  paymentMethod           PaymentMethod?    @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  refunds                 PaymentRefund[]
+
+  @@unique([provider, providerTransactionId])
+  @@index([organisationId])
+  @@index([memberProfileId])
+  @@index([invoiceId])
+  @@index([memberMembershipId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payment_transactions")
+}
+
+model PaymentRefund {
+  id                   String             @id @default(cuid())
+  organisationId       String
+  paymentTransactionId String
+  amountMinor          Int
+  currency             String             @default("AUD")
+  providerRefundId     String?
+  status               String             @default("PENDING") // PENDING, PROCESSING, SUCCEEDED, FAILED, CANCELLED
+  reason               String?
+  requestedById        String?
+  processedAt          DateTime?
+  metadata             Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  organisation         Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  paymentTransaction   PaymentTransaction @relation(fields: [paymentTransactionId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([paymentTransactionId])
+  @@index([status])
+  @@map("payment_refunds")
+}
+
+model Discount {
+  id              String       @id @default(cuid())
+  organisationId  String
+  code            String
+  name            String
+  type            String       @default("PERCENTAGE") // PERCENTAGE, FIXED_AMOUNT
+  valueMinor      Int?         // for FIXED_AMOUNT in cents
+  percentage      Float?       // for PERCENTAGE (e.g. 10.0 for 10%)
+  currency        String?      @default("AUD")
+  active          Boolean      @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  usageLimit      Int?
+  usedCount       Int          @default(0)
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, code])
+  @@index([organisationId])
+  @@index([code])
+  @@map("discounts")
+}
+
+model PaymentWebhookEvent {
+  id                 String    @id @default(cuid())
+  organisationId     String?
+  provider           String    @default("MOCK") // MOCK, STRIPE, etc.
+  providerEventId    String
+  eventType          String
+  signatureVerified  Boolean   @default(false)
+  payloadHash        String?
+  processingStatus   String    @default("RECEIVED") // RECEIVED, VERIFIED, PROCESSING, PROCESSED, FAILED, IGNORED
+  processedAt        DateTime?
+  errorMessage       String?
+  retryCount         Int       @default(0)
+  payload            Json?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([provider, providerEventId])
+  @@index([provider])
+  @@index([processingStatus])
+  @@map("payment_webhook_events")
+}
+
+model IdempotencyRecord {
+  id             String    @id @default(cuid())
+  organisationId String
+  idempotencyKey String
+  resourceType   String    @default("PAYMENT")
+  resourceId     String?
+  responseStatus Int
+  responseBody   Json
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, idempotencyKey])
+  @@index([organisationId])
+  @@index([expiresAt])
+  @@map("idempotency_records")
 }
 

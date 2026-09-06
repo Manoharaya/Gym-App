@@ -14,6 +14,7 @@ import { OutletsModule } from './outlets/outlets.module';
 import { UsersModule } from './users/users.module';
 import { MembersModule } from './members/members.module';
 import { MembershipsModule } from './memberships/memberships.module';
+import { PaymentsModule } from './payments/payments.module';
 import { HealthModule } from './health/health.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -41,6 +42,7 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     UsersModule,
     MembersModule,
     MembershipsModule,
+    PaymentsModule,
     HealthModule,
   ],
   providers: [

@@ -135,6 +135,25 @@ async function main() {
     { resource: 'entitlements', action: 'READ', scope: 'SELF', description: 'View own membership entitlements' },
     { resource: 'entitlements', action: 'READ', scope: 'ORGANISATION', description: 'View organisation entitlements' },
     { resource: 'entitlements', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage plan entitlements' },
+
+    // Day 6: Payments, Invoices, Billing, Refunds & Payment Methods
+    { resource: 'invoices', action: 'CREATE', scope: 'ORGANISATION', description: 'Create organisation invoices' },
+    { resource: 'invoices', action: 'READ', scope: 'ORGANISATION', description: 'Read organisation invoices' },
+    { resource: 'invoices', action: 'READ', scope: 'SELF', description: 'Read own invoices' },
+    { resource: 'invoices', action: 'VOID', scope: 'ORGANISATION', description: 'Void organisation invoices' },
+
+    { resource: 'payments', action: 'CREATE', scope: 'ORGANISATION', description: 'Process payments on behalf of members' },
+    { resource: 'payments', action: 'CREATE', scope: 'SELF', description: 'Pay own invoices / memberships' },
+    { resource: 'payments', action: 'READ', scope: 'ORGANISATION', description: 'Read organisation payment transactions' },
+    { resource: 'payments', action: 'READ', scope: 'SELF', description: 'Read own payment transactions' },
+    { resource: 'payments', action: 'REFUND', scope: 'ORGANISATION', description: 'Issue refunds' },
+
+    { resource: 'payment_methods', action: 'MANAGE', scope: 'SELF', description: 'Manage own payment methods' },
+    { resource: 'payment_methods', action: 'READ', scope: 'SELF', description: 'Read own payment methods' },
+    { resource: 'payment_methods', action: 'READ', scope: 'ORGANISATION', description: 'Read member payment methods' },
+
+    { resource: 'discounts', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage promotional discount codes' },
+    { resource: 'discounts', action: 'READ', scope: 'ORGANISATION', description: 'Read discount codes' },
   ];
 
 
@@ -220,6 +239,16 @@ async function main() {
     'memberships:RENEW:ORGANISATION',
     'entitlements:READ:ORGANISATION',
     'entitlements:MANAGE:ORGANISATION',
+    // Day 6
+    'invoices:CREATE:ORGANISATION',
+    'invoices:READ:ORGANISATION',
+    'invoices:VOID:ORGANISATION',
+    'payments:CREATE:ORGANISATION',
+    'payments:READ:ORGANISATION',
+    'payments:REFUND:ORGANISATION',
+    'payment_methods:READ:ORGANISATION',
+    'discounts:MANAGE:ORGANISATION',
+    'discounts:READ:ORGANISATION',
   ];
 
   for (const k of ownerPerms) {
@@ -252,6 +281,10 @@ async function main() {
     'memberships:PAUSE:OUTLET',
     'memberships:RESUME:OUTLET',
     'entitlements:READ:ORGANISATION',
+    // Day 6
+    'invoices:READ:ORGANISATION',
+    'payments:CREATE:ORGANISATION',
+    'payments:READ:ORGANISATION',
   ];
 
   for (const k of managerPerms) {
@@ -275,10 +308,35 @@ async function main() {
     'memberships:PAUSE:OUTLET',
     'memberships:RESUME:OUTLET',
     'entitlements:READ:ORGANISATION',
+    // Day 6
+    'invoices:READ:ORGANISATION',
+    'payments:CREATE:ORGANISATION',
+    'payments:READ:ORGANISATION',
   ];
 
   for (const k of receptionPerms) {
     await linkRolePerm('RECEPTION', k);
+  }
+
+  // Assign permissions to FINANCE
+  const financePerms = [
+    'organisations:READ:ORGANISATION',
+    'outlets:READ:ORGANISATION',
+    'users:READ:ORGANISATION',
+    'invoices:CREATE:ORGANISATION',
+    'invoices:READ:ORGANISATION',
+    'invoices:VOID:ORGANISATION',
+    'payments:CREATE:ORGANISATION',
+    'payments:READ:ORGANISATION',
+    'payments:REFUND:ORGANISATION',
+    'payment_methods:READ:ORGANISATION',
+    'discounts:MANAGE:ORGANISATION',
+    'discounts:READ:ORGANISATION',
+    'memberships:READ:ORGANISATION',
+  ];
+
+  for (const k of financePerms) {
+    await linkRolePerm('FINANCE', k);
   }
 
   // Assign permissions to TRAINER
@@ -331,6 +389,12 @@ async function main() {
     'memberships:CANCEL:SELF',
     'memberships:RENEW:SELF',
     'entitlements:READ:SELF',
+    // Day 6
+    'invoices:READ:SELF',
+    'payments:CREATE:SELF',
+    'payments:READ:SELF',
+    'payment_methods:MANAGE:SELF',
+    'payment_methods:READ:SELF',
   ];
 
   for (const k of memberPerms) {
@@ -1028,7 +1092,156 @@ async function main() {
     }
   }
 
-  console.log('✅ FitCore Database Seeding Completed (Day 5).');
+  // ==========================================
+  // DAY 6: Payments, Invoices, Billing Seeding
+  // ==========================================
+  console.log('💳 Seeding Day 6 Financial Data...');
+
+  // 1. Seed Promotional Discounts
+  await prisma.discount.upsert({
+    where: { organisationId_code: { organisationId: secondWind.id, code: 'WELCOME10' } },
+    update: {},
+    create: {
+      organisationId: secondWind.id,
+      code: 'WELCOME10',
+      name: 'Welcome Special 10% Off',
+      type: 'PERCENTAGE',
+      percentage: 10,
+      active: true,
+      usageLimit: 500,
+      startsAt: new Date(),
+    },
+  });
+
+  await prisma.discount.upsert({
+    where: { organisationId_code: { organisationId: secondWind.id, code: 'FOUNDER50' } },
+    update: {},
+    create: {
+      organisationId: secondWind.id,
+      code: 'FOUNDER50',
+      name: 'Founding Member $50 Credit',
+      type: 'FIXED_AMOUNT',
+      valueMinor: 5000,
+      active: true,
+      usageLimit: 100,
+      startsAt: new Date(),
+    },
+  });
+
+  // 2. Seed Payment Method and Invoices for Active Member
+  if (activeUser) {
+    const activeProfile = await prisma.memberProfile.findUnique({
+      where: { userId: activeUser.id },
+    });
+
+    if (activeProfile) {
+      // Tokenized Mock Card
+      const defaultCard = await prisma.paymentMethod.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: activeProfile.id,
+          type: 'CARD',
+          provider: 'MOCK',
+          providerPaymentMethodId: 'pm_mock_visa_4242',
+          brand: 'VISA',
+          last4: '4242',
+          expiryMonth: 12,
+          expiryYear: 2028,
+          isDefault: true,
+          status: 'ACTIVE',
+        },
+      });
+
+      // Invoice 1: Fully Paid Membership Invoice
+      const paidInvoice = await prisma.invoice.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: activeProfile.id,
+          invoiceNumber: 'INV-202608-0001-SW',
+          status: 'PAID',
+          currency: 'AUD',
+          subtotalMinor: 11999,
+          discountMinor: 0,
+          taxMinor: 1091,
+          feeMinor: 0,
+          totalMinor: 11999,
+          amountPaidMinor: 11999,
+          amountDueMinor: 0,
+          dueDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+          paidAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+          description: 'Second Wind Premium All-Access Monthly Dues',
+          lineItems: {
+            create: [
+              {
+                description: 'Second Wind Premium Monthly Membership',
+                quantity: 1,
+                unitAmountMinor: 11999,
+                discountMinor: 0,
+                taxMinor: 1091,
+                totalMinor: 11999,
+                membershipPlanId: premiumPlan.id,
+              },
+            ],
+          },
+        },
+      });
+
+      // Succeeded Transaction for Invoice 1
+      await prisma.paymentTransaction.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: activeProfile.id,
+          invoiceId: paidInvoice.id,
+          paymentMethodId: defaultCard.id,
+          amountMinor: 11999,
+          currency: 'AUD',
+          status: 'SUCCEEDED',
+          provider: 'MOCK',
+          providerTransactionId: 'mock_tx_seed_paid_001',
+          paymentMethodType: 'CARD',
+          description: 'Payment for INV-202608-0001-SW',
+          processedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+          metadata: {
+            receiptUrl: 'https://fitcore.local/receipts/mock_tx_seed_paid_001',
+          },
+        },
+      });
+
+      // Invoice 2: Open Assessment Invoice
+      await prisma.invoice.create({
+        data: {
+          organisationId: secondWind.id,
+          memberProfileId: activeProfile.id,
+          invoiceNumber: 'INV-202609-0002-SW',
+          status: 'OPEN',
+          currency: 'AUD',
+          subtotalMinor: 5000,
+          discountMinor: 0,
+          taxMinor: 455,
+          feeMinor: 0,
+          totalMinor: 5000,
+          amountPaidMinor: 0,
+          amountDueMinor: 5000,
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          description: 'Personal Training Physical Performance Assessment',
+          lineItems: {
+            create: [
+              {
+                description: 'Initial 60-Minute Biomechanics & Conditioning Assessment',
+                quantity: 1,
+                unitAmountMinor: 5000,
+                discountMinor: 0,
+                taxMinor: 455,
+                totalMinor: 5000,
+              },
+            ],
+          },
+        },
+      });
+    }
+  }
+
+  console.log('✅ FitCore Database Seeding Completed (Day 6: Payments & Billing Foundation).');
 }
 
 main()
