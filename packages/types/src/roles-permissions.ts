@@ -41,7 +41,29 @@ export type PermissionResource =
   | 'door_access'
   | 'documents'
   | 'communications'
-  | 'settings';
+  | 'settings'
+  | 'trainers'
+  | 'certifications'
+  | 'trainer_clients'
+  | 'training_programs'
+  | 'training_goals'
+  | 'trainer_notes'
+  | 'pt_sessions'
+  | 'workout_templates'
+  | 'training_plans'
+  | 'progress'
+  | 'assessments'
+  | 'body_measurements'
+  | 'personal_records'
+  | 'nutrition'
+  | 'nutrition_plans'
+  | 'foods'
+  | 'food_logs'
+  | 'notifications'
+  | 'engagement'
+  | 'habits'
+  | 'challenges'
+  | 'rewards';
 
 export type PermissionAction =
   'read' | 'write' | 'create' | 'update' | 'delete' | 'manage' | 'use' | 'configure' | 'export';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,78 +6,73 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import type { MemberStackParamList } from '../../../navigation/types';
-import { Screen, Card, Button, Icon } from '../../../components/primitives';
+import { Screen, Card, Button, Badge, Icon } from '../../../components/primitives';
 import { themeColors, typography, spacing, radius } from '../../../theme';
+import { WorkoutService } from '../services/workoutService';
+import { kgToLb } from '@fitcore/utils';
+import type { Workout, WorkoutExercise } from '@fitcore/types';
+
+const sp = {
+  xs: spacing[1],
+  sm: spacing[2],
+  md: spacing[4],
+  lg: spacing[6],
+  xl: spacing[8],
+  xxl: spacing[12],
+};
+
+const colors = {
+  ...themeColors,
+  primary: themeColors.primary,
+  accent: themeColors.accent,
+  textTertiary: themeColors.textMuted,
+  surfaceHighlight: themeColors.surfaceElevated,
+};
 
 type NavigationProp = NativeStackNavigationProp<MemberStackParamList, 'WorkoutSession'>;
-
-interface WorkoutSet {
-  setNumber: number;
-  prevWeight: number;
-  weight: number;
-  reps: number;
-  completed: boolean;
-}
-
-interface ExerciseItem {
-  id: string;
-  name: string;
-  targetMuscle: string;
-  sets: WorkoutSet[];
-}
-
-const INITIAL_EXERCISES: ExerciseItem[] = [
-  {
-    id: 'ex_bench',
-    name: 'Barbell Bench Press',
-    targetMuscle: 'Chest / Triceps',
-    sets: [
-      { setNumber: 1, prevWeight: 80, weight: 80, reps: 10, completed: true },
-      { setNumber: 2, prevWeight: 82.5, weight: 82.5, reps: 8, completed: true },
-      { setNumber: 3, prevWeight: 85, weight: 85, reps: 8, completed: false },
-      { setNumber: 4, prevWeight: 85, weight: 85, reps: 6, completed: false },
-    ],
-  },
-  {
-    id: 'ex_incline',
-    name: 'Incline Dumbbell Press',
-    targetMuscle: 'Upper Chest',
-    sets: [
-      { setNumber: 1, prevWeight: 30, weight: 30, reps: 10, completed: false },
-      { setNumber: 2, prevWeight: 30, weight: 30, reps: 10, completed: false },
-      { setNumber: 3, prevWeight: 32, weight: 32, reps: 8, completed: false },
-    ],
-  },
-  {
-    id: 'ex_fly',
-    name: 'Cable Chest Fly',
-    targetMuscle: 'Chest Isolation',
-    sets: [
-      { setNumber: 1, prevWeight: 15, weight: 15, reps: 12, completed: false },
-      { setNumber: 2, prevWeight: 15, weight: 15, reps: 12, completed: false },
-      { setNumber: 3, prevWeight: 17.5, weight: 17.5, reps: 10, completed: false },
-    ],
-  },
-];
+type RouteProps = RouteProp<MemberStackParamList, 'WorkoutSession'>;
 
 export const WorkoutSessionScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [exercises, setExercises] = useState<ExerciseItem[]>(INITIAL_EXERCISES);
-  const [secondsElapsed, setSecondsElapsed] = useState(1420); // ~23 mins
-  const [restSeconds, setRestSeconds] = useState(0);
+  const route = useRoute<RouteProps>();
+  const workoutId = route.params?.workoutId;
+
+  const [workout, setWorkout] = useState<Workout | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [unit, setUnit] = useState<'KG' | 'LB'>('KG');
+  const [completing, setCompleting] = useState(false);
 
   // Active workout timer
   useEffect(() => {
     const timer = setInterval(() => {
       setSecondsElapsed((prev) => prev + 1);
-      setRestSeconds((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const loadWorkout = useCallback(async () => {
+    if (!workoutId) return;
+    try {
+      setLoading(true);
+      const data = await WorkoutService.getWorkoutById(workoutId);
+      setWorkout(data);
+    } catch (err) {
+      console.warn('Failed to load workout session:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [workoutId]);
+
+  useEffect(() => {
+    loadWorkout();
+  }, [loadWorkout]);
 
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -85,125 +80,177 @@ export const WorkoutSessionScreen: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleSet = (exerciseId: string, setIndex: number) => {
-    setExercises((prev) =>
-      prev.map((ex) => {
-        if (ex.id !== exerciseId) return ex;
-        const newSets = [...ex.sets];
-        const currentSet = newSets[setIndex];
-        if (!currentSet) return ex;
-        const isNowCompleted = !currentSet.completed;
-        newSets[setIndex] = { ...currentSet, completed: isNowCompleted };
-        if (isNowCompleted) {
-          setRestSeconds(60); // Trigger 60s rest timer
-        }
-        return { ...ex, sets: newSets };
-      }),
-    );
+  const toggleUnit = () => {
+    setUnit((prev) => (prev === 'KG' ? 'LB' : 'KG'));
+  };
+
+  const handleLogSet = async (exercise: WorkoutExercise) => {
+    const nextSetNumber = (exercise.sets?.length || 0) + 1;
+    const defaultLoad = exercise.targetLoad || 60;
+    const repsValue = exercise.targetReps || 10;
+    const idempotencyKey = `set_${exercise.id}_${nextSetNumber}_${Date.now()}`;
+
+    try {
+      await WorkoutService.logSet(exercise.id, {
+        setNumber: nextSetNumber,
+        actualReps: repsValue,
+        actualLoad: defaultLoad,
+        loadUnit: 'KG',
+        actualRpe: 8,
+        isCompleted: true,
+        idempotencyKey,
+      });
+      if (workoutId) {
+        await loadWorkout();
+      }
+    } catch (err) {
+      console.warn('Set logged offline or error:', err);
+    }
   };
 
   const handleFinishWorkout = () => {
-    Alert.alert(
-      'Workout Completed! 🎉',
-      `Great session, Alex!\n\nDuration: ${formatTimer(secondsElapsed)}\nVolume: 4,820 kg\nCalories: ~340 kcal\n\nSaved to your training log.`,
-      [{ text: 'View Progress', onPress: () => navigation.navigate('Progress') }],
-    );
+    Alert.alert('Complete Workout', 'Are you ready to submit your workout session?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Finish',
+        style: 'default',
+        onPress: async () => {
+          try {
+            setCompleting(true);
+            if (workoutId) {
+              await WorkoutService.completeWorkout(workoutId, {
+                rating: 5,
+                memberNotes: 'Completed on mobile app',
+              });
+            }
+            Alert.alert('Great Job!', 'Workout successfully completed and logged.');
+            navigation.goBack();
+          } catch (err) {
+            console.warn('Failed to complete workout:', err);
+            navigation.goBack();
+          } finally {
+            setCompleting(false);
+          }
+        },
+      },
+    ]);
   };
+
+  const workoutTitle = workout?.title || 'Upper Body Strength Protocol';
+  const exercisesList = workout?.exercises || [];
 
   return (
     <Screen safeAreaEdges={['top', 'bottom']} statusBarStyle="light">
-      {/* Sticky Header with Timer */}
+      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="chevron-left" size={20} color={themeColors.textPrimary} />
+          <Icon name="chevron-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.workoutName}>Upper Body Hypertrophy</Text>
-          <View style={styles.timerRow}>
-            <View style={styles.liveDot} />
-            <Text style={styles.timerText}>{formatTimer(secondsElapsed)}</Text>
-          </View>
+
+        <View style={styles.timerBadge}>
+          <Icon name="clock" size={14} color={colors.primary} />
+          <Text style={styles.timerText}>{formatTimer(secondsElapsed)}</Text>
         </View>
-        <Button
-          title="Finish"
-          onPress={handleFinishWorkout}
-          variant="accent"
-          size="sm"
-          style={styles.finishHeaderBtn}
-        />
+
+        <TouchableOpacity onPress={toggleUnit} style={styles.unitToggle}>
+          <Text style={styles.unitToggleText}>{unit}</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Optional Active Rest Timer Banner */}
-      {restSeconds > 0 && (
-        <View style={styles.restBanner}>
-          <Icon name="timer" size={16} color={themeColors.accent} />
-          <Text style={styles.restText}>Rest Timer: {restSeconds}s remaining</Text>
-          <TouchableOpacity onPress={() => setRestSeconds(0)}>
-            <Text style={styles.skipRestText}>Skip</Text>
-          </TouchableOpacity>
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading workout...</Text>
         </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          {/* Title & Metadata */}
+          <View style={styles.titleSection}>
+            <Text style={styles.workoutTitle}>{workoutTitle}</Text>
+            <View style={styles.badgeRow}>
+              <Badge label={workout?.status || 'IN_PROGRESS'} variant="accent" />
+              <Badge label={`${exercisesList.length} EXERCISES`} variant="neutral" />
+            </View>
+          </View>
+
+          {/* Exercises List */}
+          {exercisesList.map((exercise, exIndex) => {
+            const exerciseName = exercise.exerciseNameSnapshot || exercise.exercise?.name || `Exercise ${exIndex + 1}`;
+            const sets = exercise.sets || [];
+            const targetSetsCount = exercise.targetSets || 3;
+
+            return (
+              <Card key={exercise.id || exIndex} style={styles.exerciseCard}>
+                <View style={styles.exerciseHeader}>
+                  <View style={styles.exerciseInfo}>
+                    <Text style={styles.exerciseName}>{exerciseName}</Text>
+                    <Text style={styles.prescriptionText}>
+                      Target: {targetSetsCount} sets × {exercise.targetReps || 10} reps @{' '}
+                      {exercise.targetLoad ? `${exercise.targetLoad} kg` : 'RPE 8'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.addSetButton}
+                    onPress={() => handleLogSet(exercise)}
+                  >
+                    <Icon name="plus" size={16} color="#FFFFFF" />
+                    <Text style={styles.addSetButtonText}>LOG SET</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Completed Sets Table */}
+                <View style={styles.setsTable}>
+                  <View style={styles.tableHeaderRow}>
+                    <Text style={[styles.tableCol, styles.tableColIndex]}>SET</Text>
+                    <Text style={[styles.tableCol, styles.tableColWeight]}>
+                      WEIGHT ({unit})
+                    </Text>
+                    <Text style={[styles.tableCol, styles.tableColReps]}>REPS</Text>
+                    <Text style={[styles.tableCol, styles.tableColStatus]}>STATUS</Text>
+                  </View>
+
+                  {sets.map((set, setIdx) => {
+                    const weightKg = set.actualLoad ?? exercise.targetLoad ?? 60;
+                    const displayWeight = unit === 'KG' ? weightKg : kgToLb(weightKg);
+
+                    return (
+                      <View key={set.id || setIdx} style={styles.setRow}>
+                        <Text style={[styles.tableCol, styles.tableColIndex]}>
+                          {set.setNumber}
+                        </Text>
+                        <Text style={[styles.tableCol, styles.tableColWeight]}>
+                          {displayWeight}
+                        </Text>
+                        <Text style={[styles.tableCol, styles.tableColReps]}>
+                          {set.actualReps ?? 10}
+                        </Text>
+                        <View style={[styles.tableCol, styles.tableColStatus]}>
+                          <Icon name="check-circle" size={16} color={colors.success} />
+                        </View>
+                      </View>
+                    );
+                  })}
+
+                  {sets.length === 0 ? (
+                    <Text style={styles.noSetsText}>
+                      No sets logged yet. Tap 'LOG SET' to record your performance.
+                    </Text>
+                  ) : null}
+                </View>
+              </Card>
+            );
+          })}
+
+          {/* Complete Button */}
+          <Button
+            title={completing ? 'Finishing...' : 'Complete Workout'}
+            variant="primary"
+            onPress={handleFinishWorkout}
+            loading={completing}
+            style={styles.completeButton}
+          />
+        </ScrollView>
       )}
-
-      <ScrollView contentContainerStyle={styles.scrollList} showsVerticalScrollIndicator={false}>
-        {exercises.map((exercise) => (
-          <Card key={exercise.id} style={styles.exerciseCard}>
-            <View style={styles.exerciseHeader}>
-              <View>
-                <Text style={styles.exerciseName}>{exercise.name}</Text>
-                <Text style={styles.targetMuscle}>{exercise.targetMuscle}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate('ExerciseDetail', {
-                    exerciseId: exercise.id,
-                    exerciseName: exercise.name,
-                  })
-                }
-                style={styles.formGuideButton}
-              >
-                <Icon name="sparkles" size={14} color={themeColors.aiPrimary} />
-                <Text style={styles.formGuideText}>Form Guide</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Sets Table Header */}
-            <View style={styles.tableHeader}>
-              <Text style={[styles.columnLabel, { width: 44 }]}>SET</Text>
-              <Text style={[styles.columnLabel, { flex: 1 }]}>PREVIOUS</Text>
-              <Text style={[styles.columnLabel, { flex: 1 }]}>KG</Text>
-              <Text style={[styles.columnLabel, { flex: 1 }]}>REPS</Text>
-              <Text style={[styles.columnLabel, { width: 44, textAlign: 'center' }]}>DONE</Text>
-            </View>
-
-            {/* Set Rows */}
-            {exercise.sets.map((set, idx) => (
-              <View
-                key={idx}
-                style={[styles.setRow, set.completed && styles.setRowCompleted]}
-              >
-                <Text style={[styles.setText, { width: 44 }]}>{set.setNumber}</Text>
-                <Text style={[styles.prevText, { flex: 1 }]}>{set.prevWeight} kg</Text>
-                <Text style={[styles.valueText, { flex: 1 }]}>{set.weight}</Text>
-                <Text style={[styles.valueText, { flex: 1 }]}>{set.reps}</Text>
-                <TouchableOpacity
-                  onPress={() => toggleSet(exercise.id, idx)}
-                  style={[styles.checkBtn, set.completed && styles.checkBtnActive]}
-                >
-                  {set.completed && <Icon name="check" size={14} color="#FFFFFF" />}
-                </TouchableOpacity>
-              </View>
-            ))}
-          </Card>
-        ))}
-
-        <Button
-          title="Complete Workout"
-          onPress={handleFinishWorkout}
-          variant="accent"
-          size="lg"
-          style={styles.completeBtn}
-        />
-      </ScrollView>
     </Screen>
   );
 };
@@ -213,152 +260,151 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.border,
-    backgroundColor: themeColors.surface,
+    paddingHorizontal: sp.lg,
+    paddingVertical: sp.md,
   },
   backButton: {
-    padding: spacing[1],
-  },
-  headerCenter: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceHighlight,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  workoutName: {
-    ...typography.bodySmall,
-    color: themeColors.textPrimary,
-    fontWeight: '700',
-  },
-  timerRow: {
+  timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[1],
-    marginTop: 2,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: themeColors.success,
+    backgroundColor: colors.surfaceHighlight,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.xs,
+    borderRadius: radius.full,
+    gap: sp.xs,
   },
   timerText: {
     ...typography.caption,
-    color: themeColors.accent,
     fontWeight: '700',
+    color: colors.textPrimary,
   },
-  finishHeaderBtn: {
-    minHeight: 32,
-    paddingHorizontal: spacing[3],
-  },
-  restBanner: {
-    flexDirection: 'row',
+  unitToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: themeColors.accentLight,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    justifyContent: 'center',
   },
-  restText: {
+  unitToggleText: {
     ...typography.caption,
-    color: themeColors.accent,
-    fontWeight: '600',
-  },
-  skipRestText: {
-    ...typography.caption,
-    color: themeColors.accent,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
-  scrollList: {
-    padding: spacing[4],
-    gap: spacing[4],
-    paddingBottom: spacing[10],
+  container: {
+    paddingHorizontal: sp.lg,
+    paddingBottom: sp.xxl,
+    gap: sp.lg,
+  },
+  titleSection: {
+    gap: sp.xs,
+  },
+  workoutTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: sp.xs,
   },
   exerciseCard: {
-    padding: spacing[4],
-    gap: spacing[3],
+    padding: sp.md,
+    gap: sp.md,
   },
   exerciseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+  },
+  exerciseInfo: {
+    flex: 1,
+    marginRight: sp.sm,
   },
   exerciseName: {
-    ...typography.h3,
-    color: themeColors.textPrimary,
+    ...typography.bodyLarge,
     fontWeight: '700',
+    color: colors.textPrimary,
   },
-  targetMuscle: {
+  prescriptionText: {
     ...typography.caption,
-    color: themeColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
-  formGuideButton: {
+  addSetButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: themeColors.aiLight,
-    paddingHorizontal: spacing[2.5],
-    paddingVertical: spacing[1],
-    borderRadius: radius.full,
-    gap: spacing[1],
+    backgroundColor: colors.primary,
+    paddingHorizontal: sp.sm + 2,
+    paddingVertical: sp.xs,
+    borderRadius: radius.sm,
+    gap: 4,
   },
-  formGuideText: {
+  addSetButtonText: {
     ...typography.caption,
-    color: themeColors.aiPrimary,
-    fontWeight: '600',
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing[1],
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.border,
-  },
-  columnLabel: {
-    ...typography.caption,
-    color: themeColors.textMuted,
     fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  setsTable: {
+    gap: sp.xs,
+    backgroundColor: colors.surfaceHighlight,
+    padding: sp.sm,
+    borderRadius: radius.sm,
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: sp.xs,
   },
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.surface,
+    paddingVertical: sp.xs,
   },
-  setRowCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.06)',
-    borderRadius: radius.sm,
+  tableCol: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
-  setText: {
-    ...typography.bodySmall,
-    color: themeColors.textSecondary,
-    fontWeight: '600',
+  tableColIndex: {
+    width: 40,
+    fontWeight: '700',
   },
-  prevText: {
-    ...typography.bodySmall,
-    color: themeColors.textMuted,
+  tableColWeight: {
+    flex: 1,
+    color: colors.textPrimary,
   },
-  valueText: {
-    ...typography.bodySmall,
-    color: themeColors.textPrimary,
-    fontWeight: '600',
+  tableColReps: {
+    flex: 1,
+    color: colors.textPrimary,
   },
-  checkBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
-    backgroundColor: themeColors.surfaceActive,
+  tableColStatus: {
+    width: 50,
     alignItems: 'center',
+  },
+  noSetsText: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    paddingVertical: sp.sm,
+  },
+  completeButton: {
+    marginTop: sp.md,
+  },
+  centerContainer: {
+    flex: 1,
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: themeColors.border,
+    alignItems: 'center',
   },
-  checkBtnActive: {
-    backgroundColor: themeColors.success,
-    borderColor: themeColors.success,
-  },
-  completeBtn: {
-    marginTop: spacing[2],
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: sp.sm,
   },
 });

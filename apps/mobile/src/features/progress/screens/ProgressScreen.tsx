@@ -1,173 +1,429 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Screen, Card, Badge, Icon, MetricCard, Tabs } from '../../../components/primitives';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { Screen, Card, Badge, Icon, MetricCard, Tabs, Button } from '../../../components/primitives';
 import { themeColors, typography, spacing, radius } from '../../../theme';
+import { ProgressService, ProgressSummaryDto } from '../services/progressService';
 
-type ProgressTab = 'volume' | 'records' | 'attendance';
+type ProgressTab = 'overview' | 'measurements' | 'assessments' | 'performance' | 'records' | 'goals';
 
 const TABS = [
-  { id: 'volume' as ProgressTab, label: 'Volume' },
-  { id: 'records' as ProgressTab, label: 'Records' },
-  { id: 'attendance' as ProgressTab, label: 'Consistency' },
-];
-
-const WEEKLY_VOLUME = [
-  { week: 'W1', volume: 18400, target: 20000 },
-  { week: 'W2', volume: 21200, target: 20000 },
-  { week: 'W3', volume: 19800, target: 20000 },
-  { week: 'W4', volume: 24850, target: 20000 },
-];
-
-const RECORDS = [
-  { exercise: 'Barbell Deadlift', weight: '180 kg', reps: '3 reps', date: 'Sep 02, 2026', pr: true },
-  { exercise: 'Back Squat', weight: '145 kg', reps: '5 reps', date: 'Aug 24, 2026', pr: true },
-  { exercise: 'Barbell Bench Press', weight: '100 kg', reps: '4 reps', date: 'Aug 18, 2026', pr: false },
-  { exercise: 'Overhead Press', weight: '65 kg', reps: '6 reps', date: 'Aug 10, 2026', pr: false },
+  { id: 'overview' as ProgressTab, label: 'Overview' },
+  { id: 'measurements' as ProgressTab, label: 'Body Metrics' },
+  { id: 'assessments' as ProgressTab, label: 'Assessments' },
+  { id: 'performance' as ProgressTab, label: 'Performance' },
+  { id: 'records' as ProgressTab, label: 'PRs' },
+  { id: 'goals' as ProgressTab, label: 'Goals' },
 ];
 
 export const ProgressScreen: React.FC = () => {
   const navigation = useNavigation();
-  const [activeTab, setActiveTab] = useState<ProgressTab>('volume');
+  const route = useRoute();
+  const params = (route.params || {}) as { memberId?: string; clientName?: string };
+
+  const [activeTab, setActiveTab] = useState<ProgressTab>('overview');
+  const [period, setPeriod] = useState<string>('30D');
+  const [data, setData] = useState<ProgressSummaryDto | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadProgress = useCallback(async () => {
+    try {
+      setError(null);
+      let summary: ProgressSummaryDto;
+      if (params.memberId) {
+        summary = await ProgressService.getMemberProgress(params.memberId, period);
+      } else {
+        summary = await ProgressService.getMyProgress(period);
+      }
+      setData(summary);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load progress analytics. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [params.memberId, period]);
+
+  useEffect(() => {
+    setLoading(true);
+    loadProgress();
+  }, [loadProgress]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadProgress();
+  };
 
   return (
     <Screen safeAreaEdges={['top', 'bottom']} statusBarStyle="light">
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
           <Icon name="chevron-left" size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Progress & Analytics</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>
+          {params.clientName ? `${params.clientName}'s Progress` : 'Progress & Analytics'}
+        </Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => setPeriod(period === '30D' ? '90D' : '30D')}
+            style={styles.periodPill}
+            accessibilityLabel={`Time period: ${period}`}
+          >
+            <Text style={styles.periodPillText}>{period}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* KPI Metrics */}
-        <View style={styles.metricsRow}>
-          <MetricCard
-            label="MONTHLY WORKOUTS"
-            value="18"
-            unit="sessions"
-            change="+22%"
-            trend="up"
-            icon="bolt"
-            accentColor={themeColors.accent}
-            style={styles.flexMetric}
-          />
-          <MetricCard
-            label="TOTAL TONNAGE"
-            value="84.2"
-            unit="tonnes"
-            change="+11%"
-            trend="up"
-            icon="dumbbell"
-            accentColor={themeColors.primary}
-            style={styles.flexMetric}
-          />
-        </View>
-
-        {/* Tab Selector */}
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
         <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} variant="pill" />
+      </View>
 
-        {/* Tab 1: Volume Visualization */}
-        {activeTab === 'volume' && (
-          <Card style={styles.chartCard}>
-            <View style={styles.chartHeader}>
-              <View>
-                <Text style={styles.chartTitle}>Weekly Tonnage (kg)</Text>
-                <Text style={styles.chartSubtitle}>Current Month Volume Progression</Text>
-              </View>
-              <Badge label="PROGRESSIVE LOAD" variant="success" />
-            </View>
-
-            {/* Custom Responsive Bar Chart */}
-            <View style={styles.barChartContainer}>
-              {WEEKLY_VOLUME.map((item, idx) => {
-                const maxVol = 26000;
-                const barHeight = (item.volume / maxVol) * 140;
-                const isTargetExceeded = item.volume >= item.target;
-                return (
-                  <View key={idx} style={styles.barColumn}>
-                    <Text style={styles.barValueText}>{(item.volume / 1000).toFixed(1)}k</Text>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.barFill,
-                          { height: barHeight },
-                          isTargetExceeded && styles.barFillTarget,
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.barLabelText}>{item.week}</Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.chartFooter}>
-              <Icon name="sparkles" size={14} color={themeColors.aiPrimary} />
-              <Text style={styles.aiAnalysisText}>
-                FitCore AI: Volume increased 18.2% over 4 weeks with zero overreaching fatigue indicators detected.
-              </Text>
-            </View>
-          </Card>
-        )}
-
-        {/* Tab 2: Personal Records */}
-        {activeTab === 'records' && (
-          <View style={styles.recordsList}>
-            {RECORDS.map((record, i) => (
-              <Card key={i} style={styles.recordCard}>
-                <View style={styles.recordHeader}>
-                  <View>
-                    <Text style={styles.recordExercise}>{record.exercise}</Text>
-                    <Text style={styles.recordDate}>{record.date}</Text>
-                  </View>
-                  {record.pr ? (
-                    <Badge label="NEW PR" variant="accent" />
-                  ) : (
-                    <Badge label="PERSONAL BEST" variant="neutral" />
-                  )}
-                </View>
-                <View style={styles.recordStatsRow}>
-                  <Text style={styles.recordWeight}>{record.weight}</Text>
-                  <Text style={styles.recordReps}>for {record.reps}</Text>
-                </View>
-              </Card>
-            ))}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.primary} />}
+      >
+        {/* Loading State */}
+        {loading && !refreshing && (
+          <View style={styles.centerState}>
+            <ActivityIndicator size="large" color={themeColors.primary} />
+            <Text style={styles.stateText}>Loading verified progress analytics...</Text>
           </View>
         )}
 
-        {/* Tab 3: Attendance Consistency */}
-        {activeTab === 'attendance' && (
-          <Card style={styles.attendanceCard}>
-            <View style={styles.attendanceHeader}>
-              <Text style={styles.attendanceTitle}>30-Day Check-in Consistency</Text>
-              <Text style={styles.attendanceRate}>82% Goal Adherence</Text>
-            </View>
-
-            <View style={styles.heatGrid}>
-              {Array.from({ length: 28 }).map((_, idx) => {
-                const attended = [0, 1, 3, 4, 6, 7, 8, 10, 11, 13, 15, 17, 18, 20, 21, 24, 25, 27].includes(idx);
-                return (
-                  <View
-                    key={idx}
-                    style={[styles.heatBox, attended && styles.heatBoxActive]}
-                  />
-                );
-              })}
-            </View>
-
-            <View style={styles.heatLegend}>
-              <View style={styles.legendItem}>
-                <View style={styles.heatBox} />
-                <Text style={styles.legendText}>Rest Day</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.heatBox, styles.heatBoxActive]} />
-                <Text style={styles.legendText}>Trained / Checked In</Text>
-              </View>
-            </View>
+        {/* Error State */}
+        {error && !loading && (
+          <Card style={styles.errorCard}>
+            <Icon name="alert-circle" size={24} color={themeColors.danger} />
+            <Text style={styles.errorTitle}>Analytics Unavailable</Text>
+            <Text style={styles.errorMessage}>{error}</Text>
+            <Button
+              title="Retry"
+              variant="secondary"
+              size="sm"
+              onPress={loadProgress}
+              style={{ marginTop: spacing[3] }}
+            />
           </Card>
+        )}
+
+        {/* Loaded Data Content */}
+        {!loading && !error && data && (
+          <>
+            {/* TAB 1: OVERVIEW */}
+            {activeTab === 'overview' && (
+              <View style={styles.tabContent}>
+                <View style={styles.metricsRow}>
+                  <MetricCard
+                    label="WORKOUTS COMPLETED"
+                    value={data.workoutsCompleted.toString()}
+                    unit="sessions"
+                    change={data.adherence.completed > 0 ? 'Active' : 'None'}
+                    trend={data.adherence.completed > 0 ? 'up' : 'neutral'}
+                    icon="bolt"
+                    accentColor={themeColors.accent}
+                    style={styles.flexMetric}
+                  />
+                  <MetricCard
+                    label="TOTAL TONNAGE"
+                    value={
+                      data.totalTonnageLifted > 1000
+                        ? (data.totalTonnageLifted / 1000).toFixed(1)
+                        : data.totalTonnageLifted.toString()
+                    }
+                    unit={data.totalTonnageLifted > 1000 ? 'tonnes' : 'kg'}
+                    trend="up"
+                    icon="dumbbell"
+                    accentColor={themeColors.primary}
+                    style={styles.flexMetric}
+                  />
+                </View>
+
+                {/* Adherence Card */}
+                <Card style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>Training Adherence</Text>
+                    <Badge
+                      label={`${data.adherence.adherenceRate}% ADHERENCE`}
+                      variant={data.adherence.adherenceRate >= 80 ? 'success' : 'neutral'}
+                    />
+                  </View>
+                  <Text style={styles.subtext}>
+                    {data.adherence.completed} of {data.adherence.effectiveScheduled} effective scheduled workouts completed
+                    {data.adherence.cancelled > 0 && ` (${data.adherence.cancelled} cancelled excluded)`}.
+                  </Text>
+
+                  <View style={styles.adherenceGrid}>
+                    <View style={styles.adherenceStat}>
+                      <Text style={styles.adherenceNumber}>{data.adherence.totalScheduled}</Text>
+                      <Text style={styles.adherenceLabel}>Scheduled</Text>
+                    </View>
+                    <View style={styles.adherenceStat}>
+                      <Text style={[styles.adherenceNumber, { color: themeColors.success }]}>
+                        {data.adherence.completed}
+                      </Text>
+                      <Text style={styles.adherenceLabel}>Completed</Text>
+                    </View>
+                    <View style={styles.adherenceStat}>
+                      <Text style={[styles.adherenceNumber, { color: themeColors.warning }]}>
+                        {data.adherence.skipped}
+                      </Text>
+                      <Text style={styles.adherenceLabel}>Skipped</Text>
+                    </View>
+                    <View style={styles.adherenceStat}>
+                      <Text style={[styles.adherenceNumber, { color: themeColors.danger }]}>
+                        {data.adherence.overdue}
+                      </Text>
+                      <Text style={styles.adherenceLabel}>Overdue</Text>
+                    </View>
+                  </View>
+                </Card>
+
+                {/* Latest Achievements Preview */}
+                {data.personalRecords.length > 0 && (
+                  <Card style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.cardTitle}>Top Personal Records</Text>
+                      <Badge label={`${data.personalRecords.length} ACHIEVED`} variant="accent" />
+                    </View>
+                    {data.personalRecords.slice(0, 3).map((pr, idx) => (
+                      <View key={idx} style={styles.recordRow}>
+                        <View>
+                          <Text style={styles.recordExerciseName}>{pr.exercise.name}</Text>
+                          <Text style={styles.recordDetail}>
+                            {pr.recordType.replace('_', ' ')} • {new Date(pr.achievedAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                        <Text style={styles.recordVal}>
+                          {pr.value} {pr.unit}
+                        </Text>
+                      </View>
+                    ))}
+                  </Card>
+                )}
+              </View>
+            )}
+
+            {/* TAB 2: MEASUREMENTS */}
+            {activeTab === 'measurements' && (
+              <View style={styles.tabContent}>
+                {data.recentMeasurements.length === 0 ? (
+                  <Card style={styles.emptyCard}>
+                    <Icon name="activity" size={32} color={themeColors.textMuted} />
+                    <Text style={styles.emptyTitle}>No measurements recorded yet</Text>
+                    <Text style={styles.emptyMessage}>
+                      Log body weight, fat percentage, and body circumferences to track composition trends.
+                    </Text>
+                  </Card>
+                ) : (
+                  data.recentMeasurements.map((m) => (
+                    <Card key={m.id} style={styles.measurementCard}>
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.measurementType}>{m.measurementType.replace(/_/g, ' ')}</Text>
+                          <Text style={styles.subtext}>{new Date(m.recordedAt).toLocaleDateString()}</Text>
+                        </View>
+                        <View style={styles.measurementValueBox}>
+                          <Text style={styles.measurementValText}>
+                            {m.value} {m.unit}
+                          </Text>
+                        </View>
+                      </View>
+                      {m.notes && <Text style={styles.notesText}>{m.notes}</Text>}
+                    </Card>
+                  ))
+                )}
+              </View>
+            )}
+
+            {/* TAB 3: ASSESSMENTS */}
+            {activeTab === 'assessments' && (
+              <View style={styles.tabContent}>
+                {data.recentAssessments.length === 0 ? (
+                  <Card style={styles.emptyCard}>
+                    <Icon name="activity" size={32} color={themeColors.textMuted} />
+                    <Text style={styles.emptyTitle}>No assessments completed yet</Text>
+                    <Text style={styles.emptyMessage}>
+                      Fitness assessments evaluate strength, endurance, mobility, and cardio capacities.
+                    </Text>
+                  </Card>
+                ) : (
+                  data.recentAssessments.map((a) => (
+                    <Card key={a.id} style={styles.card}>
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.cardTitle}>{a.title}</Text>
+                          <Text style={styles.subtext}>
+                            {a.category} • {new Date(a.completedAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                        <Badge label={a.status} variant={a.status === 'COMPLETED' ? 'success' : 'neutral'} />
+                      </View>
+                      {a.results.map((r, i) => (
+                        <View key={i} style={styles.resultRow}>
+                          <Text style={styles.resultMetric}>{r.metricName}</Text>
+                          <Text style={styles.resultValue}>
+                            {r.value !== undefined ? `${r.value} ${r.unit || ''}` : r.score ? `${r.score} pts` : '-'}
+                          </Text>
+                        </View>
+                      ))}
+                    </Card>
+                  ))
+                )}
+              </View>
+            )}
+
+            {/* TAB 4: PERFORMANCE */}
+            {activeTab === 'performance' && (
+              <View style={styles.tabContent}>
+                {data.exerciseAnalytics.length === 0 ? (
+                  <Card style={styles.emptyCard}>
+                    <Icon name="activity" size={32} color={themeColors.textMuted} />
+                    <Text style={styles.emptyTitle}>No performance records in this period</Text>
+                    <Text style={styles.emptyMessage}>
+                      Completed workout sets automatically produce training volume, rep, and load analytics.
+                    </Text>
+                  </Card>
+                ) : (
+                  data.exerciseAnalytics.map((ex) => (
+                    <Card key={ex.exerciseId} style={styles.card}>
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.cardTitle}>{ex.exerciseName}</Text>
+                          <Text style={styles.subtext}>{ex.exerciseType}</Text>
+                        </View>
+                        {ex.totalVolume > 0 && (
+                          <Badge label={`${(ex.totalVolume / 1000).toFixed(1)}t`} variant="accent" />
+                        )}
+                      </View>
+                      <View style={styles.perfGrid}>
+                        <View style={styles.perfItem}>
+                          <Text style={styles.perfVal}>{ex.totalSets}</Text>
+                          <Text style={styles.perfLabel}>Sets</Text>
+                        </View>
+                        <View style={styles.perfItem}>
+                          <Text style={styles.perfVal}>{ex.totalReps}</Text>
+                          <Text style={styles.perfLabel}>Reps</Text>
+                        </View>
+                        <View style={styles.perfItem}>
+                          <Text style={styles.perfVal}>{ex.maxLoad} kg</Text>
+                          <Text style={styles.perfLabel}>Max Load</Text>
+                        </View>
+                        <View style={styles.perfItem}>
+                          <Text style={styles.perfVal}>{ex.averageRpe ? ex.averageRpe : '-'}</Text>
+                          <Text style={styles.perfLabel}>Avg RPE</Text>
+                        </View>
+                      </View>
+                    </Card>
+                  ))
+                )}
+              </View>
+            )}
+
+            {/* TAB 5: PERSONAL RECORDS */}
+            {activeTab === 'records' && (
+              <View style={styles.tabContent}>
+                {data.personalRecords.length === 0 ? (
+                  <Card style={styles.emptyCard}>
+                    <Icon name="award" size={32} color={themeColors.textMuted} />
+                    <Text style={styles.emptyTitle}>No personal records achieved yet</Text>
+                    <Text style={styles.emptyMessage}>
+                      Personal records are verified automatically from completed workout sets.
+                    </Text>
+                  </Card>
+                ) : (
+                  data.personalRecords.map((pr) => (
+                    <Card key={pr.id} style={styles.card}>
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.cardTitle}>{pr.exercise.name}</Text>
+                          <Text style={styles.subtext}>
+                            {pr.recordType.replace(/_/g, ' ')} • {new Date(pr.achievedAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                        <Badge label="PERSONAL RECORD" variant="accent" />
+                      </View>
+                      <View style={styles.prValueRow}>
+                        <Text style={styles.prValueText}>
+                          {pr.value} {pr.unit}
+                        </Text>
+                        {pr.previousValue && (
+                          <Text style={styles.prImprovement}>
+                            ↑ {pr.improvementPercentage}% vs previous ({pr.previousValue} {pr.unit})
+                          </Text>
+                        )}
+                      </View>
+                    </Card>
+                  ))
+                )}
+              </View>
+            )}
+
+            {/* TAB 6: GOALS */}
+            {activeTab === 'goals' && (
+              <View style={styles.tabContent}>
+                {data.activeGoals.length === 0 ? (
+                  <Card style={styles.emptyCard}>
+                    <Icon name="award" size={32} color={themeColors.textMuted} />
+                    <Text style={styles.emptyTitle}>No active goals currently tracked</Text>
+                    <Text style={styles.emptyMessage}>
+                      Set measurable target weight, strength, or endurance goals with your trainer.
+                    </Text>
+                  </Card>
+                ) : (
+                  data.activeGoals.map((g) => (
+                    <Card key={g.id} style={styles.card}>
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.cardTitle}>{g.title}</Text>
+                          <Text style={styles.subtext}>{g.category.replace(/_/g, ' ')}</Text>
+                        </View>
+                        <Badge
+                          label={`${g.progressPercentage}%`}
+                          variant={g.isCompleted ? 'success' : g.isOverdue ? 'danger' : 'neutral'}
+                        />
+                      </View>
+
+                      {/* Progress Bar */}
+                      <View style={styles.progressBarTrack}>
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            { width: `${Math.min(100, Math.max(0, g.progressPercentage))}%` },
+                            g.isCompleted && { backgroundColor: themeColors.success },
+                          ]}
+                        />
+                      </View>
+
+                      <View style={styles.goalValuesRow}>
+                        <Text style={styles.subtext}>Baseline: {g.baselineValue ?? '-'} {g.unit || ''}</Text>
+                        <Text style={[styles.subtext, { fontWeight: '700', color: themeColors.textPrimary }]}>
+                          Current: {g.currentValue ?? '-'} {g.unit || ''}
+                        </Text>
+                        <Text style={styles.subtext}>Target: {g.targetValue ?? '-'} {g.unit || ''}</Text>
+                      </View>
+                    </Card>
+                  ))
+                )}
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </Screen>
@@ -180,23 +436,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[3],
     borderBottomWidth: 1,
     borderBottomColor: themeColors.border,
   },
   backButton: {
-    padding: spacing[2],
-    marginLeft: -spacing[2],
+    padding: spacing[1],
   },
   headerTitle: {
-    ...typography.bodySmall,
+    ...typography.h3,
     color: themeColors.textPrimary,
     fontWeight: '700',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  periodPill: {
+    backgroundColor: themeColors.surfaceActive,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+  },
+  periodPillText: {
+    ...typography.caption,
+    color: themeColors.accent,
+    fontWeight: '700',
+  },
+  tabsContainer: {
+    paddingVertical: spacing[2],
+    borderBottomWidth: 1,
+    borderBottomColor: themeColors.border,
+  },
   container: {
     padding: spacing[4],
+    paddingBottom: spacing[12],
+  },
+  tabContent: {
     gap: spacing[4],
-    paddingBottom: spacing[10],
   },
   metricsRow: {
     flexDirection: 'row',
@@ -205,163 +484,213 @@ const styles = StyleSheet.create({
   flexMetric: {
     flex: 1,
   },
-  chartCard: {
+  card: {
     padding: spacing[4],
-    gap: spacing[4],
-  },
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  chartTitle: {
-    ...typography.h3,
-    color: themeColors.textPrimary,
-    fontWeight: '700',
-  },
-  chartSubtitle: {
-    ...typography.caption,
-    color: themeColors.textSecondary,
-    marginTop: 2,
-  },
-  barChartContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: 180,
-    paddingTop: spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.border,
-  },
-  barColumn: {
-    alignItems: 'center',
-    gap: spacing[1.5],
-  },
-  barValueText: {
-    ...typography.caption,
-    color: themeColors.textMuted,
-    fontWeight: '600',
-    fontSize: 10,
-  },
-  barTrack: {
-    width: 32,
-    height: 140,
     backgroundColor: themeColors.surface,
-    borderRadius: radius.sm,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  barFill: {
-    width: '100%',
-    backgroundColor: themeColors.accent,
-    borderRadius: radius.sm,
-  },
-  barFillTarget: {
-    backgroundColor: themeColors.success,
-  },
-  barLabelText: {
-    ...typography.caption,
-    color: themeColors.textSecondary,
-    fontWeight: '700',
-  },
-  chartFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: themeColors.surface,
-    padding: spacing[3],
     borderRadius: radius.md,
-    gap: spacing[2],
-  },
-  aiAnalysisText: {
-    ...typography.caption,
-    color: themeColors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
-  recordsList: {
+    borderWidth: 1,
+    borderColor: themeColors.border,
     gap: spacing[3],
   },
-  recordCard: {
-    padding: spacing[4],
-    gap: spacing[2],
-  },
-  recordHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  recordExercise: {
-    ...typography.bodySmall,
-    color: themeColors.textPrimary,
+  cardTitle: {
+    ...typography.body,
     fontWeight: '700',
+    color: themeColors.textPrimary,
   },
-  recordDate: {
+  subtext: {
     ...typography.caption,
-    color: themeColors.textMuted,
+    color: themeColors.textSecondary,
     marginTop: 2,
   },
-  recordStatsRow: {
+  adherenceGrid: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing[2],
+    justifyContent: 'space-between',
+    paddingTop: spacing[2],
+    borderTopWidth: 1,
+    borderTopColor: themeColors.border,
   },
-  recordWeight: {
-    ...typography.h2,
-    color: themeColors.accent,
+  adherenceStat: {
+    alignItems: 'center',
+  },
+  adherenceNumber: {
+    ...typography.h3,
     fontWeight: '800',
+    color: themeColors.textPrimary,
   },
-  recordReps: {
-    ...typography.bodySmall,
-    color: themeColors.textSecondary,
+  adherenceLabel: {
+    ...typography.caption,
+    color: themeColors.textMuted,
   },
-  attendanceCard: {
-    padding: spacing[4],
-    gap: spacing[3.5],
-  },
-  attendanceHeader: {
+  recordRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: spacing[2],
+    borderTopWidth: 1,
+    borderTopColor: themeColors.border,
   },
-  attendanceTitle: {
+  recordExerciseName: {
     ...typography.bodySmall,
+    fontWeight: '600',
     color: themeColors.textPrimary,
-    fontWeight: '700',
   },
-  attendanceRate: {
+  recordDetail: {
     ...typography.caption,
-    color: themeColors.success,
+    color: themeColors.textMuted,
+  },
+  recordVal: {
+    ...typography.body,
     fontWeight: '700',
+    color: themeColors.accent,
   },
-  heatGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  heatBox: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.xs,
+  measurementCard: {
+    padding: spacing[4],
     backgroundColor: themeColors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: themeColors.border,
   },
-  heatBoxActive: {
-    backgroundColor: themeColors.accent,
-    borderColor: themeColors.accent,
+  measurementType: {
+    ...typography.body,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
   },
-  heatLegend: {
-    flexDirection: 'row',
-    gap: spacing[4],
-    marginTop: spacing[1],
+  measurementValueBox: {
+    backgroundColor: themeColors.surfaceActive,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+    borderRadius: radius.sm,
   },
-  legendItem: {
+  measurementValText: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: themeColors.primary,
+  },
+  notesText: {
+    ...typography.caption,
+    color: themeColors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: spacing[2],
+  },
+  resultRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[1],
+  },
+  resultMetric: {
+    ...typography.bodySmall,
+    color: themeColors.textSecondary,
+  },
+  resultValue: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+  },
+  perfGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: themeColors.surfaceActive,
+    padding: spacing[3],
+    borderRadius: radius.sm,
+  },
+  perfItem: {
     alignItems: 'center',
-    gap: spacing[1.5],
   },
-  legendText: {
+  perfVal: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+  },
+  perfLabel: {
     ...typography.caption,
     color: themeColors.textMuted,
+  },
+  prValueRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing[1],
+  },
+  prValueText: {
+    ...typography.h3,
+    fontWeight: '800',
+    color: themeColors.accent,
+  },
+  prImprovement: {
+    ...typography.caption,
+    color: themeColors.success,
+    fontWeight: '600',
+  },
+  progressBarTrack: {
+    height: 8,
+    backgroundColor: themeColors.surfaceActive,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: themeColors.primary,
+    borderRadius: radius.full,
+  },
+  goalValuesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  centerState: {
+    paddingVertical: spacing[16],
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+  },
+  stateText: {
+    ...typography.bodySmall,
+    color: themeColors.textSecondary,
+  },
+  emptyCard: {
+    padding: spacing[8],
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: themeColors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    gap: spacing[2],
+  },
+  emptyTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+    marginTop: spacing[2],
+  },
+  emptyMessage: {
+    ...typography.caption,
+    color: themeColors.textSecondary,
+    textAlign: 'center',
+  },
+  errorCard: {
+    padding: spacing[6],
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.danger,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    gap: spacing[2],
+  },
+  errorTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    color: themeColors.danger,
+  },
+  errorMessage: {
+    ...typography.caption,
+    color: themeColors.textSecondary,
+    textAlign: 'center',
   },
 });

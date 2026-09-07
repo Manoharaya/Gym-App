@@ -31,10 +31,10 @@ export function getAppConfig(): FitCoreConfig {
   const apiBaseUrl =
     (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_BASE_URL) ||
     (env === 'production'
-      ? 'https://api.fitcore.io/v1'
+      ? 'https://api.fitcore.io/api/v1'
       : env === 'staging'
-        ? 'https://api-staging.fitcore.io/v1'
-        : 'http://localhost:4000/v1');
+        ? 'https://api-staging.fitcore.io/api/v1'
+        : 'http://localhost:4000/api/v1');
 
   const sentryDsn =
     typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_SENTRY_DSN : undefined;

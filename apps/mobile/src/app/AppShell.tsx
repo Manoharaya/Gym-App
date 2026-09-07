@@ -75,12 +75,30 @@ export const AppShell: React.FC = () => {
 
           <View style={styles.launcherGrid}>
             <Button
-              title="🏃‍♂️ Member Experience"
+              title="🏃‍♂️ Enter as Member (Days 1–10)"
               variant="accent"
               size="sm"
               onPress={() => {
                 setRole('MEMBER');
                 navigation.navigate('MemberFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="🔐 Sign In / Login Screen"
+              variant="primary"
+              size="sm"
+              onPress={() => {
+                navigation.navigate('Auth', { screen: 'Login' });
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="📋 Member Onboarding Flow (Day 4)"
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                navigation.navigate('OnboardingFlow');
               }}
               style={styles.launcherBtn}
             />
@@ -131,6 +149,36 @@ export const AppShell: React.FC = () => {
               onPress={() => {
                 setRole('ORGANISATION_OWNER');
                 navigation.navigate('OrganisationOwnerFlow');
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="👥 Staff Directory (Day 11)"
+              variant="primary"
+              size="sm"
+              onPress={() => {
+                setRole('OUTLET_MANAGER');
+                navigation.navigate('OutletManagerFlow', { screen: 'StaffDirectory' });
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="🏋️ Trainer Directory (Day 11)"
+              variant="primary"
+              size="sm"
+              onPress={() => {
+                setRole('OUTLET_MANAGER');
+                navigation.navigate('OutletManagerFlow', { screen: 'TrainerDirectory' });
+              }}
+              style={styles.launcherBtn}
+            />
+            <Button
+              title="🤝 Client Roster & Assignment (Day 11)"
+              variant="accent"
+              size="sm"
+              onPress={() => {
+                setRole('TRAINER');
+                navigation.navigate('TrainerFlow', { screen: 'TrainerClients' });
               }}
               style={styles.launcherBtn}
             />

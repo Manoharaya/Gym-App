@@ -1,6 +1,4 @@
-/**
- * AI Fitness Coach Presentation Components
- * Reusable domain components for this feature module.
- */
-
-export {};
+export * from './AIFitnessCoachMessage';
+export * from './AIFitnessCoachInput';
+export * from './AIFitnessCoachSuggestion';
+export * from './AIFitnessCoachSafetyNotice';

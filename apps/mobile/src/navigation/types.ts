@@ -1,9 +1,16 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type RootStackParamList = {
-  Auth: NavigatorScreenParams<AuthStackParamList>;
-  App: NavigatorScreenParams<AppStackParamList>;
+  Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
+  App: NavigatorScreenParams<AppStackParamList> | undefined;
   VerificationShell: undefined;
+  MemberFlow: NavigatorScreenParams<MemberStackParamList> | undefined;
+  TrainerFlow: NavigatorScreenParams<TrainerStackParamList> | undefined;
+  ReceptionFlow: NavigatorScreenParams<ReceptionStackParamList> | undefined;
+  OutletManagerFlow: NavigatorScreenParams<OutletManagerStackParamList> | undefined;
+  FinanceFlow: NavigatorScreenParams<FinanceStackParamList> | undefined;
+  OrganisationOwnerFlow: NavigatorScreenParams<OrganisationOwnerStackParamList> | undefined;
+  OnboardingFlow: undefined;
 };
 
 export type AuthStackParamList = {
@@ -30,6 +37,8 @@ export type MemberStackParamList = {
   AICoach: undefined;
   Wearables: undefined;
   Notifications: undefined;
+  NotificationDetail: { notificationId: string };
+  NotificationPreferences: undefined;
   MemberProfile: undefined;
   Settings: undefined;
   MembershipHome: undefined;
@@ -51,14 +60,44 @@ export type MemberStackParamList = {
   ClassCheckIn: { sessionId: string; bookingId?: string };
   AttendanceConfirmation: { attendanceRecord: any };
   AttendanceHistory: undefined;
+  TrainerDirectory: undefined;
+  TrainerProfile: { trainerId: string };
+  MyTrainer: undefined;
+  TrainingProgram: { programId?: string; memberProfileId?: string } | undefined;
+  Goals: { memberProfileId?: string } | undefined;
+  TrainerNotes: { memberProfileId?: string } | undefined;
+  ExerciseLibrary: undefined;
+  TrainingPlanOverview: { planId?: string } | undefined;
+  TrainingCalendar: { planId?: string } | undefined;
+  EngagementHome: undefined;
+  Habits: undefined;
+  HabitsScreen: undefined;
+  Challenges: undefined;
+  ChallengesScreen: undefined;
+  Rewards: undefined;
+  RewardsScreen: undefined;
 };
 
 export type TrainerStackParamList = {
   TrainerHome: undefined;
+  TrainerDirectory: undefined;
+  TrainerProfile: { trainerId?: string } | undefined;
+  TrainerClients: { trainerId?: string } | undefined;
+  TrainerClientDetail: { memberProfileId: string; clientName?: string; clientEmail?: string; assignmentId?: string };
   ClientList: undefined;
   ClientDetail: { clientId: string };
   Schedule: undefined;
   ProgramBuilder: undefined;
+  TrainingProgram: { programId?: string; memberProfileId?: string } | undefined;
+  Goals: { memberProfileId?: string } | undefined;
+  TrainerNotes: { memberProfileId?: string } | undefined;
+  ExerciseLibrary: undefined;
+  ExerciseDetail: { exerciseId: string; exerciseName?: string };
+  TrainerWorkouts: { memberProfileId?: string } | undefined;
+  CreateWorkout: { memberProfileId?: string } | undefined;
+  TrainerProgramming: { memberProfileId?: string; programId?: string; planId?: string } | undefined;
+  WorkoutPreview: { workoutId: string };
+  TrainingCalendar: { planId?: string; memberProfileId?: string } | undefined;
 };
 
 export type ReceptionStackParamList = {
@@ -72,7 +111,11 @@ export type ReceptionStackParamList = {
 export type OutletManagerStackParamList = {
   ManagerHome: undefined;
   FacilityOperations: undefined;
+  StaffDirectory: undefined;
   StaffRoster: undefined;
+  TrainerDirectory: undefined;
+  TrainerProfile: { trainerId?: string } | undefined;
+  TrainerClients: { trainerId?: string } | undefined;
   AccessControl: undefined;
   OutletReports: undefined;
 };
@@ -87,6 +130,10 @@ export type FinanceStackParamList = {
 
 export type OrganisationOwnerStackParamList = {
   OwnerHome: undefined;
+  StaffDirectory: undefined;
+  TrainerDirectory: undefined;
+  TrainerProfile: { trainerId?: string } | undefined;
+  TrainerClients: { trainerId?: string } | undefined;
   OutletsOverview: undefined;
   RevenueAnalytics: undefined;
   ExecutiveReports: undefined;

@@ -240,15 +240,6 @@ export interface MemberDocument extends BaseEntity {
   uploadedById?: string;
 }
 
-export interface StaffProfile extends TenantScopedEntity {
-  userId: string;
-  role: UserRole;
-  bio?: string;
-  specializations?: string[];
-  certifications?: string[];
-  activeOutletIds: string[];
-}
-
 export type MembershipPlanStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
 export type MembershipType =
   | 'STANDARD'
@@ -598,20 +589,8 @@ export interface Exercise extends BaseEntity {
   videoUrl?: string;
 }
 
-export interface TrainingProgram extends TenantScopedEntity {
-  trainerId?: string;
-  title: string;
-  description?: string;
-  durationWeeks: number;
-  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ELITE';
-}
+// Early scaffold Workout removed in favor of Day 13 Workout model
 
-export interface Workout extends TenantScopedEntity {
-  programId?: string;
-  title: string;
-  dayIndex?: number;
-  estimatedDurationMinutes: number;
-}
 
 export interface WorkoutSession extends TenantScopedEntity {
   userId: string;
@@ -669,12 +648,6 @@ export interface Message extends TenantScopedEntity {
   readBy: string[];
 }
 
-export interface Notification extends TenantScopedEntity {
-  userId: string;
-  title: string;
-  body: string;
-  read: boolean;
-}
 
 export interface RetailProduct extends TenantScopedEntity {
   name: string;
@@ -1244,5 +1217,1132 @@ export interface AttendanceRecord extends BaseEntity {
   };
   classSession?: ClassSession;
   booking?: Booking;
+}
+
+// ==========================================
+// DAY 11: STAFF & TRAINER MANAGEMENT DOMAIN
+// ==========================================
+
+export type StaffEmploymentStatus =
+  | 'INVITED'
+  | 'ACTIVE'
+  | 'ON_LEAVE'
+  | 'SUSPENDED'
+  | 'INACTIVE'
+  | 'TERMINATED';
+
+export type StaffAssignmentStatus = 'ACTIVE' | 'INACTIVE' | 'TEMPORARY' | 'SCHEDULED';
+
+export type TrainerStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+
+export type CertificationStatus = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'REVOKED';
+
+export type TrainerAssignmentType = 'PRIMARY' | 'SECONDARY' | 'TEMPORARY' | 'GROUP_COACH';
+
+export type TrainerAssignmentStatus = 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'REASSIGNED';
+
+export interface StaffOutletAssignment extends BaseEntity {
+  staffProfileId: string;
+  outletId: string;
+  roleScope?: string | null;
+  status: StaffAssignmentStatus;
+  isPrimary: boolean;
+  startDate: string;
+  endDate?: string | null;
+  assignedById?: string | null;
+  outlet?: Outlet;
+}
+
+export interface TrainerCertification extends BaseEntity {
+  trainerProfileId: string;
+  certificationName: string;
+  issuingOrganisation: string;
+  certificationNumber?: string | null;
+  issueDate: string;
+  expiryDate?: string | null;
+  documentReference?: string | null;
+  documentUrl?: string | null;
+  documentMetadata?: Record<string, any> | null;
+  status: CertificationStatus;
+  verifiedAt?: string | null;
+  verifiedById?: string | null;
+}
+
+export interface TrainerClientAssignment extends BaseEntity {
+  organisationId: string;
+  outletId?: string | null;
+  trainerProfileId: string;
+  memberProfileId: string;
+  assignmentType: TrainerAssignmentType;
+  status: TrainerAssignmentStatus;
+  startDate: string;
+  endDate?: string | null;
+  assignedById?: string | null;
+  notes?: string | null;
+  previousAssignmentId?: string | null;
+  trainerProfile?: TrainerProfile;
+  memberProfile?: MemberProfile;
+  outlet?: Outlet;
+}
+
+export interface TrainerProfile extends BaseEntity {
+  staffProfileId: string;
+  organisationId: string;
+  professionalName: string;
+  bio?: string | null;
+  profilePhotoUrl?: string | null;
+  specialties: string[];
+  yearsExperience: number;
+  languages: string[];
+  coachingStyle?: string | null;
+  trainingApproach?: string | null;
+  consultationAvailability?: string | null;
+  status: TrainerStatus;
+  certifications?: TrainerCertification[];
+  clientAssignments?: TrainerClientAssignment[];
+  staffProfile?: StaffProfile;
+}
+
+export interface StaffProfile extends BaseEntity {
+  userId: string;
+  organisationId: string;
+  employeeReference?: string | null;
+  displayName: string;
+  jobTitle: string;
+  employmentStatus: StaffEmploymentStatus;
+  phone?: string | null;
+  workEmail?: string | null;
+  bio?: string | null;
+  profilePhotoUrl?: string | null;
+  hireDate?: string | null;
+  terminationDate?: string | null;
+  user?: User;
+  outletAssignments?: StaffOutletAssignment[];
+  trainerProfile?: TrainerProfile | null;
+}
+
+// ==========================================
+// DAY 12: PERSONAL TRAINING & COACHING DOMAIN
+// ==========================================
+
+export type TrainingProgramStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+
+export type GoalCategory =
+  | 'WEIGHT_LOSS'
+  | 'MUSCLE_GAIN'
+  | 'STRENGTH'
+  | 'ENDURANCE'
+  | 'MOBILITY'
+  | 'GENERAL_FITNESS'
+  | 'SPORTS_PERFORMANCE'
+  | 'BODY_COMPOSITION'
+  | 'REHABILITATION'
+  | 'HABIT_FORMATION';
+
+export type GoalStatus = 'ACTIVE' | 'ON_TRACK' | 'AT_RISK' | 'COMPLETED' | 'PAUSED' | 'CANCELLED';
+
+export type TrainingGoalCategory = GoalCategory;
+export type TrainingGoalStatus = GoalStatus;
+
+export type TrainerNoteType = 'GENERAL' | 'SESSION' | 'PROGRAM' | 'GOAL' | 'FOLLOW_UP' | 'COACHING';
+
+export type TrainerNoteVisibility = 'PRIVATE' | 'STAFF' | 'MEMBER_VISIBLE';
+
+export type PTSessionStatus = 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+
+export type PTSessionType = 'ONE_ON_ONE' | 'CONSULTATION' | 'ASSESSMENT';
+
+export interface TrainingProgram extends BaseEntity {
+  organisationId: string;
+  outletId?: string | null;
+  memberProfileId: string;
+  trainerProfileId: string;
+  name: string;
+  description?: string | null;
+  status: TrainingProgramStatus;
+  startDate: string;
+  endDate?: string | null;
+  activatedAt?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  metadata?: Record<string, any> | null;
+  memberProfile?: MemberProfile;
+  trainerProfile?: TrainerProfile;
+  goals?: TrainingGoal[];
+  sessions?: PersonalTrainingSession[];
+  notes?: TrainerNote[];
+}
+
+export interface TrainingGoal extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  trainingProgramId?: string | null;
+  createdById?: string | null;
+  title: string;
+  description?: string | null;
+  category: GoalCategory;
+  baselineValue?: number | null;
+  targetValue?: number | null;
+  currentValue?: number | null;
+  unit?: string | null;
+  targetDate?: string | null;
+  priority: number;
+  status: GoalStatus;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  memberProfile?: MemberProfile;
+  trainingProgram?: TrainingProgram;
+  history?: GoalHistory[];
+  notes?: TrainerNote[];
+}
+
+export interface GoalHistory extends BaseEntity {
+  goalId: string;
+  actorId?: string | null;
+  previousStatus?: string | null;
+  newStatus: string;
+  previousValue?: number | null;
+  newValue?: number | null;
+  changeReason?: string | null;
+  notes?: string | null;
+  goal?: TrainingGoal;
+  actor?: User;
+}
+
+export interface TrainerNote extends BaseEntity {
+  organisationId: string;
+  outletId?: string | null;
+  memberProfileId: string;
+  trainerProfileId: string;
+  trainingProgramId?: string | null;
+  trainingGoalId?: string | null;
+  personalTrainingSessionId?: string | null;
+  noteType: TrainerNoteType;
+  content: string;
+  visibility: TrainerNoteVisibility;
+  isPinned: boolean;
+  memberProfile?: MemberProfile;
+  trainerProfile?: TrainerProfile;
+  trainingProgram?: TrainingProgram;
+  trainingGoal?: TrainingGoal;
+  personalTrainingSession?: PersonalTrainingSession;
+}
+
+export interface PersonalTrainingSession extends BaseEntity {
+  organisationId: string;
+  outletId: string;
+  memberProfileId: string;
+  trainerProfileId: string;
+  trainingProgramId?: string | null;
+  scheduledStart: string;
+  scheduledEnd: string;
+  actualStart?: string | null;
+  actualEnd?: string | null;
+  status: PTSessionStatus;
+  sessionType: PTSessionType;
+  location?: string | null;
+  cancellationReason?: string | null;
+  cancelledById?: string | null;
+  cancelledAt?: string | null;
+  attendanceRecordId?: string | null;
+  bookingReference?: string | null;
+  notes?: string | null;
+  memberProfile?: MemberProfile;
+  trainerProfile?: TrainerProfile;
+  trainingProgram?: TrainingProgram;
+  attendanceRecord?: AttendanceRecord;
+  cancelledBy?: User;
+  notesList?: TrainerNote[];
+}
+
+// ==========================================
+// DAY 13: EXERCISE LIBRARY & WORKOUT PROGRAMMING DOMAIN
+// ==========================================
+
+export type ExerciseOwnershipType = 'SYSTEM' | 'ORGANISATION';
+export type ExerciseDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
+export type ExerciseType =
+  | 'STRENGTH'
+  | 'CARDIO'
+  | 'MOBILITY'
+  | 'FLEXIBILITY'
+  | 'BALANCE'
+  | 'PLYOMETRIC'
+  | 'REHABILITATION'
+  | 'RECOVERY'
+  | 'FUNCTIONAL'
+  | 'CORE'
+  | 'OTHER';
+
+export type MovementPattern =
+  | 'SQUAT'
+  | 'HINGE'
+  | 'LUNGE'
+  | 'PUSH'
+  | 'PULL'
+  | 'CARRY'
+  | 'ROTATION'
+  | 'ANTI_ROTATION'
+  | 'GAIT'
+  | 'JUMP'
+  | 'ISOMETRIC'
+  | 'OTHER';
+
+export type MuscleGroup =
+  | 'CHEST'
+  | 'BACK'
+  | 'SHOULDERS'
+  | 'BICEPS'
+  | 'TRICEPS'
+  | 'FOREARMS'
+  | 'QUADRICEPS'
+  | 'HAMSTRINGS'
+  | 'GLUTES'
+  | 'CALVES'
+  | 'CORE'
+  | 'FULL_BODY'
+  | 'OTHER';
+
+export type EquipmentType =
+  | 'BODYWEIGHT'
+  | 'BARBELL'
+  | 'DUMBBELL'
+  | 'KETTLEBELL'
+  | 'CABLE'
+  | 'MACHINE'
+  | 'BAND'
+  | 'BENCH'
+  | 'RACK'
+  | 'MEDICINE_BALL'
+  | 'TRX'
+  | 'ROWER'
+  | 'BIKE'
+  | 'TREADMILL'
+  | 'OTHER'
+  | 'NONE';
+
+export type ExerciseMediaType = 'IMAGE' | 'VIDEO' | 'THUMBNAIL';
+export type PrescriptionType =
+  | 'REPETITIONS'
+  | 'TIME'
+  | 'DISTANCE'
+  | 'CALORIES'
+  | 'LOAD'
+  | 'AMRAP'
+  | 'EMOM'
+  | 'INTERVAL'
+  | 'ISOMETRIC'
+  | 'CUSTOM';
+
+export type WorkoutTemplateStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+export type WorkoutStatus =
+  | 'DRAFT'
+  | 'ASSIGNED'
+  | 'SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'SKIPPED'
+  | 'CANCELLED'
+  | 'EXPIRED';
+
+export type WorkoutExerciseStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
+export type UnitSystem = 'METRIC' | 'IMPERIAL';
+export type LoadUnit = 'KG' | 'LB';
+export type DistanceUnit = 'KM' | 'MI' | 'M' | 'FT';
+
+export interface Exercise extends BaseEntity {
+  organisationId?: string | null;
+  createdByUserId?: string | null;
+  ownershipType: ExerciseOwnershipType;
+  name: string;
+  slug: string;
+  description?: string | null;
+  instructions?: string | null;
+  coachingCues?: string[] | null;
+  setupInstructions?: string | null;
+  executionInstructions?: string | null;
+  safetyNotes?: string | null;
+  difficulty: ExerciseDifficulty;
+  exerciseType: ExerciseType;
+  movementPattern: MovementPattern;
+  primaryMuscleGroup: MuscleGroup;
+  secondaryMuscleGroups?: MuscleGroup[] | null;
+  equipment: EquipmentType;
+  bodyPosition?: string | null;
+  laterality?: string | null;
+  defaultUnit: string;
+  status: 'ACTIVE' | 'ARCHIVED';
+  archivedAt?: string | null;
+  media?: ExerciseMedia[];
+  createdByUser?: User;
+}
+
+export interface ExerciseMedia extends BaseEntity {
+  exerciseId: string;
+  mediaType: ExerciseMediaType;
+  storageKey: string;
+  mimeType: string;
+  fileSize: number;
+  durationSeconds?: number | null;
+  sortOrder: number;
+  isPrimary: boolean;
+  signedUrl?: string | null;
+}
+
+export interface WorkoutTemplate extends BaseEntity {
+  organisationId: string;
+  createdByStaffId?: string | null;
+  name: string;
+  description?: string | null;
+  goal?: string | null;
+  difficulty: ExerciseDifficulty;
+  estimatedDurationMinutes?: number | null;
+  status: WorkoutTemplateStatus;
+  version: number;
+  parentTemplateId?: string | null;
+  parentTemplate?: WorkoutTemplate;
+  childVersions?: WorkoutTemplate[];
+  archivedAt?: string | null;
+  exercises?: WorkoutTemplateExercise[];
+  progressionRules?: WorkoutProgressionRule[];
+}
+
+export interface WorkoutTemplateExercise extends BaseEntity {
+  workoutTemplateId: string;
+  exerciseId: string;
+  orderIndex: number;
+  sectionName?: string | null;
+  notes?: string | null;
+  prescriptionType: PrescriptionType;
+  targetSets?: number | null;
+  targetReps?: number | null;
+  targetDurationSeconds?: number | null;
+  targetDistance?: number | null;
+  targetLoad?: number | null;
+  targetRPE?: number | null;
+  restSeconds?: number | null;
+  exercise?: Exercise;
+}
+
+export interface Workout extends BaseEntity {
+  organisationId: string;
+  outletId?: string | null;
+  memberProfileId: string;
+  trainerProfileId?: string | null;
+  trainingProgramId?: string | null;
+  trainingPlanId?: string | null;
+  workoutTemplateId?: string | null;
+  personalTrainingSessionId?: string | null;
+  title: string;
+  description?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  estimatedDurationMinutes?: number | null;
+  status: WorkoutStatus;
+  assignedAt: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  notes?: string | null;
+  exercises?: WorkoutExercise[];
+  exerciseGroups?: WorkoutExerciseGroup[];
+  trainingPlanDays?: TrainingPlanDay[];
+  memberProfile?: MemberProfile;
+  trainerProfile?: TrainerProfile;
+  trainingProgram?: TrainingProgram;
+  trainingPlan?: TrainingPlan;
+  workoutTemplate?: WorkoutTemplate;
+  personalTrainingSession?: PersonalTrainingSession;
+}
+
+export interface WorkoutExercise extends BaseEntity {
+  workoutId: string;
+  workoutExerciseGroupId?: string | null;
+  exerciseId: string;
+  orderIndex: number;
+  sectionName?: string | null;
+  exerciseNameSnapshot: string;
+  instructionSnapshot?: string | null;
+  coachingCueSnapshot?: string | null;
+  prescriptionType: PrescriptionType;
+  targetSets?: number | null;
+  targetReps?: number | null;
+  targetDurationSeconds?: number | null;
+  targetDistance?: number | null;
+  targetLoad?: number | null;
+  targetRPE?: number | null;
+  restSeconds?: number | null;
+  notes?: string | null;
+  status: WorkoutExerciseStatus;
+  sets?: WorkoutSet[];
+  exercise?: Exercise;
+  workoutExerciseGroup?: WorkoutExerciseGroup;
+}
+
+export interface WorkoutSet extends BaseEntity {
+  workoutExerciseId: string;
+  setNumber: number;
+  targetReps?: number | null;
+  actualReps?: number | null;
+  targetLoad?: number | null;
+  actualLoad?: number | null;
+  loadUnit: LoadUnit;
+  targetDurationSeconds?: number | null;
+  actualDurationSeconds?: number | null;
+  targetDistance?: number | null;
+  actualDistance?: number | null;
+  distanceUnit?: DistanceUnit | null;
+  targetRPE?: number | null;
+  actualRPE?: number | null;
+  completed: boolean;
+  idempotencyKey?: string | null;
+  notes?: string | null;
+  completedAt?: string | null;
+  corrections?: WorkoutSetCorrection[];
+}
+
+export interface WorkoutSetCorrection extends BaseEntity {
+  workoutSetId: string;
+  correctedByUserId: string;
+  previousReps?: number | null;
+  newReps?: number | null;
+  previousLoad?: number | null;
+  newLoad?: number | null;
+  previousRPE?: number | null;
+  newRPE?: number | null;
+  reason: string;
+  correctedByUser?: User;
+}
+
+// ==========================================
+// DAY 14: ADVANCED WORKOUT PROGRAMMING & TRAINING PLANS
+// ==========================================
+
+export type TrainingPlanStatus =
+  | 'DRAFT'
+  | 'ACTIVE'
+  | 'PAUSED'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'ARCHIVED';
+
+export type TrainingPlanWeekStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'SKIPPED';
+
+export type WorkoutExerciseGroupType =
+  | 'SINGLE'
+  | 'SUPERSET'
+  | 'TRISET'
+  | 'GIANT_SET'
+  | 'CIRCUIT'
+  | 'EMOM'
+  | 'AMRAP'
+  | 'INTERVAL';
+
+export type WorkoutSectionType =
+  | 'WARM_UP'
+  | 'ACTIVATION'
+  | 'MAIN'
+  | 'ACCESSORY'
+  | 'CONDITIONING'
+  | 'COOL_DOWN'
+  | 'RECOVERY'
+  | 'OTHER';
+
+export type ProgressionType =
+  | 'LINEAR_LOAD'
+  | 'REP_PROGRESSION'
+  | 'SET_PROGRESSION'
+  | 'TIME_PROGRESSION'
+  | 'DISTANCE_PROGRESSION'
+  | 'RPE_PROGRESSION'
+  | 'CUSTOM';
+
+export interface TrainingPlan extends BaseEntity {
+  organisationId: string;
+  trainingProgramId?: string | null;
+  memberProfileId: string;
+  trainerProfileId: string;
+  name: string;
+  description?: string | null;
+  objective?: string | null;
+  durationWeeks: number;
+  startDate: string;
+  endDate?: string | null;
+  status: TrainingPlanStatus;
+  weeks?: TrainingPlanWeek[];
+  workouts?: Workout[];
+  progressionRules?: WorkoutProgressionRule[];
+  memberProfile?: MemberProfile;
+  trainerProfile?: TrainerProfile;
+  trainingProgram?: TrainingProgram;
+}
+
+export interface TrainingPlanWeek extends BaseEntity {
+  trainingPlanId: string;
+  weekNumber: number;
+  name?: string | null;
+  focus?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status: TrainingPlanWeekStatus;
+  days?: TrainingPlanDay[];
+  trainingPlan?: TrainingPlan;
+}
+
+export interface TrainingPlanDay extends BaseEntity {
+  trainingPlanWeekId: string;
+  dayNumber: number;
+  date?: string | null;
+  name?: string | null;
+  focus?: string | null;
+  workoutId?: string | null;
+  restDay: boolean;
+  notes?: string | null;
+  workout?: Workout | null;
+  trainingPlanWeek?: TrainingPlanWeek;
+}
+
+export interface WorkoutExerciseGroup extends BaseEntity {
+  workoutId: string;
+  name: string;
+  type: WorkoutExerciseGroupType;
+  section: WorkoutSectionType;
+  orderIndex: number;
+  rounds: number;
+  restBetweenExercises?: number | null;
+  restBetweenRounds?: number | null;
+  durationSeconds?: number | null;
+  notes?: string | null;
+  exercises?: WorkoutExercise[];
+}
+
+export interface WorkoutProgressionRule extends BaseEntity {
+  organisationId: string;
+  trainingPlanId?: string | null;
+  workoutTemplateId?: string | null;
+  exerciseId?: string | null;
+  progressionType: ProgressionType;
+  configuration: Record<string, unknown>;
+  active: boolean;
+  notes?: string | null;
+}
+
+export interface PlanAdherenceMetrics {
+  totalScheduled: number;
+  completed: number;
+  skipped: number;
+  overdue: number;
+  pending: number;
+  adherencePercentage: number;
+}
+
+// ==========================================
+// DAY 15: PROGRESS TRACKING & ANALYTICS TYPES
+// ==========================================
+
+export type MeasurementType =
+  | 'WEIGHT'
+  | 'HEIGHT'
+  | 'BODY_FAT_PERCENT'
+  | 'BMI'
+  | 'CHEST'
+  | 'WAIST'
+  | 'HIPS'
+  | 'NECK'
+  | 'LEFT_ARM'
+  | 'RIGHT_ARM'
+  | 'LEFT_THIGH'
+  | 'RIGHT_THIGH'
+  | 'LEFT_CALF'
+  | 'RIGHT_CALF'
+  | 'SHOULDERS'
+  | 'CUSTOM';
+
+export type MeasurementSource =
+  | 'MEMBER'
+  | 'TRAINER'
+  | 'STAFF'
+  | 'SYSTEM'
+  | 'ASSESSMENT'
+  | 'WORKOUT'
+  | 'IMPORT';
+
+export interface BodyMeasurement extends BaseEntity {
+  organisationId: string;
+  outletId?: string | null;
+  memberProfileId: string;
+  measurementType: MeasurementType;
+  value: number;
+  unit: string;
+  recordedAt: string;
+  source: MeasurementSource;
+  recordedByUserId?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export type AssessmentCategory =
+  | 'STRENGTH'
+  | 'ENDURANCE'
+  | 'CARDIO'
+  | 'MOBILITY'
+  | 'FLEXIBILITY'
+  | 'BALANCE'
+  | 'BODY_COMPOSITION'
+  | 'FUNCTIONAL'
+  | 'CUSTOM';
+
+export type AssessmentMetricType =
+  | 'REPETITIONS'
+  | 'WEIGHT'
+  | 'TIME'
+  | 'DISTANCE'
+  | 'SCORE'
+  | 'RATING'
+  | 'PERCENTAGE'
+  | 'BOOLEAN'
+  | 'TEXT'
+  | 'CUSTOM';
+
+export interface AssessmentTemplate extends BaseEntity {
+  organisationId?: string | null;
+  name: string;
+  slug: string;
+  category: AssessmentCategory;
+  description?: string | null;
+  instructions?: string | null;
+  metricType: AssessmentMetricType;
+  defaultUnit?: string | null;
+  scoringProtocol?: string | null;
+  targetGender?: string | null;
+  targetAgeRange?: string | null;
+  active: boolean;
+}
+
+export type AssessmentStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface AssessmentResult extends BaseEntity {
+  assessmentId: string;
+  metricName: string;
+  value?: number | null;
+  unit?: string | null;
+  textValue?: string | null;
+  rating?: number | null;
+  score?: number | null;
+  repetitions?: number | null;
+  weight?: number | null;
+  distance?: number | null;
+  durationSeconds?: number | null;
+  percentage?: number | null;
+  booleanResult?: boolean | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface Assessment extends BaseEntity {
+  organisationId: string;
+  outletId?: string | null;
+  memberProfileId: string;
+  trainerProfileId?: string | null;
+  templateId?: string | null;
+  title: string;
+  category: AssessmentCategory;
+  status: AssessmentStatus;
+  scheduledDate?: string | null;
+  completedAt?: string | null;
+  notes?: string | null;
+  summaryScore?: number | null;
+  template?: AssessmentTemplate | null;
+  results?: AssessmentResult[];
+}
+
+export type PRType =
+  | 'MAX_WEIGHT'
+  | 'MAX_REPS'
+  | 'MAX_VOLUME'
+  | 'FASTEST_TIME'
+  | 'LONGEST_DISTANCE'
+  | 'LONGEST_DURATION'
+  | 'BEST_SCORE'
+  | 'CUSTOM';
+
+export interface PersonalRecord extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  exerciseId: string;
+  recordType: PRType;
+  value: number;
+  unit: string;
+  workoutId?: string | null;
+  workoutExerciseId?: string | null;
+  workoutSetId?: string | null;
+  achievedAt: string;
+  previousValue?: number | null;
+  improvementPercentage?: number | null;
+  notes?: string | null;
+  exercise?: Exercise;
+}
+
+export interface ProgressSnapshot extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  snapshotDate: string;
+  period: string;
+  adherenceRate: number;
+  workoutsCompleted: number;
+  tonnageLifted: number;
+  prsAchieved: number;
+  measurementsSummary?: Record<string, unknown> | null;
+  assessmentsSummary?: Record<string, unknown> | null;
+  goalProgressSummary?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export type TimeRangePeriod =
+  | '7D'
+  | '14D'
+  | '30D'
+  | '90D'
+  | '6M'
+  | '1Y'
+  | 'ALL'
+  | 'CUSTOM';
+
+export type TrendDirection = 'UP' | 'DOWN' | 'STABLE';
+
+export interface AdherenceSummary {
+  totalScheduled: number;
+  completed: number;
+  skipped: number;
+  overdue: number;
+  cancelled: number;
+  pending: number;
+  adherenceRate: number;
+  completionRate: number;
+  period: TimeRangePeriod | string;
+}
+
+export interface ProgressSummary {
+  memberProfileId: string;
+  period: TimeRangePeriod | string;
+  adherence: AdherenceSummary;
+  tonnageLifted: number;
+  workoutsCompleted: number;
+  recentMeasurements: BodyMeasurement[];
+  recentAssessments: Assessment[];
+  personalRecords: PersonalRecord[];
+  activeGoals: Array<{
+    id: string;
+    title: string;
+    category: string;
+    baselineValue?: number | null;
+    targetValue?: number | null;
+    currentValue?: number | null;
+    unit?: string | null;
+    progressPercentage: number;
+    status: string;
+  }>;
+}
+
+// ==========================================
+// DAY 16: NUTRITION, MEAL PLANNING & FOOD TRACKING
+// ==========================================
+
+export type DietaryPattern =
+  | 'OMNIVORE'
+  | 'VEGETARIAN'
+  | 'VEGAN'
+  | 'PESCATARIAN'
+  | 'KETO'
+  | 'LOW_CARB'
+  | 'HIGH_PROTEIN'
+  | 'CUSTOM';
+
+export type NutritionGoalCategory =
+  | 'WEIGHT_LOSS'
+  | 'MAINTENANCE'
+  | 'MUSCLE_GAIN'
+  | 'PERFORMANCE'
+  | 'HEALTH';
+
+export type ActivityLevel =
+  | 'SEDENTARY'
+  | 'LIGHTLY_ACTIVE'
+  | 'MODERATELY_ACTIVE'
+  | 'VERY_ACTIVE'
+  | 'EXTREMELY_ACTIVE';
+
+export type PreferenceType =
+  | 'LIKE'
+  | 'DISLIKE'
+  | 'AVOID'
+  | 'ALLERGY'
+  | 'INTOLERANCE'
+  | 'RELIGIOUS_RESTRICTION';
+
+export type PreferenceSeverity = 'MILD' | 'MODERATE' | 'SEVERE' | 'ANAPHYLACTIC';
+
+export type MealType =
+  | 'BREAKFAST'
+  | 'LUNCH'
+  | 'DINNER'
+  | 'SNACK'
+  | 'PRE_WORKOUT'
+  | 'POST_WORKOUT'
+  | 'OTHER';
+
+export type FoodOwnership = 'SYSTEM' | 'ORGANISATION';
+
+export type FoodCategory =
+  | 'PROTEIN'
+  | 'GRAINS'
+  | 'VEGETABLES'
+  | 'FRUITS'
+  | 'DAIRY'
+  | 'FATS_OILS'
+  | 'SNACKS'
+  | 'BEVERAGES'
+  | 'SUPPLEMENTS'
+  | 'OTHER';
+
+export type TargetSource = 'MEMBER_DEFINED' | 'TRAINER_ASSIGNED' | 'DEFAULT';
+
+export type MealPlanStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
+export type MealPlanAssignmentStatus =
+  | 'ASSIGNED'
+  | 'ACTIVE'
+  | 'PAUSED'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export interface NutritionProfile extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  dietaryPattern: DietaryPattern;
+  activityLevel?: ActivityLevel | null;
+  nutritionGoal?: NutritionGoalCategory | null;
+  preferredUnits: string; // METRIC, IMPERIAL
+  timezone: string;
+  allergies: string[];
+  intolerances: string[];
+  foodsAvoided: string[];
+  dietaryRestrictions?: string | null;
+  notes?: string | null;
+  status: string;
+  preferences?: DietaryPreference[];
+  targets?: NutritionTarget[];
+}
+
+export interface DietaryPreference extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  preferenceType: PreferenceType;
+  itemName: string;
+  severity?: PreferenceSeverity | null;
+  notes?: string | null;
+}
+
+export interface NutritionTarget extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  dailyCalories: number;
+  proteinGrams: number;
+  carbohydrateGrams: number;
+  fatGrams: number;
+  fiberGrams?: number | null;
+  waterMl?: number | null;
+  minCalories?: number | null;
+  maxCalories?: number | null;
+  minProtein?: number | null;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  source: TargetSource;
+  assignedById?: string | null;
+  status: 'ACTIVE' | 'HISTORICAL' | 'ARCHIVED';
+  notes?: string | null;
+}
+
+export interface Food extends BaseEntity {
+  organisationId?: string | null;
+  ownership: FoodOwnership;
+  name: string;
+  brand?: string | null;
+  category: FoodCategory;
+  servingSize: number;
+  servingUnit: string;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number; // mg
+  calcium?: number | null;
+  iron?: number | null;
+  potassium?: number | null;
+  vitaminD?: number | null;
+  vitaminB12?: number | null;
+  micronutrients?: Record<string, unknown> | null;
+  barcode?: string | null;
+  verified: boolean;
+  status: string;
+  createdById?: string | null;
+}
+
+export interface Meal extends BaseEntity {
+  organisationId: string;
+  memberProfileId?: string | null;
+  name: string;
+  mealType: MealType;
+  scheduledTime?: string | null;
+  notes?: string | null;
+  status: string;
+  workoutId?: string | null;
+  items?: MealFoodItem[];
+}
+
+export interface MealFoodItem extends BaseEntity {
+  mealId: string;
+  foodId: string;
+  quantity: number;
+  unit: string;
+  sortOrder: number;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber: number;
+  food?: Food;
+}
+
+export interface MealPlan extends BaseEntity {
+  organisationId: string;
+  name: string;
+  description?: string | null;
+  dietaryPattern?: DietaryPattern | null;
+  targetDailyCalories?: number | null;
+  targetProteinGrams?: number | null;
+  targetCarbGrams?: number | null;
+  targetFatGrams?: number | null;
+  durationDays: number;
+  version: number;
+  parentId?: string | null;
+  status: MealPlanStatus;
+  createdById?: string | null;
+  days?: MealPlanDay[];
+}
+
+export interface MealPlanDay extends BaseEntity {
+  mealPlanId: string;
+  dayNumber: number;
+  dayName?: string | null;
+  notes?: string | null;
+  meals?: MealPlanMeal[];
+}
+
+export interface MealPlanMeal extends BaseEntity {
+  mealPlanDayId: string;
+  name: string;
+  mealType: MealType;
+  notes?: string | null;
+  sortOrder: number;
+  items?: MealPlanFoodItem[];
+}
+
+export interface MealPlanFoodItem extends BaseEntity {
+  mealPlanMealId: string;
+  foodId: string;
+  quantity: number;
+  unit: string;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  notes?: string | null;
+  food?: Food;
+}
+
+export interface MemberMealPlanAssignment extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  mealPlanId: string;
+  assignedById?: string | null;
+  assignedAt: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: MealPlanAssignmentStatus;
+  notes?: string | null;
+  planSnapshot?: Record<string, unknown> | null;
+  mealPlan?: MealPlan;
+}
+
+export interface FoodLog extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  mealId?: string | null;
+  foodId: string;
+  mealType: MealType;
+  quantity: number;
+  unit: string;
+  consumedAt: string;
+  // Nutrition Snapshot (Immutable historical values)
+  foodNameAtLog: string;
+  brandAtLog?: string | null;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  idempotencyKey?: string | null;
+  notes?: string | null;
+  loggedById: string;
+  food?: Food;
+}
+
+export interface WaterLog extends BaseEntity {
+  organisationId: string;
+  memberProfileId: string;
+  amountMl: number;
+  loggedAt: string;
+}
+
+export interface DailyNutritionSummary {
+  memberProfileId: string;
+  date: string;
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbohydrates: number;
+  totalFat: number;
+  totalFiber: number;
+  totalWaterMl: number;
+  targetCalories?: number | null;
+  targetProtein?: number | null;
+  targetCarbohydrates?: number | null;
+  targetFat?: number | null;
+  targetWaterMl?: number | null;
+  calorieAdherencePct: number;
+  proteinAdherencePct: number;
+  carbAdherencePct: number;
+  fatAdherencePct: number;
+  waterAdherencePct: number;
+  mealCount: number;
+  foodItemCount: number;
+  meals: Array<{
+    mealType: MealType;
+    calories: number;
+    protein: number;
+    carbohydrates: number;
+    fat: number;
+    items: FoodLog[];
+  }>;
 }
 

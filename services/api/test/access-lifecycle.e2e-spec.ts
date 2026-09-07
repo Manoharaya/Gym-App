@@ -563,7 +563,6 @@ describe('Physical Access, Check-In & Door Control Lifecycle (Day 7 E2E)', () =>
       });
 
       // 1. Create a PENDING membership
-      const now = new Date();
       const plan = await prisma.membershipPlan.findFirst({ where: { organisationId: orgId } });
       const pendingMembership = await prisma.memberMembership.create({
         data: {
@@ -572,8 +571,8 @@ describe('Physical Access, Check-In & Door Control Lifecycle (Day 7 E2E)', () =>
           membershipPlanId: plan!.id,
           status: 'PENDING',
           accessScope: 'ALL_ORGANISATION_OUTLETS',
-          startDate: now,
-          endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          startDate: new Date(daytime.getTime() - 24 * 60 * 60 * 1000),
+          endDate: new Date(daytime.getTime() + 30 * 24 * 60 * 60 * 1000),
           planNameAtPurchase: 'Pending Membership',
           priceAtPurchase: 100,
           currencyAtPurchase: 'AUD',

@@ -29,9 +29,19 @@ export class PermissionsGuard implements CanActivate {
     // Check if user has all required permissions
     return requiredPermissions.every((reqPerm) => {
       return user.permissions.some((p) => {
-        const matchesResource = p.resource === reqPerm.resource || p.resource === '*';
-        const matchesAction = p.action === reqPerm.action || p.action === 'MANAGE';
-        const matchesScope = !reqPerm.scope || p.scope === reqPerm.scope || p.scope === 'PLATFORM';
+        const matchesResource =
+          p.resource.toLowerCase() === reqPerm.resource.toLowerCase() || p.resource === '*';
+        const permAction = p.action.toUpperCase();
+        const reqAction = reqPerm.action.toUpperCase();
+        const matchesAction =
+          permAction === reqAction ||
+          permAction === 'MANAGE' ||
+          (permAction === 'WRITE' && ['CREATE', 'UPDATE', 'DELETE', 'WRITE'].includes(reqAction)) ||
+          (reqAction === 'WRITE' && ['CREATE', 'UPDATE', 'WRITE'].includes(permAction));
+        const matchesScope =
+          !reqPerm.scope ||
+          p.scope.toUpperCase() === reqPerm.scope.toUpperCase() ||
+          p.scope.toUpperCase() === 'PLATFORM';
 
         return matchesResource && matchesAction && matchesScope;
       });

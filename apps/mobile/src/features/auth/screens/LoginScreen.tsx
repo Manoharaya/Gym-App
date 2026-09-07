@@ -9,8 +9,6 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { AuthStackParamList } from '../../../navigation/types';
 import {
   Screen,
   Card,
@@ -24,7 +22,10 @@ import { useAuthStore } from '../../../store/authStore';
 import { useTenantStore } from '../../../store/tenantStore';
 import type { UserRole } from '@fitcore/types';
 
-type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+import { getAppConfig } from '@fitcore/config';
+import { SECURE_STORAGE_KEYS } from '@fitcore/constants';
+import { secureStorage } from '../../../services/storage/secureStorage';
+
 
 interface DemoProfile {
   id: string;
@@ -37,41 +38,41 @@ interface DemoProfile {
 
 const DEMO_PROFILES: DemoProfile[] = [
   {
-    id: 'user_alex_chen',
-    name: 'Alex Chen',
-    email: 'alex.chen@secondwind.example.com',
+    id: 'user_active_member',
+    name: 'Active Member (Alex)',
+    email: 'active.member@secondwind.com.au',
     role: 'MEMBER',
     roleLabel: 'Member',
     badgeVariant: 'accent',
   },
   {
-    id: 'user_marcus_brody',
+    id: 'user_trainer_marcus',
     name: 'Marcus Brody',
-    email: 'marcus.brody@secondwind.example.com',
+    email: 'trainer@secondwind.com.au',
     role: 'TRAINER',
     roleLabel: 'Trainer',
     badgeVariant: 'ai',
   },
   {
-    id: 'user_reception',
+    id: 'user_reception_emma',
     name: 'Emma Watson',
-    email: 'reception.perth@secondwind.example.com',
+    email: 'reception@secondwind.com.au',
     role: 'RECEPTION',
     roleLabel: 'Reception',
     badgeVariant: 'info',
   },
   {
-    id: 'user_manager',
-    name: 'David Miller',
-    email: 'manager.perth@secondwind.example.com',
+    id: 'user_manager_sarah',
+    name: 'Sarah Miller',
+    email: 'manager@secondwind.com.au',
     role: 'OUTLET_MANAGER',
     roleLabel: 'Manager',
     badgeVariant: 'warning',
   },
   {
-    id: 'user_owner',
-    name: 'Robert Sterling',
-    email: 'owner@secondwind.example.com',
+    id: 'user_owner_jack',
+    name: 'Jack Darling',
+    email: 'owner@secondwind.com.au',
     role: 'ORGANISATION_OWNER',
     roleLabel: 'Owner',
     badgeVariant: 'primary',
@@ -79,12 +80,12 @@ const DEMO_PROFILES: DemoProfile[] = [
 ];
 
 export const LoginScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation<any>();
   const { setSession, setLoading } = useAuthStore();
   const { setRole } = useTenantStore();
 
-  const [email, setEmail] = useState('alex.chen@secondwind.example.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('active.member@secondwind.com.au');
+  const [password, setPassword] = useState('FitCoreDev2026!');
   const [selectedProfile, setSelectedProfile] = useState<DemoProfile>(DEMO_PROFILES[0]!);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +93,7 @@ export const LoginScreen: React.FC = () => {
   const handleSelectProfile = (profile: DemoProfile) => {
     setSelectedProfile(profile);
     setEmail(profile.email);
+    setPassword('FitCoreDev2026!');
     setError(null);
   };
 
@@ -106,10 +108,52 @@ export const LoginScreen: React.FC = () => {
     setError(null);
 
     try {
-      // Simulate authentication transition with selected role context
+      const config = getAppConfig();
+      // Try authenticating with backend API to obtain real JWT access and refresh tokens
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        if (response.ok) {
+          const resData = await response.json();
+          const tokens = resData?.data;
+          if (tokens?.accessToken) {
+            await secureStorage.setItem(SECURE_STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
+          }
+          if (tokens?.refreshToken) {
+            await secureStorage.setItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
+          }
+        }
+      } catch (err) {
+        console.warn('API login skipped or failed, using local session:', err);
+      }
+
       setRole(selectedProfile.role);
       setSession(selectedProfile.id, selectedProfile.role);
-      // Navigation will be automatically updated by AppNavigator via role state
+
+      // Route directly to the corresponding experience
+      switch (selectedProfile.role) {
+        case 'MEMBER':
+          navigation.navigate('MemberFlow');
+          break;
+        case 'TRAINER':
+          navigation.navigate('TrainerFlow');
+          break;
+        case 'RECEPTION':
+          navigation.navigate('ReceptionFlow');
+          break;
+        case 'OUTLET_MANAGER':
+          navigation.navigate('OutletManagerFlow');
+          break;
+        case 'ORGANISATION_OWNER':
+          navigation.navigate('OrganisationOwnerFlow');
+          break;
+        default:
+          navigation.navigate('MemberFlow');
+          break;
+      }
     } catch {
       setError('Invalid credentials. Please verify your email and password.');
     } finally {

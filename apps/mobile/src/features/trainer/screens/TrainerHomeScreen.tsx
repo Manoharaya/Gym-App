@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Screen, Card, Badge, Button, MetricCard } from '../../../components/primitives';
 import { themeColors, typography, spacing, radius } from '../../../theme';
 
@@ -48,6 +49,7 @@ const ASSIGNED_CLIENTS = [
 ];
 
 export const TrainerHomeScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
   const [sessions, setSessions] = useState(TODAY_SCHEDULE);
 
   const handleQuickAttendance = (sessionId: string) => {
@@ -163,6 +165,23 @@ export const TrainerHomeScreen: React.FC = () => {
                 </View>
               </View>
             ))}
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: spacing[2], marginTop: spacing[3] }}>
+            <Button
+              title="Full Client Roster"
+              variant="accent"
+              size="sm"
+              style={{ flex: 1 }}
+              onPress={() => navigation.navigate('TrainerClients')}
+            />
+            <Button
+              title="My Certifications"
+              variant="outline"
+              size="sm"
+              style={{ flex: 1 }}
+              onPress={() => navigation.navigate('TrainerProfile')}
+            />
           </View>
         </Card>
       </ScrollView>

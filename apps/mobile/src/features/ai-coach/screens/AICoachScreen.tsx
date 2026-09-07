@@ -1,92 +1,265 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MemberStackParamList } from '../../../navigation/types';
-import { Screen, Badge, Icon } from '../../../components/primitives';
-import { themeColors, typography, spacing, radius } from '../../../theme';
+import { Screen, Icon, Modal, Button } from '../../../components/primitives';
+import { themeColors, spacing, radius } from '../../../theme';
+import {
+  AIFitnessCoachMessage,
+  AIFitnessCoachInput,
+  AIFitnessCoachSuggestion,
+  AIFitnessCoachSafetyNotice,
+} from '../components';
+import {
+  fitnessCoachService,
+  type ContextSummaryResponse,
+} from '../services/fitnessCoachService';
+import type {
+  FitnessCoachResponse,
+  FitnessAction,
+  AIFeedbackRating,
+} from '@fitcore/types';
 
 type NavigationProp = NativeStackNavigationProp<MemberStackParamList, 'AICoach'>;
 
-interface ChatMessage {
+interface MessageItem {
   id: string;
-  sender: 'user' | 'ai';
-  text: string;
-  timestamp: string;
-  actionTitle?: string;
-  actionRoute?: keyof MemberStackParamList;
+  role: 'USER' | 'ASSISTANT' | 'SYSTEM';
+  content: string;
+  structuredOutput?: FitnessCoachResponse | null;
+  createdAt?: string;
 }
 
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: 'msg_1',
-    sender: 'ai',
-    text: 'Good morning Alex. Based on your 88% readiness score and recent chest hypertrophy session, your neuromuscular system is in prime condition. How can I optimize your training today?',
-    timestamp: '08:30 AM',
-  },
-  {
-    id: 'msg_2',
-    sender: 'user',
-    text: 'Should I do cardio or heavy lifting today?',
-    timestamp: '08:32 AM',
-  },
-  {
-    id: 'msg_3',
-    sender: 'ai',
-    text: 'Your HRV is +8ms above baseline and sleep quality was rated Optimal (4/5). You have a confirmed spot in Marcus Brody’s HIIT Blast at 17:30. I recommend keeping your afternoon free of heavy eccentric strain so you can push maximum output in today’s class.',
-    timestamp: '08:32 AM',
-    actionTitle: 'View Today’s HIIT Booking',
-    actionRoute: 'MyBookings',
-  },
-];
-
-const SUGGESTION_CHIPS = [
-  'Analyze my bench progression',
-  'Suggest 20-min mobility flow',
-  'Check my hydration target',
-  'Substitute Cable Fly with Dumbbells',
+const DEFAULT_SUGGESTIONS = [
+  'How is my workout consistency this week?',
+  'Analyze my current training volume',
+  'What should I focus on for progressive overload?',
+  'Explain how my goals connect to my training',
 ];
 
 export const AICoachScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-  const [inputText, setInputText] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const handleSend = (textToSend?: string) => {
-    const text = textToSend || inputText;
-    if (!text.trim()) return;
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [safetyNotice, setSafetyNotice] = useState<{ urgent: boolean; message: string } | null>(null);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState<boolean>(false);
+  const [contextSummary, setContextSummary] = useState<ContextSummaryResponse | null>(null);
+  const [loadingContext, setLoadingContext] = useState<boolean>(false);
 
-    const userMsg: ChatMessage = {
+  // Initialize or resume conversation on mount
+  useEffect(() => {
+    initConversation();
+  }, []);
+
+  // Scroll to bottom when messages update
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages, isSending]);
+
+  const initConversation = async () => {
+    setIsLoading(true);
+    try {
+      const convList = await fitnessCoachService.listConversations('ACTIVE');
+      if (convList.data && convList.data.length > 0 && convList.data[0]) {
+        const activeConv = convList.data[0];
+        setConversationId(activeConv.id);
+        const detailed = await fitnessCoachService.getConversation(activeConv.id);
+        if (detailed.messages && detailed.messages.length > 0) {
+          setMessages(
+            detailed.messages.map((m) => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              structuredOutput: m.structuredOutput as FitnessCoachResponse | null,
+              createdAt: m.createdAt,
+            })),
+          );
+        } else {
+          // Welcome greeting
+          addWelcomeMessage();
+        }
+      } else {
+        const newConv = await fitnessCoachService.createConversation('Training Intelligence');
+        setConversationId(newConv.id);
+        addWelcomeMessage();
+      }
+    } catch (err) {
+      console.warn('Failed to load conversation from backend, using fresh local session', err);
+      addWelcomeMessage();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addWelcomeMessage = () => {
+    setMessages([
+      {
+        id: 'welcome_msg',
+        role: 'ASSISTANT',
+        content:
+          "Welcome to your FitCore AI Coach. I have direct access to your verified workout history, active training plans, streaks, and progress goals. How can I help optimize your training today?",
+        structuredOutput: {
+          message:
+            "Welcome to your FitCore AI Coach. I have direct access to your verified workout history, active training plans, streaks, and progress goals. How can I help optimize your training today?",
+          insights: [
+            {
+              type: 'ADHERENCE',
+              title: 'Grounded Intelligence',
+              description: 'Every recommendation is based strictly on your recorded FitCore data.',
+            },
+          ],
+          recommendations: [],
+          cautions: [
+            'For acute joint pain, chest pain, or medical conditions, always consult a medical doctor.',
+          ],
+          suggestedActions: [],
+          followUpQuestion: 'Would you like a review of your recent workout consistency?',
+        },
+      },
+    ]);
+  };
+
+  const handleStartNewConversation = async () => {
+    setIsLoading(true);
+    try {
+      const newConv = await fitnessCoachService.createConversation('New Training Session');
+      setConversationId(newConv.id);
+      setSafetyNotice(null);
+      addWelcomeMessage();
+    } catch (err) {
+      console.error('Failed to create new conversation', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isSending) return;
+
+    const userMessage: MessageItem = {
       id: `user_${Date.now()}`,
-      sender: 'user',
-      text: text.trim(),
-      timestamp: 'Just now',
+      role: 'USER',
+      content: text.trim(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInputText('');
+    setMessages((prev) => [...prev, userMessage]);
+    setIsSending(true);
 
-    // Simulate intelligent coach reply
-    setTimeout(() => {
-      const aiReply: ChatMessage = {
-        id: `ai_${Date.now()}`,
-        sender: 'ai',
-        text: `Understood. Analyzing your volume history for "${text.trim()}": progressive overload trend is consistent. I have logged this guidance into your daily plan.`,
-        timestamp: 'Just now',
-        actionTitle: 'Review Progress Charts',
-        actionRoute: 'Progress',
+    try {
+      let convId = conversationId;
+      if (!convId) {
+        const created = await fitnessCoachService.createConversation('Training Session');
+        convId = created.id;
+        setConversationId(convId);
+      }
+
+      const res = await fitnessCoachService.sendMessage(convId, {
+        content: text.trim(),
+      });
+
+      const structured = res.response;
+
+      // Check if safety cautions exist
+      if (structured.cautions && structured.cautions.length > 0) {
+        const isUrgent = structured.cautions.some(
+          (c) =>
+            c.toLowerCase().includes('medical') ||
+            c.toLowerCase().includes('emergency') ||
+            c.toLowerCase().includes('physician') ||
+            c.toLowerCase().includes('urgent'),
+        );
+        setSafetyNotice({
+          urgent: isUrgent,
+          message: structured.cautions[0] || 'Medical caution advised.',
+        });
+      }
+
+      const assistantMessage: MessageItem = {
+        id: res.assistantMessageId || `ai_${Date.now()}`,
+        role: 'ASSISTANT',
+        content: structured.message || 'I have analyzed your training data.',
+        structuredOutput: structured,
       };
-      setMessages((prev) => [...prev, aiReply]);
-    }, 800);
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: any) {
+      console.error('Coach communication error', err);
+      const errorMessage: MessageItem = {
+        id: `err_${Date.now()}`,
+        role: 'ASSISTANT',
+        content:
+          err?.response?.data?.message ||
+          'I encountered an error retrieving your training context. Please ensure you have granted AI coaching consent and try again.',
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleActionPress = (action: FitnessAction) => {
+    const targetId = action.parameters?.targetId || action.parameters?.id;
+    switch (action.action) {
+      case 'VIEW_WORKOUT':
+        navigation.navigate('WorkoutSession', { workoutId: targetId });
+        break;
+      case 'VIEW_PROGRESS':
+        navigation.navigate('Progress');
+        break;
+      case 'VIEW_GOAL':
+        navigation.navigate('Goals', { memberProfileId: targetId });
+        break;
+      case 'VIEW_TRAINING_PLAN':
+        navigation.navigate('TrainingPlanOverview', { planId: targetId });
+        break;
+      case 'VIEW_BOOKING':
+        navigation.navigate('MyBookings');
+        break;
+      case 'OPEN_CHALLENGE':
+        navigation.navigate('Challenges');
+        break;
+      default:
+        console.log('Action pressed:', action);
+    }
+  };
+
+  const handleFeedback = async (messageId: string, rating: AIFeedbackRating) => {
+    try {
+      await fitnessCoachService.submitFeedback(rating, messageId);
+    } catch (err) {
+      console.warn('Failed to submit feedback', err);
+    }
+  };
+
+  const handleOpenPrivacyModal = async () => {
+    setPrivacyModalVisible(true);
+    setLoadingContext(true);
+    try {
+      const summary = await fitnessCoachService.getContextSummary();
+      setContextSummary(summary);
+    } catch (err) {
+      console.warn('Failed to load context summary', err);
+    } finally {
+      setLoadingContext(false);
+    }
   };
 
   return (
@@ -97,7 +270,7 @@ export const AICoachScreen: React.FC = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
             <Icon name="chevron-left" size={20} color={themeColors.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
@@ -105,82 +278,150 @@ export const AICoachScreen: React.FC = () => {
               <View style={styles.aiGlowDot} />
               <Text style={styles.headerTitle}>FitCore AI Coach</Text>
             </View>
-            <Text style={styles.headerSubtitle}>Personal Performance Intelligence</Text>
+            <Text style={styles.headerSubtitle}>Grounded Training Intelligence</Text>
           </View>
-          <Badge label="GPT-4o AT SPEED" variant="ai" />
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={handleOpenPrivacyModal}
+              style={styles.headerActionBtn}
+              accessibilityLabel="AI Data & Privacy"
+            >
+              <Icon name="shield" size={18} color="#38BDF8" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleStartNewConversation}
+              style={styles.headerActionBtn}
+              accessibilityLabel="New Conversation"
+            >
+              <Icon name="plus" size={18} color={themeColors.textPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Suggestion Chips */}
-        <View style={styles.chipsContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsScroll}
-          >
-            {SUGGESTION_CHIPS.map((chip, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => handleSend(chip)}
-                style={styles.suggestionChip}
-              >
-                <Icon name="sparkles" size={12} color={themeColors.aiPrimary} />
-                <Text style={styles.chipText}>{chip}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Conversation Stream */}
-        <ScrollView contentContainerStyle={styles.chatStream} showsVerticalScrollIndicator={false}>
-          {messages.map((msg) => {
-            const isAI = msg.sender === 'ai';
-            return (
-              <View
-                key={msg.id}
-                style={[styles.messageWrapper, isAI ? styles.aiWrapper : styles.userWrapper]}
-              >
-                {isAI && (
-                  <View style={styles.aiAvatar}>
-                    <Icon name="sparkles" size={14} color="#FFFFFF" />
-                  </View>
-                )}
-                <View style={[styles.bubble, isAI ? styles.aiBubble : styles.userBubble]}>
-                  <Text style={[styles.bubbleText, isAI ? styles.aiText : styles.userText]}>
-                    {msg.text}
-                  </Text>
-                  {msg.actionTitle && msg.actionRoute && (
-                    <TouchableOpacity
-                      onPress={() => navigation.navigate(msg.actionRoute as any)}
-                      style={styles.bubbleAction}
-                    >
-                      <Text style={styles.bubbleActionText}>{msg.actionTitle} →</Text>
-                    </TouchableOpacity>
-                  )}
-                  <Text style={styles.timestampText}>{msg.timestamp}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
-
-        {/* Message Input Box */}
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Ask FitCore AI anything..."
-            placeholderTextColor={themeColors.textMuted}
-            value={inputText}
-            onChangeText={setInputText}
-            onSubmitEditing={() => handleSend()}
+        {/* Urgent Safety Escalation Banner if triggered */}
+        {safetyNotice && (
+          <AIFitnessCoachSafetyNotice
+            urgent={safetyNotice.urgent}
+            message={safetyNotice.message}
           />
-          <TouchableOpacity
-            onPress={() => handleSend()}
-            disabled={!inputText.trim()}
-            style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
-          >
-            <Icon name="bolt" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+        )}
+
+        {/* Loading Initial State */}
+        {isLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color="#0EA5E9" />
+            <Text style={styles.loadingText}>Loading training context...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Conversation Stream */}
+            <ScrollView
+              ref={scrollViewRef}
+              contentContainerStyle={styles.chatStream}
+              showsVerticalScrollIndicator={false}
+            >
+              {messages.map((msg) => (
+                <AIFitnessCoachMessage
+                  key={msg.id}
+                  id={msg.id}
+                  role={msg.role}
+                  content={msg.content}
+                  structuredOutput={msg.structuredOutput}
+                  onActionPress={handleActionPress}
+                  onFeedback={(rating) => handleFeedback(msg.id, rating)}
+                />
+              ))}
+
+              {isSending && (
+                <View style={styles.thinkingCard}>
+                  <ActivityIndicator size="small" color="#0EA5E9" />
+                  <Text style={styles.thinkingText}>
+                    Coach is analyzing your workout logs & training history...
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Suggestions */}
+            <AIFitnessCoachSuggestion
+              suggestions={DEFAULT_SUGGESTIONS}
+              onSelect={handleSendMessage}
+              disabled={isSending}
+            />
+
+            {/* Input Bar */}
+            <AIFitnessCoachInput
+              onSend={handleSendMessage}
+              disabled={isSending}
+              placeholder="Ask about workouts, form, volume, or recovery..."
+            />
+          </>
+        )}
+
+        {/* Privacy & Context Inspection Modal */}
+        <Modal
+          visible={privacyModalVisible}
+          onClose={() => setPrivacyModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>🛡️ AI Data & Grounding Context</Text>
+              <TouchableOpacity onPress={() => setPrivacyModalVisible(false)}>
+                <Icon name="close" size={20} color={themeColors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingContext ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="small" color="#0EA5E9" />
+                <Text style={styles.modalSubText}>Retrieving active context snapshot...</Text>
+              </View>
+            ) : contextSummary ? (
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                <Text style={styles.modalSectionTitle}>Training History</Text>
+                <Text style={styles.modalRowText}>
+                  Active Plan: {contextSummary.training.activePlanName || 'None assigned'}
+                </Text>
+                <Text style={styles.modalRowText}>
+                  Logged Workouts (Last 14d): {contextSummary.training.recentWorkoutsCount}
+                </Text>
+
+                <Text style={styles.modalSectionTitle}>Goal Tracking</Text>
+                <Text style={styles.modalRowText}>
+                  Active Goals: {contextSummary.progress.activeGoalsCount}
+                </Text>
+                {contextSummary.progress.goals.map((g, idx) => (
+                  <Text key={idx} style={styles.modalBulletText}>
+                    • {g.title} ({g.category})
+                  </Text>
+                ))}
+
+                <Text style={styles.modalSectionTitle}>Engagement & Consistency</Text>
+                <Text style={styles.modalRowText}>
+                  Streak: {contextSummary.engagement.streak} days
+                </Text>
+                <Text style={styles.modalRowText}>
+                  Level: {contextSummary.engagement.engagementLevel}
+                </Text>
+
+                <Text style={styles.modalSectionTitle}>Redacted Sensitive Information</Text>
+                <Text style={styles.modalRedactionText}>
+                  🔒 PAR-Q, medical clearances, private trainer notes, and payment credentials are
+                  strictly excluded from AI context builder payloads.
+                </Text>
+              </ScrollView>
+            ) : (
+              <Text style={styles.modalSubText}>Unable to load context snapshot.</Text>
+            )}
+
+            <Button
+              title="Close"
+              variant="secondary"
+              onPress={() => setPrivacyModalVisible(false)}
+              style={styles.modalCloseBtn}
+            />
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -189,6 +430,7 @@ export const AICoachScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0B0F19',
   },
   header: {
     flexDirection: 'row',
@@ -197,12 +439,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     borderBottomWidth: 1,
-    borderBottomColor: themeColors.border,
-    backgroundColor: themeColors.surface,
+    borderBottomColor: '#1E293B',
+    backgroundColor: '#0F172A',
   },
-  backButton: {
+  iconButton: {
     padding: spacing[1],
-    marginLeft: -spacing[1],
   },
   headerInfo: {
     flex: 1,
@@ -217,140 +458,110 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: themeColors.aiPrimary,
+    backgroundColor: '#0EA5E9',
   },
   headerTitle: {
-    ...typography.bodySmall,
-    color: themeColors.textPrimary,
+    fontSize: 16,
+    color: '#F8FAFC',
     fontWeight: '700',
   },
   headerSubtitle: {
     fontSize: 11,
-    color: themeColors.textMuted,
+    color: '#94A3B8',
   },
-  chipsContainer: {
-    backgroundColor: themeColors.surface,
-    paddingVertical: spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.border,
-  },
-  chipsScroll: {
-    paddingHorizontal: spacing[4],
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing[2],
   },
-  suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: themeColors.cardBackground,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1.5],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: '#2D2254',
-    gap: spacing[1.5],
+  headerActionBtn: {
+    padding: spacing[1.5],
+    backgroundColor: '#1E293B',
+    borderRadius: radius.md,
   },
-  chipText: {
-    ...typography.caption,
-    color: themeColors.textSecondary,
-    fontWeight: '600',
-  },
-  chatStream: {
-    padding: spacing[4],
-    gap: spacing[3.5],
-    paddingBottom: spacing[4],
-  },
-  messageWrapper: {
-    flexDirection: 'row',
-    gap: spacing[2.5],
-    maxWidth: '88%',
-  },
-  aiWrapper: {
-    alignSelf: 'flex-start',
-  },
-  userWrapper: {
-    alignSelf: 'flex-end',
-  },
-  aiAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: themeColors.aiPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  bubble: {
-    borderRadius: radius.lg,
-    padding: spacing[3.5],
-    gap: spacing[1.5],
-  },
-  aiBubble: {
-    backgroundColor: '#161B2E',
-    borderWidth: 1,
-    borderColor: '#2D2254',
-    borderTopLeftRadius: 4,
-  },
-  userBubble: {
-    backgroundColor: themeColors.accent,
-    borderTopRightRadius: 4,
-  },
-  bubbleText: {
-    ...typography.bodySmall,
-    lineHeight: 20,
-  },
-  aiText: {
-    color: themeColors.textPrimary,
-  },
-  userText: {
-    color: '#FFFFFF',
-  },
-  bubbleAction: {
-    alignSelf: 'flex-start',
-    backgroundColor: themeColors.aiLight,
-    paddingHorizontal: spacing[2.5],
-    paddingVertical: spacing[1],
-    borderRadius: radius.sm,
-    marginTop: spacing[1],
-  },
-  bubbleActionText: {
-    ...typography.caption,
-    color: '#A78BFA',
-    fontWeight: '700',
-  },
-  timestampText: {
-    fontSize: 10,
-    color: themeColors.textMuted,
-    alignSelf: 'flex-end',
-  },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[3],
-    backgroundColor: themeColors.surface,
-    borderTopWidth: 1,
-    borderTopColor: themeColors.border,
-    gap: spacing[2],
-  },
-  textInput: {
+  centered: {
     flex: 1,
-    backgroundColor: themeColors.cardBackground,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2.5],
-    color: themeColors.textPrimary,
-    borderWidth: 1,
-    borderColor: themeColors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: spacing[3],
+    color: '#94A3B8',
     fontSize: 14,
   },
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: themeColors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+  chatStream: {
+    paddingVertical: spacing[3],
+    paddingBottom: spacing[4],
   },
-  sendBtnDisabled: {
-    backgroundColor: themeColors.surfaceActive,
+  thinkingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: '#1E293B',
+    marginHorizontal: spacing[4],
+    padding: spacing[3],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginVertical: spacing[2],
+  },
+  thinkingText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  modalContent: {
+    gap: spacing[3],
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  modalLoading: {
+    paddingVertical: spacing[4],
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  modalScroll: {
+    maxHeight: 320,
+  },
+  modalSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#38BDF8',
+    marginTop: spacing[2],
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  modalRowText: {
+    fontSize: 13,
+    color: '#E2E8F0',
+    marginBottom: 2,
+  },
+  modalBulletText: {
+    fontSize: 12,
+    color: '#CBD5E1',
+    marginLeft: spacing[2],
+    marginBottom: 2,
+  },
+  modalRedactionText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    lineHeight: 17,
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  modalSubText: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  modalCloseBtn: {
+    marginTop: spacing[2],
   },
 });

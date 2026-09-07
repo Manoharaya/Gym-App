@@ -18,6 +18,17 @@ import { PaymentsModule } from './payments/payments.module';
 import { AccessModule } from './access/access.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { StaffModule } from './staff/staff.module';
+import { PersonalTrainingModule } from './personal-training/personal-training.module';
+import { ExercisesModule } from './exercises/exercises.module';
+import { WorkoutsModule } from './workouts/workouts.module';
+import { TrainingPlansModule } from './training-plans/training-plans.module';
+import { ProgressModule } from './progress/progress.module';
+import { NutritionModule } from './nutrition/nutrition.module';
+import { CommunicationModule } from './communication/communication.module';
+import { EngagementModule } from './engagement/engagement.module';
+import { AIModule } from './ai/ai.module';
+import { FitnessCoachModule } from './ai/features/fitness-coach/fitness-coach.module';
 import { HealthModule } from './health/health.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -49,6 +60,17 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     AccessModule,
     BookingsModule,
     AttendanceModule,
+    StaffModule,
+    PersonalTrainingModule,
+    ExercisesModule,
+    WorkoutsModule,
+    TrainingPlansModule,
+    ProgressModule,
+    NutritionModule,
+    CommunicationModule,
+    EngagementModule,
+    AIModule,
+    FitnessCoachModule,
     HealthModule,
   ],
   providers: [

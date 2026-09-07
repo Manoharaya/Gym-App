@@ -5,15 +5,25 @@ import { themeColors } from '../theme';
 
 import { MemberHomeScreen } from '../features/dashboard';
 import { WorkoutSessionScreen } from '../features/training';
-import { ExerciseDetailScreen } from '../features/exercises';
+import { ExerciseDetailScreen, ExerciseLibraryScreen } from '../features/exercises';
 import { ProgressScreen } from '../features/progress';
 import { NutritionScreen } from '../features/nutrition';
 import { DailyCheckInScreen } from '../features/check-ins';
 import { AICoachScreen } from '../features/ai-coach';
 import { WearablesScreen } from '../features/wearables';
-import { NotificationsScreen } from '../features/notifications';
+import {
+  NotificationsScreen,
+  NotificationDetailScreen,
+  NotificationPreferencesScreen,
+} from '../features/notifications';
 import { ProfileScreen } from '../features/profile';
 import { SettingsScreen } from '../features/settings';
+import {
+  EngagementHomeScreen,
+  HabitsScreen,
+  ChallengesScreen,
+  RewardsScreen,
+} from '../features/engagement';
 
 import {
   MembershipHomeScreen,
@@ -55,6 +65,21 @@ import {
   AttendanceHistoryScreen,
 } from '../features/attendance';
 
+import {
+  TrainerDirectoryScreen,
+  TrainerProfileScreen,
+} from '../features/trainer/screens';
+import {
+  MyTrainerScreen,
+  TrainingProgramScreen,
+  GoalsScreen,
+  TrainerNotesScreen,
+} from '../features/personal-training/screens';
+import {
+  TrainingPlanOverviewScreen,
+  TrainingCalendarScreen,
+} from '../features/training-plans';
+
 const Stack = createNativeStackNavigator<MemberStackParamList>();
 
 export const MemberNavigator: React.FC = () => {
@@ -71,6 +96,7 @@ export const MemberNavigator: React.FC = () => {
       {/* Workout & Training */}
       <Stack.Screen name="WorkoutSession" component={WorkoutSessionScreen} />
       <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
+      <Stack.Screen name="ExerciseLibrary" component={ExerciseLibraryScreen} />
 
       {/* Class Booking & Scheduling */}
       <Stack.Screen name="Bookings" component={ClassesScreen} />
@@ -88,6 +114,8 @@ export const MemberNavigator: React.FC = () => {
       <Stack.Screen name="AICoach" component={AICoachScreen} />
       <Stack.Screen name="Wearables" component={WearablesScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
+      <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
 
       {/* Profile & Settings */}
       <Stack.Screen name="MemberProfile" component={ProfileScreen} />
@@ -119,6 +147,27 @@ export const MemberNavigator: React.FC = () => {
       <Stack.Screen name="ClassCheckIn" component={ClassCheckInScreen} />
       <Stack.Screen name="AttendanceConfirmation" component={AttendanceConfirmationScreen} />
       <Stack.Screen name="AttendanceHistory" component={AttendanceHistoryScreen} />
+
+      {/* Trainers & Coaches */}
+      <Stack.Screen name="TrainerDirectory" component={TrainerDirectoryScreen} />
+      <Stack.Screen name="TrainerProfile" component={TrainerProfileScreen} />
+      <Stack.Screen name="MyTrainer" component={MyTrainerScreen} />
+      <Stack.Screen name="TrainingProgram" component={TrainingProgramScreen} />
+      <Stack.Screen name="Goals" component={GoalsScreen} />
+      <Stack.Screen name="TrainerNotes" component={TrainerNotesScreen} />
+
+      {/* Day 14: Training Plans & Calendar */}
+      <Stack.Screen name="TrainingPlanOverview" component={TrainingPlanOverviewScreen} />
+      <Stack.Screen name="TrainingCalendar" component={TrainingCalendarScreen} />
+
+      {/* Day 18: Engagement, Habits, Challenges & Rewards */}
+      <Stack.Screen name="EngagementHome" component={EngagementHomeScreen} />
+      <Stack.Screen name="Habits" component={HabitsScreen} />
+      <Stack.Screen name="HabitsScreen" component={HabitsScreen} />
+      <Stack.Screen name="Challenges" component={ChallengesScreen} />
+      <Stack.Screen name="ChallengesScreen" component={ChallengesScreen} />
+      <Stack.Screen name="Rewards" component={RewardsScreen} />
+      <Stack.Screen name="RewardsScreen" component={RewardsScreen} />
     </Stack.Navigator>
   );
 };

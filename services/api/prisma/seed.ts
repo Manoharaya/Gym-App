@@ -190,6 +190,121 @@ async function main() {
     { resource: 'bookings', action: 'NO_SHOW', scope: 'ORGANISATION', description: 'Mark booking as no-show' },
     { resource: 'schedules', action: 'VIEW', scope: 'ORGANISATION', description: 'View staff and trainer schedules' },
     { resource: 'schedules', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage recurring schedules and availability' },
+
+    // Day 9: Advanced Scheduling, Resources & Schedules
+    { resource: 'resources', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage studio and equipment resources' },
+    { resource: 'resources', action: 'READ', scope: 'ORGANISATION', description: 'View studio and equipment resources' },
+    { resource: 'schedules', action: 'UPDATE', scope: 'OUTLET', description: 'Update outlet schedules and substitute trainers' },
+    { resource: 'schedules', action: 'VIEW', scope: 'OUTLET', description: 'View outlet schedules' },
+
+    // Day 10: Attendance & Operational Management
+    { resource: 'attendance', action: 'CREATE', scope: 'OUTLET', description: 'Record member and walk-in attendance' },
+    { resource: 'attendance', action: 'CREATE', scope: 'ORGANISATION', description: 'Record organization-wide attendance' },
+    { resource: 'attendance', action: 'VIEW', scope: 'OUTLET', description: 'View class rosters and attendance' },
+    { resource: 'attendance', action: 'VIEW', scope: 'ORGANISATION', description: 'View organization-wide class rosters' },
+    { resource: 'attendance', action: 'UPDATE', scope: 'OUTLET', description: 'Correct attendance records and override windows' },
+    { resource: 'attendance', action: 'UPDATE', scope: 'ORGANISATION', description: 'Trigger no-show processing and corrections' },
+
+    // Day 11: Staff, Trainer Profiles, Roles, Certifications & Client Assignment
+    { resource: 'staff', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage staff profiles and employment lifecycle' },
+    { resource: 'staff', action: 'CREATE', scope: 'ORGANISATION', description: 'Create staff profiles' },
+    { resource: 'staff', action: 'READ', scope: 'ORGANISATION', description: 'View staff directory in organisation' },
+    { resource: 'staff', action: 'READ', scope: 'OUTLET', description: 'View staff assigned to outlet' },
+    { resource: 'staff', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update staff details' },
+    { resource: 'trainers', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage trainer profiles' },
+    { resource: 'trainers', action: 'MANAGE', scope: 'OUTLET', description: 'Manage outlet trainers' },
+    { resource: 'trainers', action: 'READ', scope: 'ORGANISATION', description: 'View trainer directory' },
+    { resource: 'trainers', action: 'READ', scope: 'OUTLET', description: 'View trainers in outlet' },
+    { resource: 'trainers', action: 'UPDATE', scope: 'SELF', description: 'Update own trainer profile' },
+    { resource: 'certifications', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage and verify certifications' },
+    { resource: 'certifications', action: 'MANAGE', scope: 'SELF', description: 'Upload and manage own certifications' },
+    { resource: 'certifications', action: 'READ', scope: 'ORGANISATION', description: 'View certifications' },
+    { resource: 'certifications', action: 'READ', scope: 'OUTLET', description: 'View outlet certifications' },
+    { resource: 'certifications', action: 'READ', scope: 'SELF', description: 'View own certifications' },
+    { resource: 'trainer_clients', action: 'MANAGE', scope: 'ORGANISATION', description: 'Assign and reassign clients to trainers' },
+    { resource: 'trainer_clients', action: 'MANAGE', scope: 'OUTLET', description: 'Assign clients within outlet' },
+    { resource: 'trainer_clients', action: 'READ', scope: 'ORGANISATION', description: 'View all client assignments' },
+    { resource: 'trainer_clients', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View own assigned clients' },
+
+    // Day 12: Personal Training, Programs, Goals & Trainer Notes
+    { resource: 'training_programs', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage training programs across organisation' },
+    { resource: 'training_programs', action: 'CREATE', scope: 'ORGANISATION', description: 'Create training programs' },
+    { resource: 'training_programs', action: 'CREATE', scope: 'ASSIGNED_CLIENTS', description: 'Create training programs for assigned clients' },
+    { resource: 'training_programs', action: 'READ', scope: 'ORGANISATION', description: 'View training programs across organisation' },
+    { resource: 'training_programs', action: 'READ', scope: 'OUTLET', description: 'View training programs in outlet' },
+    { resource: 'training_programs', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View training programs for assigned clients' },
+    { resource: 'training_programs', action: 'READ', scope: 'SELF', description: 'View own training programs' },
+    { resource: 'training_programs', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update training programs across organisation' },
+    { resource: 'training_programs', action: 'UPDATE', scope: 'ASSIGNED_CLIENTS', description: 'Update training programs for assigned clients' },
+
+    { resource: 'training_goals', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage member training goals across organisation' },
+    { resource: 'training_goals', action: 'MANAGE', scope: 'SELF', description: 'Manage own training goals' },
+    { resource: 'training_goals', action: 'CREATE', scope: 'ORGANISATION', description: 'Create member training goals' },
+    { resource: 'training_goals', action: 'CREATE', scope: 'ASSIGNED_CLIENTS', description: 'Create goals for assigned clients' },
+    { resource: 'training_goals', action: 'CREATE', scope: 'SELF', description: 'Create own training goals' },
+    { resource: 'training_goals', action: 'READ', scope: 'ORGANISATION', description: 'View member goals across organisation' },
+    { resource: 'training_goals', action: 'READ', scope: 'OUTLET', description: 'View member goals in outlet' },
+    { resource: 'training_goals', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View goals for assigned clients' },
+    { resource: 'training_goals', action: 'READ', scope: 'SELF', description: 'View own training goals' },
+    { resource: 'training_goals', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update member goals across organisation' },
+    { resource: 'training_goals', action: 'UPDATE', scope: 'ASSIGNED_CLIENTS', description: 'Update goals for assigned clients' },
+    { resource: 'training_goals', action: 'UPDATE', scope: 'SELF', description: 'Update own training goals' },
+
+    { resource: 'trainer_notes', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage trainer notes across organisation' },
+    { resource: 'trainer_notes', action: 'CREATE', scope: 'ORGANISATION', description: 'Create trainer notes across organisation' },
+    { resource: 'trainer_notes', action: 'CREATE', scope: 'ASSIGNED_CLIENTS', description: 'Create trainer notes for assigned clients' },
+    { resource: 'trainer_notes', action: 'READ', scope: 'ORGANISATION', description: 'View trainer notes across organisation' },
+    { resource: 'trainer_notes', action: 'READ', scope: 'OUTLET', description: 'View trainer notes in outlet' },
+    { resource: 'trainer_notes', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View trainer notes for assigned clients' },
+    { resource: 'trainer_notes', action: 'READ', scope: 'SELF', description: 'View member-visible coaching notes' },
+    { resource: 'trainer_notes', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update trainer notes across organisation' },
+    { resource: 'trainer_notes', action: 'UPDATE', scope: 'SELF', description: 'Update own author notes' },
+    { resource: 'trainer_notes', action: 'DELETE', scope: 'ORGANISATION', description: 'Delete trainer notes across organisation' },
+    { resource: 'trainer_notes', action: 'DELETE', scope: 'SELF', description: 'Delete own author notes' },
+
+    { resource: 'pt_sessions', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage personal training sessions across organisation' },
+    { resource: 'pt_sessions', action: 'MANAGE', scope: 'OUTLET', description: 'Manage personal training sessions in outlet' },
+    { resource: 'pt_sessions', action: 'CREATE', scope: 'ORGANISATION', description: 'Schedule PT sessions across organisation' },
+    { resource: 'pt_sessions', action: 'CREATE', scope: 'ASSIGNED_CLIENTS', description: 'Schedule PT sessions for assigned clients' },
+    { resource: 'pt_sessions', action: 'READ', scope: 'ORGANISATION', description: 'View PT sessions across organisation' },
+    { resource: 'pt_sessions', action: 'READ', scope: 'OUTLET', description: 'View PT sessions in outlet' },
+    { resource: 'pt_sessions', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View PT sessions for assigned clients' },
+    { resource: 'pt_sessions', action: 'READ', scope: 'SELF', description: 'View own PT sessions' },
+    { resource: 'pt_sessions', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update PT sessions across organisation' },
+    { resource: 'pt_sessions', action: 'UPDATE', scope: 'ASSIGNED_CLIENTS', description: 'Update PT sessions for assigned clients' },
+    { resource: 'pt_sessions', action: 'UPDATE', scope: 'SELF', description: 'Update own PT sessions' },
+
+    // Day 13: Exercise Library & Workout Programming
+    { resource: 'exercises', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage exercise library' },
+    { resource: 'exercises', action: 'CREATE', scope: 'ORGANISATION', description: 'Create custom organisation exercises' },
+    { resource: 'exercises', action: 'READ', scope: 'ORGANISATION', description: 'View system and organisation exercises' },
+    { resource: 'exercises', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update organisation custom exercises' },
+    { resource: 'exercises', action: 'ARCHIVE', scope: 'ORGANISATION', description: 'Archive custom exercises' },
+
+    { resource: 'workout_templates', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage workout templates' },
+    { resource: 'workout_templates', action: 'CREATE', scope: 'ORGANISATION', description: 'Create workout templates' },
+    { resource: 'workout_templates', action: 'READ', scope: 'ORGANISATION', description: 'View workout templates' },
+    { resource: 'workout_templates', action: 'UPDATE', scope: 'ORGANISATION', description: 'Update workout templates' },
+    { resource: 'workout_templates', action: 'ARCHIVE', scope: 'ORGANISATION', description: 'Archive workout templates' },
+
+    { resource: 'workouts', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage workouts across organisation' },
+    { resource: 'workouts', action: 'CREATE', scope: 'ASSIGNED_CLIENTS', description: 'Create workouts for assigned clients' },
+    { resource: 'workouts', action: 'READ', scope: 'ORGANISATION', description: 'View workouts across organisation' },
+    { resource: 'workouts', action: 'READ', scope: 'OUTLET', description: 'View workouts in outlet' },
+    { resource: 'workouts', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View workouts for assigned clients' },
+    { resource: 'workouts', action: 'READ', scope: 'SELF', description: 'View own assigned workouts' },
+    { resource: 'workouts', action: 'UPDATE', scope: 'ASSIGNED_CLIENTS', description: 'Update workouts for assigned clients' },
+    { resource: 'workouts', action: 'UPDATE', scope: 'SELF', description: 'Record sets and execute own workouts' },
+
+    // Day 14: Training Plans
+    { resource: 'training_plans', action: 'MANAGE', scope: 'ORGANISATION', description: 'Manage training plans across organisation' },
+    { resource: 'training_plans', action: 'CREATE', scope: 'ASSIGNED_CLIENTS', description: 'Create training plans for assigned clients' },
+    { resource: 'training_plans', action: 'READ', scope: 'ORGANISATION', description: 'View training plans across organisation' },
+    { resource: 'training_plans', action: 'READ', scope: 'OUTLET', description: 'View training plans in outlet' },
+    { resource: 'training_plans', action: 'READ', scope: 'ASSIGNED_CLIENTS', description: 'View training plans for assigned clients' },
+    { resource: 'training_plans', action: 'READ', scope: 'SELF', description: 'View own training plans' },
+    { resource: 'training_plans', action: 'UPDATE', scope: 'ASSIGNED_CLIENTS', description: 'Update training plans for assigned clients' },
+    { resource: 'training_plans', action: 'UPDATE', scope: 'SELF', description: 'Update own training plans' },
   ];
 
 
@@ -311,6 +426,62 @@ async function main() {
     'bookings:NO_SHOW:ORGANISATION',
     'schedules:VIEW:ORGANISATION',
     'schedules:MANAGE:ORGANISATION',
+    // Day 9 & 10
+    'resources:MANAGE:ORGANISATION',
+    'resources:READ:ORGANISATION',
+    'schedules:UPDATE:OUTLET',
+    'schedules:VIEW:OUTLET',
+    'attendance:CREATE:OUTLET',
+    'attendance:CREATE:ORGANISATION',
+    'attendance:VIEW:OUTLET',
+    'attendance:VIEW:ORGANISATION',
+    'attendance:UPDATE:OUTLET',
+    'attendance:UPDATE:ORGANISATION',
+    // Day 11
+    'staff:MANAGE:ORGANISATION',
+    'staff:CREATE:ORGANISATION',
+    'staff:READ:ORGANISATION',
+    'staff:UPDATE:ORGANISATION',
+    'trainers:MANAGE:ORGANISATION',
+    'trainers:READ:ORGANISATION',
+    'certifications:MANAGE:ORGANISATION',
+    'certifications:READ:ORGANISATION',
+    'trainer_clients:MANAGE:ORGANISATION',
+    'trainer_clients:READ:ORGANISATION',
+    // Day 12
+    'training_programs:MANAGE:ORGANISATION',
+    'training_programs:CREATE:ORGANISATION',
+    'training_programs:READ:ORGANISATION',
+    'training_programs:UPDATE:ORGANISATION',
+    'training_goals:MANAGE:ORGANISATION',
+    'training_goals:CREATE:ORGANISATION',
+    'training_goals:READ:ORGANISATION',
+    'training_goals:UPDATE:ORGANISATION',
+    'trainer_notes:MANAGE:ORGANISATION',
+    'trainer_notes:CREATE:ORGANISATION',
+    'trainer_notes:READ:ORGANISATION',
+    'trainer_notes:UPDATE:ORGANISATION',
+    'trainer_notes:DELETE:ORGANISATION',
+    'pt_sessions:MANAGE:ORGANISATION',
+    'pt_sessions:CREATE:ORGANISATION',
+    'pt_sessions:READ:ORGANISATION',
+    'pt_sessions:UPDATE:ORGANISATION',
+    // Day 13
+    'exercises:MANAGE:ORGANISATION',
+    'exercises:CREATE:ORGANISATION',
+    'exercises:READ:ORGANISATION',
+    'exercises:UPDATE:ORGANISATION',
+    'exercises:ARCHIVE:ORGANISATION',
+    'workout_templates:MANAGE:ORGANISATION',
+    'workout_templates:CREATE:ORGANISATION',
+    'workout_templates:READ:ORGANISATION',
+    'workout_templates:UPDATE:ORGANISATION',
+    'workout_templates:ARCHIVE:ORGANISATION',
+    'workouts:MANAGE:ORGANISATION',
+    'workouts:READ:ORGANISATION',
+    // Day 14
+    'training_plans:MANAGE:ORGANISATION',
+    'training_plans:READ:ORGANISATION',
   ];
 
   for (const k of ownerPerms) {
@@ -370,6 +541,33 @@ async function main() {
     'bookings:CANCEL:ORGANISATION',
     'schedules:VIEW:ORGANISATION',
     'schedules:MANAGE:ORGANISATION',
+    // Day 9 & 10
+    'resources:MANAGE:ORGANISATION',
+    'resources:READ:ORGANISATION',
+    'schedules:UPDATE:OUTLET',
+    'schedules:VIEW:OUTLET',
+    'attendance:CREATE:OUTLET',
+    'attendance:VIEW:OUTLET',
+    'attendance:UPDATE:OUTLET',
+    'attendance:UPDATE:ORGANISATION',
+    // Day 11
+    'staff:READ:OUTLET',
+    'trainers:MANAGE:OUTLET',
+    'trainers:READ:OUTLET',
+    'certifications:READ:OUTLET',
+    'trainer_clients:MANAGE:OUTLET',
+    // Day 12
+    'training_programs:READ:OUTLET',
+    'training_goals:READ:OUTLET',
+    'trainer_notes:READ:OUTLET',
+    'pt_sessions:MANAGE:OUTLET',
+    'pt_sessions:READ:OUTLET',
+    // Day 13
+    'exercises:READ:ORGANISATION',
+    'workout_templates:READ:ORGANISATION',
+    'workouts:READ:OUTLET',
+    // Day 14
+    'training_plans:READ:OUTLET',
   ];
 
   for (const k of managerPerms) {
@@ -415,6 +613,16 @@ async function main() {
     'bookings:NO_SHOW:ORGANISATION',
     'bookings:CANCEL:ORGANISATION',
     'schedules:VIEW:ORGANISATION',
+    // Day 9 & 10
+    'resources:READ:ORGANISATION',
+    'schedules:UPDATE:OUTLET',
+    'attendance:CREATE:OUTLET',
+    'attendance:VIEW:OUTLET',
+    'attendance:UPDATE:OUTLET',
+    // Day 11
+    'trainers:READ:OUTLET',
+    // Day 12
+    'pt_sessions:READ:OUTLET',
   ];
 
   for (const k of receptionPerms) {
@@ -465,6 +673,45 @@ async function main() {
     'bookings:CHECK_IN:ORGANISATION',
     'schedules:VIEW:ORGANISATION',
     'schedules:MANAGE:ORGANISATION',
+    // Day 9 & 10
+    'schedules:VIEW:OUTLET',
+    'attendance:VIEW:OUTLET',
+    'attendance:CREATE:OUTLET',
+    // Day 11
+    'trainers:READ:ORGANISATION',
+    'trainers:UPDATE:SELF',
+    'certifications:READ:SELF',
+    'certifications:MANAGE:SELF',
+    'trainer_clients:READ:ASSIGNED_CLIENTS',
+    // Day 12
+    'training_programs:CREATE:ASSIGNED_CLIENTS',
+    'training_programs:READ:ASSIGNED_CLIENTS',
+    'training_programs:UPDATE:ASSIGNED_CLIENTS',
+    'training_goals:CREATE:ASSIGNED_CLIENTS',
+    'training_goals:READ:ASSIGNED_CLIENTS',
+    'training_goals:UPDATE:ASSIGNED_CLIENTS',
+    'trainer_notes:CREATE:ASSIGNED_CLIENTS',
+    'trainer_notes:READ:ASSIGNED_CLIENTS',
+    'trainer_notes:UPDATE:SELF',
+    'trainer_notes:DELETE:SELF',
+    'pt_sessions:CREATE:ASSIGNED_CLIENTS',
+    'pt_sessions:READ:ASSIGNED_CLIENTS',
+    'pt_sessions:UPDATE:ASSIGNED_CLIENTS',
+    // Day 13
+    'exercises:READ:ORGANISATION',
+    'exercises:CREATE:ORGANISATION',
+    'workout_templates:MANAGE:ORGANISATION',
+    'workout_templates:CREATE:ORGANISATION',
+    'workout_templates:READ:ORGANISATION',
+    'workout_templates:UPDATE:ORGANISATION',
+    'workouts:CREATE:ASSIGNED_CLIENTS',
+    'workouts:READ:ASSIGNED_CLIENTS',
+    'workouts:UPDATE:ASSIGNED_CLIENTS',
+    // Day 14
+    'training_plans:MANAGE:ORGANISATION',
+    'training_plans:CREATE:ASSIGNED_CLIENTS',
+    'training_plans:READ:ASSIGNED_CLIENTS',
+    'training_plans:UPDATE:ASSIGNED_CLIENTS',
   ];
 
   for (const k of trainerPerms) {
@@ -515,6 +762,20 @@ async function main() {
     'bookings:VIEW:SELF',
     'bookings:CREATE:SELF',
     'bookings:CANCEL:SELF',
+    // Day 12
+    'training_programs:READ:SELF',
+    'training_goals:CREATE:SELF',
+    'training_goals:READ:SELF',
+    'training_goals:UPDATE:SELF',
+    'training_goals:MANAGE:SELF',
+    'trainer_notes:READ:SELF',
+    'pt_sessions:READ:SELF',
+    // Day 13
+    'exercises:READ:ORGANISATION',
+    'workouts:READ:SELF',
+    'workouts:UPDATE:SELF',
+    // Day 14
+    'training_plans:READ:SELF',
   ];
 
   for (const k of memberPerms) {
@@ -747,6 +1008,7 @@ async function main() {
     { email: 'manager@secondwind.com.au', role: 'OUTLET_MANAGER', firstName: 'Sarah', lastName: 'Miller', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE' },
     { email: 'reception@secondwind.com.au', role: 'RECEPTION', firstName: 'Emma', lastName: 'Watson', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE' },
     { email: 'trainer@secondwind.com.au', role: 'TRAINER', firstName: 'Marcus', lastName: 'Vance', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE' },
+    { email: 'trainer.mike@secondwind.com.au', role: 'TRAINER', firstName: 'Mike', lastName: 'Ross', orgId: secondWind.id, outletId: outletPerth.id, status: 'ACTIVE' },
     { email: 'finance@secondwind.com.au', role: 'FINANCE', firstName: 'Oliver', lastName: 'Queen', orgId: secondWind.id, outletId: null, status: 'ACTIVE' },
     
     // Member A: Second Wind — Onboarding NOT_STARTED
@@ -1914,10 +2176,995 @@ async function main() {
           bookedAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
         },
       });
+
+      // Seed an attendance check-in for the active member in HIIT session
+      await prisma.attendanceRecord.upsert({
+        where: {
+          classSessionId_memberProfileId: {
+            classSessionId: 'session_seed_hiit_today_morning',
+            memberProfileId: bookingSeedProfile.id,
+          },
+        },
+        update: {},
+        create: {
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          classSessionId: 'session_seed_hiit_today_morning',
+          memberProfileId: bookingSeedProfile.id,
+          bookingId: 'booking_seed_active_member_001',
+          status: 'CHECKED_IN',
+          checkInMethod: 'QR_CODE',
+          checkedInAt: new Date(Date.now() - 30 * 60 * 1000),
+        },
+      });
     }
   }
 
-  console.log('✅ FitCore Database Seeding Completed (Day 8: Booking & Scheduling Foundation).');
+  // 8. Day 11: Seed Staff Profiles, Trainer Profiles, Certifications, and Client Assignments
+  console.log('🌱 Seeding Day 11: Staff & Trainer Management Foundation...');
+
+  const staffUsersToSeed = [
+    { email: 'owner@secondwind.com.au', jobTitle: 'Managing Director & Founder', ref: 'EMP-SW-001', isPrimary: true },
+    { email: 'manager@secondwind.com.au', jobTitle: 'General Club Manager', ref: 'EMP-SW-002', isPrimary: true },
+    { email: 'reception@secondwind.com.au', jobTitle: 'Front Desk Lead', ref: 'EMP-SW-003', isPrimary: true },
+    { email: 'trainer@secondwind.com.au', jobTitle: 'Head Strength Coach & PT', ref: 'EMP-SW-004', isPrimary: true },
+    { email: 'trainer.mike@secondwind.com.au', jobTitle: 'Senior Performance Coach', ref: 'EMP-SW-005', isPrimary: true },
+    { email: 'finance@secondwind.com.au', jobTitle: 'Financial Controller', ref: 'EMP-SW-006', isPrimary: false },
+  ];
+
+  const staffProfilesMap = new Map<string, string>();
+
+  for (const s of staffUsersToSeed) {
+    const user = await prisma.user.findUnique({ where: { email: s.email } });
+    if (user) {
+      const staffProfile = await prisma.staffProfile.upsert({
+        where: { userId: user.id },
+        update: {
+          jobTitle: s.jobTitle,
+          employeeReference: s.ref,
+          employmentStatus: 'ACTIVE',
+        },
+        create: {
+          organisationId: secondWind.id,
+          userId: user.id,
+          employeeReference: s.ref,
+          displayName: user.displayName || `${user.firstName} ${user.lastName}`,
+          jobTitle: s.jobTitle,
+          workEmail: s.email,
+          employmentStatus: 'ACTIVE',
+          hireDate: new Date('2024-01-15T00:00:00Z'),
+        },
+      });
+
+      staffProfilesMap.set(s.email, staffProfile.id);
+
+      // Outlet Assignment
+      await prisma.staffOutletAssignment.upsert({
+        where: {
+          staffProfileId_outletId: {
+            staffProfileId: staffProfile.id,
+            outletId: perthCbd.id,
+          },
+        },
+        update: {},
+        create: {
+          staffProfileId: staffProfile.id,
+          outletId: perthCbd.id,
+          roleScope: s.jobTitle,
+          status: 'ACTIVE',
+          isPrimary: s.isPrimary,
+          startDate: new Date('2024-01-15T00:00:00Z'),
+        },
+      });
+    }
+  }
+
+  // Trainer Profile for Marcus Vance
+  const marcusStaffId = staffProfilesMap.get('trainer@secondwind.com.au');
+  if (marcusStaffId) {
+    const marcusTrainer = await prisma.trainerProfile.upsert({
+      where: { staffProfileId: marcusStaffId },
+      update: {},
+      create: {
+        organisationId: secondWind.id,
+        staffProfileId: marcusStaffId,
+        professionalName: 'Marcus Vance',
+        bio: 'Former collegiate strength and conditioning coach specializing in barbell hypertrophy, Olympic lifting, and injury resilience.',
+        specialties: ['Strength & Conditioning', 'Powerlifting', 'Olympic Weightlifting', 'Athletic Performance'],
+        yearsExperience: 8,
+        languages: ['English', 'German'],
+        coachingStyle: 'Technical, evidence-based, high-accountability coaching tailored to athletic longevity.',
+        trainingApproach: 'Periodized barbell training coupled with velocity-based metrics.',
+        consultationAvailability: 'Mon-Fri 06:00-14:00 AWST',
+        status: 'ACTIVE',
+      },
+    });
+
+    // Certifications for Marcus Vance
+    const now = new Date();
+    const twoYearsLater = new Date(now.getTime() + 730 * 24 * 60 * 60 * 1000);
+    const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    await prisma.trainerCertification.upsert({
+      where: { id: 'cert_marcus_cscs_001' },
+      update: {},
+      create: {
+        id: 'cert_marcus_cscs_001',
+        trainerProfileId: marcusTrainer.id,
+        certificationName: 'CSCS - Certified Strength and Conditioning Specialist',
+        issuingOrganisation: 'National Strength and Conditioning Association (NSCA)',
+        certificationNumber: 'NSCA-CSCS-2022-84912',
+        issueDate: new Date('2022-03-15T00:00:00Z'),
+        expiryDate: twoYearsLater,
+        status: 'ACTIVE',
+        verifiedAt: new Date(),
+      },
+    });
+
+    await prisma.trainerCertification.upsert({
+      where: { id: 'cert_marcus_cpr_002' },
+      update: {},
+      create: {
+        id: 'cert_marcus_cpr_002',
+        trainerProfileId: marcusTrainer.id,
+        certificationName: 'Provide First Aid & CPR / AED (HLTAID011)',
+        issuingOrganisation: 'St John Ambulance Australia',
+        certificationNumber: 'SJA-FA-2024-5128',
+        issueDate: new Date('2024-04-10T00:00:00Z'),
+        expiryDate: thirtyDaysLater,
+        status: 'EXPIRING_SOON',
+        verifiedAt: new Date(),
+      },
+    });
+
+    // Assign Marcus as PRIMARY trainer to Alex Mercer
+    const alexUser = await prisma.user.findUnique({ where: { email: 'member@secondwind.com.au' } });
+    if (alexUser) {
+      const alexProfile = await prisma.memberProfile.findFirst({
+        where: { userId: alexUser.id, organisationId: secondWind.id },
+      });
+
+      if (alexProfile) {
+        await prisma.trainerClientAssignment.upsert({
+          where: { id: 'assignment_marcus_alex_001' },
+          update: {},
+          create: {
+            id: 'assignment_marcus_alex_001',
+            organisationId: secondWind.id,
+            outletId: perthCbd.id,
+            trainerProfileId: marcusTrainer.id,
+            memberProfileId: alexProfile.id,
+            assignmentType: 'PRIMARY',
+            status: 'ACTIVE',
+            startDate: new Date('2024-02-01T00:00:00Z'),
+            notes: 'Primary 1-on-1 athletic strength programming & weekly technique check-in.',
+          },
+        });
+      }
+    }
+  }
+
+  // Trainer Profile for Mike Ross
+  const mikeStaffId = staffProfilesMap.get('trainer.mike@secondwind.com.au');
+  if (mikeStaffId) {
+    const mikeTrainer = await prisma.trainerProfile.upsert({
+      where: { staffProfileId: mikeStaffId },
+      update: {},
+      create: {
+        organisationId: secondWind.id,
+        staffProfileId: mikeStaffId,
+        professionalName: 'Mike Ross',
+        bio: 'Dynamic functional fitness and metabolic conditioning specialist focusing on cardiovascular threshold development.',
+        specialties: ['Functional Fitness', 'HIIT', 'Mobility & Recovery', 'Injury Rehabilitation'],
+        yearsExperience: 5,
+        languages: ['English'],
+        coachingStyle: 'High-energy, dynamic movement coaching.',
+        trainingApproach: 'Functional movement patterns, metabolic intervals, and structured mobility.',
+        consultationAvailability: 'Tue-Sat 10:00-18:00 AWST',
+        status: 'ACTIVE',
+      },
+    });
+
+    await prisma.trainerCertification.upsert({
+      where: { id: 'cert_mike_cert4_001' },
+      update: {},
+      create: {
+        id: 'cert_mike_cert4_001',
+        trainerProfileId: mikeTrainer.id,
+        certificationName: 'Certificate IV in Fitness (Personal Trainer)',
+        issuingOrganisation: 'Australian Institute of Fitness',
+        certificationNumber: 'AIF-PT-2021-99201',
+        issueDate: new Date('2021-08-20T00:00:00Z'),
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        status: 'ACTIVE',
+        verifiedAt: new Date(),
+      },
+    });
+  }
+
+  // ==========================================
+  // DAY 12: Personal Training & Coaching Foundation Seed
+  // ==========================================
+  console.log('🏋️ Seeding Day 12 Personal Training, Programs, Goals & Coaching Notes...');
+
+  const marcusTrainerRecord = await prisma.trainerProfile.findFirst({
+    where: { professionalName: 'Marcus Vance' },
+  });
+  const alexMemberUser = await prisma.user.findUnique({
+    where: { email: 'member@secondwind.com.au' },
+  });
+  const marcusTrainerUser = await prisma.user.findUnique({
+    where: { email: 'trainer@secondwind.com.au' },
+  });
+
+  if (marcusTrainerRecord && alexMemberUser) {
+    const alexMemberProfile = await prisma.memberProfile.findFirst({
+      where: { userId: alexMemberUser.id, organisationId: secondWind.id },
+    });
+
+    if (alexMemberProfile) {
+      // 1. Training Program
+      const programStartDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // 2 weeks ago
+      const programEndDate = new Date(Date.now() + 70 * 24 * 60 * 60 * 1000); // 10 weeks later
+
+      const activeProgram = await prisma.trainingProgram.upsert({
+        where: { id: 'prog_alex_strength_001' },
+        update: {},
+        create: {
+          id: 'prog_alex_strength_001',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMemberProfile.id,
+          trainerProfileId: marcusTrainerRecord.id,
+          name: 'Strength & Hypertrophy Phase 1',
+          description: '12-week undulating periodization focused on barbell back squat progression, thoracic resilience, and body recomposition.',
+          status: 'ACTIVE',
+          startDate: programStartDate,
+          endDate: programEndDate,
+          activatedAt: programStartDate,
+          metadata: {
+            category: 'STRENGTH',
+            goalsSummary: 'Squat 140kg, reduce body fat to 15%, improve overhead mobility',
+            notes: 'Strict adherence to 10-minute shoulder and hip activation protocol prior to working sets.',
+          },
+        },
+      });
+
+      // 2. Training Goals (Member-owned)
+      const squatGoal = await prisma.trainingGoal.upsert({
+        where: { id: 'goal_alex_squat_001' },
+        update: {},
+        create: {
+          id: 'goal_alex_squat_001',
+          organisationId: secondWind.id,
+          memberProfileId: alexMemberProfile.id,
+          trainingProgramId: activeProgram.id,
+          createdById: alexMemberUser.id,
+          category: 'STRENGTH',
+          title: 'Barbell Back Squat 140kg',
+          description: 'Achieve 1RM barbell back squat at 140kg with strict parallel depth.',
+          targetValue: 140,
+          currentValue: 125,
+          baselineValue: 115,
+          unit: 'kg',
+          priority: 1,
+          status: 'ACTIVE',
+          targetDate: new Date(Date.now() + 56 * 24 * 60 * 60 * 1000), // 8 weeks later
+        },
+      });
+
+      // Seed Goal History
+      await prisma.goalHistory.upsert({
+        where: { id: 'gh_alex_squat_001' },
+        update: {},
+        create: {
+          id: 'gh_alex_squat_001',
+          goalId: squatGoal.id,
+          actorId: marcusTrainerUser?.id || alexMemberUser.id,
+          previousStatus: 'ACTIVE',
+          newStatus: 'ACTIVE',
+          previousValue: 115,
+          newValue: 125,
+          changeReason: 'PROGRESS_CHECK',
+          notes: 'Progress check: Alex hit 125kg for a clean double at RPE 8. Bar path was vertical with zero knee cave.',
+        },
+      });
+
+      await prisma.trainingGoal.upsert({
+        where: { id: 'goal_alex_bodycomp_002' },
+        update: {},
+        create: {
+          id: 'goal_alex_bodycomp_002',
+          organisationId: secondWind.id,
+          memberProfileId: alexMemberProfile.id,
+          trainingProgramId: activeProgram.id,
+          createdById: alexMemberUser.id,
+          category: 'BODY_COMPOSITION',
+          title: 'Body Fat Reduction',
+          description: 'Lean body mass recomposition to 15% body fat via caloric deficit & hypertrophy training.',
+          targetValue: 15.0,
+          currentValue: 17.2,
+          baselineValue: 18.5,
+          unit: '%',
+          priority: 2,
+          status: 'ACTIVE',
+          targetDate: new Date(Date.now() + 70 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      await prisma.trainingGoal.upsert({
+        where: { id: 'goal_alex_mobility_003' },
+        update: {},
+        create: {
+          id: 'goal_alex_mobility_003',
+          organisationId: secondWind.id,
+          memberProfileId: alexMemberProfile.id,
+          trainingProgramId: activeProgram.id,
+          createdById: alexMemberUser.id,
+          category: 'MOBILITY',
+          title: 'Overhead Squat & Thoracic Extension',
+          description: 'Full depth overhead squat with PVC pipe without heel elevation.',
+          targetValue: 0,
+          currentValue: 1.5,
+          baselineValue: 3.0,
+          unit: 'cm heel-lift',
+          priority: 2,
+          status: 'ACTIVE',
+          targetDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      await prisma.trainingGoal.upsert({
+        where: { id: 'goal_alex_cardio_004' },
+        update: {},
+        create: {
+          id: 'goal_alex_cardio_004',
+          organisationId: secondWind.id,
+          memberProfileId: alexMemberProfile.id,
+          createdById: alexMemberUser.id,
+          category: 'CARDIOVASCULAR',
+          title: '5km Sub-22 Min Run',
+          description: 'Outdoor 5k pacing under 4:24/km.',
+          targetValue: 22.0,
+          currentValue: 21.7,
+          baselineValue: 23.5,
+          unit: 'minutes',
+          priority: 3,
+          status: 'COMPLETED',
+          targetDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      // 3. Trainer Notes (Private, Staff, Member-Visible)
+      await prisma.trainerNote.upsert({
+        where: { id: 'note_alex_coaching_001' },
+        update: {},
+        create: {
+          id: 'note_alex_coaching_001',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMemberProfile.id,
+          trainerProfileId: marcusTrainerRecord.id,
+          trainingProgramId: activeProgram.id,
+          noteType: 'COACHING',
+          visibility: 'MEMBER_VISIBLE',
+          content: 'Squat Stance & Cueing Adjustment: Widened squat stance by 2 inches and queued active rooting through the big toe and heel. Hip impingement symptoms completely resolved on heavy working sets. Continue doing 90/90 hip mobility drill prior to loaded squats.',
+        },
+      });
+
+      await prisma.trainerNote.upsert({
+        where: { id: 'note_alex_staff_002' },
+        update: {},
+        create: {
+          id: 'note_alex_staff_002',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMemberProfile.id,
+          trainerProfileId: marcusTrainerRecord.id,
+          trainingProgramId: activeProgram.id,
+          noteType: 'ASSESSMENT',
+          visibility: 'STAFF',
+          content: 'Right Shoulder Tenderness Screen: Alex reported mild discomfort during high-incline dumbbell presses. Subacromial space impingement suspected. Keep overhead pressing volume moderate and pair all pressing sets with face pulls.',
+        },
+      });
+
+      await prisma.trainerNote.upsert({
+        where: { id: 'note_alex_private_003' },
+        update: {},
+        create: {
+          id: 'note_alex_private_003',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMemberProfile.id,
+          trainerProfileId: marcusTrainerRecord.id,
+          trainingProgramId: activeProgram.id,
+          noteType: 'GENERAL',
+          visibility: 'PRIVATE',
+          content: 'Coaching Observations & RPE Calibration: Alex tends to underestimate RPE on early sets and then rush rest periods. Need to enforce 3-minute rest timers on compound lifts so CNS recovers adequately between working doubles.',
+        },
+      });
+
+      // 4. Personal Training Sessions & Attendance Integration
+      const lastWeekStartTime = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      lastWeekStartTime.setHours(9, 0, 0, 0);
+      const lastWeekEndTime = new Date(lastWeekStartTime.getTime() + 60 * 60 * 1000);
+
+      // Link Attendance Record for completed PT session first
+      const attRecord = await prisma.attendanceRecord.upsert({
+        where: { id: 'att_pt_alex_001' },
+        update: {},
+        create: {
+          id: 'att_pt_alex_001',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMemberProfile.id,
+          status: 'CHECKED_IN',
+          checkInMethod: 'STAFF',
+          checkedInAt: new Date(lastWeekStartTime.getTime() + 2 * 60 * 1000), // 09:02
+          markedByUserId: marcusTrainerUser?.id || alexMemberUser.id,
+          notes: 'PT Session with Marcus Vance. Squat technique and velocity check.',
+        },
+      });
+
+      await prisma.personalTrainingSession.upsert({
+        where: { id: 'pt_session_alex_001' },
+        update: {},
+        create: {
+          id: 'pt_session_alex_001',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMemberProfile.id,
+          trainerProfileId: marcusTrainerRecord.id,
+          trainingProgramId: activeProgram.id,
+          sessionType: 'ONE_ON_ONE',
+          status: 'COMPLETED',
+          scheduledStart: lastWeekStartTime,
+          scheduledEnd: lastWeekEndTime,
+          actualStart: lastWeekStartTime,
+          actualEnd: lastWeekEndTime,
+          location: 'Perth CBD - Weightlifting Platform 2',
+          notes: 'Clean session. Squatted 125kg x 2 comfortably.',
+          attendanceRecordId: attRecord.id,
+        },
+      });
+
+      // Upcoming Scheduled Session
+      const tomorrowStartTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      tomorrowStartTime.setHours(9, 0, 0, 0);
+      const tomorrowEndTime = new Date(tomorrowStartTime.getTime() + 60 * 60 * 1000);
+
+      await prisma.personalTrainingSession.upsert({
+        where: { id: 'pt_session_alex_002' },
+        update: {},
+        create: {
+          id: 'pt_session_alex_002',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMemberProfile.id,
+          trainerProfileId: marcusTrainerRecord.id,
+          trainingProgramId: activeProgram.id,
+          sessionType: 'ONE_ON_ONE',
+          status: 'SCHEDULED',
+          scheduledStart: tomorrowStartTime,
+          scheduledEnd: tomorrowEndTime,
+          location: 'Perth CBD - Weightlifting Platform 2',
+          notes: 'Focus on bench press bar velocity and upper back tightness.',
+        },
+      });
+    }
+
+    // ==========================================
+    // DAY 13: EXERCISE LIBRARY & WORKOUT SEEDING
+    // ==========================================
+    console.log('🌱 Seeding Day 13: Exercise Library & Workout Programming...');
+
+    // 1. System Exercises
+    const systemExercises = [
+      {
+        id: 'ex_sys_barbell_back_squat',
+        ownershipType: 'SYSTEM',
+        name: 'Barbell Back Squat',
+        slug: 'barbell-back-squat',
+        description: 'The foundational lower body compound lift developing quadriceps, glutes, and posterior chain strength.',
+        instructions: 'Rest bar across upper traps. Unrack, brace core 360°, descend until hips break parallel, drive feet through floor to stand.',
+        coachingCues: ['Big belly breath and brace', 'Knees track over toes', 'Spread the floor with your feet'],
+        setupInstructions: 'Bar at mid-sternum height. Even grip just outside shoulder width.',
+        executionInstructions: 'Controlled 3-second descent, aggressive vertical drive out of the hole.',
+        safetyNotes: 'Always use safety pins set just below squat depth.',
+        difficulty: 'INTERMEDIATE',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'SQUAT',
+        primaryMuscleGroup: 'QUADRICEPS',
+        secondaryMuscleGroups: ['GLUTES', 'HAMSTRINGS', 'CORE'],
+        equipment: 'BARBELL',
+        bodyPosition: 'STANDING',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_barbell_deadlift',
+        ownershipType: 'SYSTEM',
+        name: 'Conventional Barbell Deadlift',
+        slug: 'conventional-barbell-deadlift',
+        description: 'Premier posterior chain movement targeting hamstrings, glutes, latissimus dorsi, and spinal erectors.',
+        instructions: 'Stand with bar over mid-foot. Hinge at hips, grip bar outside shins, pull slack out of bar, drive floor away.',
+        coachingCues: ['Push the world away', 'Lats locked in back pockets', 'Hips and shoulders rise at same rate'],
+        setupInstructions: 'Feet hip-width apart. Shins 1 inch from bar before descent.',
+        executionInstructions: 'Pull bar in direct vertical path keeping it in contact with shins and thighs.',
+        safetyNotes: 'Maintain neutral spine throughout. Never hyperextend at lockout.',
+        difficulty: 'INTERMEDIATE',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'HINGE',
+        primaryMuscleGroup: 'HAMSTRINGS',
+        secondaryMuscleGroups: ['GLUTES', 'BACK', 'CORE', 'FOREARMS'],
+        equipment: 'BARBELL',
+        bodyPosition: 'STANDING',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_barbell_bench_press',
+        ownershipType: 'SYSTEM',
+        name: 'Barbell Bench Press',
+        slug: 'barbell-bench-press',
+        description: 'Horizontal pushing compound exercise targeting pectoralis major, anterior deltoids, and triceps brachii.',
+        instructions: 'Lie on bench with eyes under bar. Unrack, lower bar to lower sternum with forearms vertical, press back to lockout over shoulders.',
+        coachingCues: ['Bend the bar in half to engage lats', 'Leg drive through floor', 'Touch chest softly without bouncing'],
+        setupInstructions: 'Five points of contact: feet flat on floor, glutes, upper back, and head firmly on bench.',
+        executionInstructions: 'Control descent over 2 seconds, pause for 0.5s at sternum, drive forcefully upward.',
+        safetyNotes: 'Always use collars and keep thumbs wrapped securely around bar (avoid suicide grip).',
+        difficulty: 'INTERMEDIATE',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'PUSH',
+        primaryMuscleGroup: 'CHEST',
+        secondaryMuscleGroups: ['SHOULDERS', 'TRICEPS'],
+        equipment: 'BARBELL',
+        bodyPosition: 'SUPINE',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_overhead_press',
+        ownershipType: 'SYSTEM',
+        name: 'Standing Barbell Overhead Press',
+        slug: 'standing-barbell-overhead-press',
+        description: 'Vertical pressing compound movement developing deltoids, triceps, and overhead stability.',
+        instructions: 'Rest bar on front deltoids. Squeeze glutes and quads, press bar straight up clearing head, lock out overhead.',
+        coachingCues: ['Glutes tight as a rock', 'Push your head through the window at top', 'Ribs pinned down'],
+        setupInstructions: 'Grip just outside shoulder width with forearms perpendicular to floor.',
+        executionInstructions: 'Inhale, brace, press bar in straight vertical line, locking arms overhead.',
+        safetyNotes: 'Do not excessively arch lower back; contract glutes and abdominals.',
+        difficulty: 'INTERMEDIATE',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'PUSH',
+        primaryMuscleGroup: 'SHOULDERS',
+        secondaryMuscleGroups: ['TRICEPS', 'CORE'],
+        equipment: 'BARBELL',
+        bodyPosition: 'STANDING',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_bodyweight_pull_up',
+        ownershipType: 'SYSTEM',
+        name: 'Bodyweight Pull-Up',
+        slug: 'bodyweight-pull-up',
+        description: 'Bodyweight vertical pulling movement targeting latissimus dorsi, rhomboids, and biceps.',
+        instructions: 'Hang from bar with overhand grip wider than shoulders. Depress scapulae, pull chest towards bar until chin clears bar.',
+        coachingCues: ['Drive elbows down to hips', 'Chest to bar', 'Control the descent all the way down'],
+        setupInstructions: 'Full dead-hang grip with active shoulder girdle engagement.',
+        executionInstructions: 'Smooth pull to top without kipping, 2-second eccentric lower to dead hang.',
+        safetyNotes: 'Avoid jerky kipping movements if unconditioned.',
+        difficulty: 'ADVANCED',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'PULL',
+        primaryMuscleGroup: 'BACK',
+        secondaryMuscleGroups: ['BICEPS', 'CORE'],
+        equipment: 'BODYWEIGHT',
+        bodyPosition: 'STANDING',
+        laterality: 'BILATERAL',
+        defaultUnit: 'REPS',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_dumbbell_rdl',
+        ownershipType: 'SYSTEM',
+        name: 'Dumbbell Romanian Deadlift',
+        slug: 'dumbbell-romanian-deadlift',
+        description: 'Hip-hinge isolation exercise developing hamstring hypertrophy and eccentric control.',
+        instructions: 'Hold dumbbells in front of thighs. Soften knees, hinge hips back keeping spine neutral until deep hamstring stretch.',
+        coachingCues: ['Shave your legs with the dumbbells', 'Push hips back to touch back wall', 'Squeeze glutes to return'],
+        setupInstructions: 'Feet hip-width apart, shoulders packed back.',
+        executionInstructions: '3-second eccentric hinge, 1-second concentric drive.',
+        safetyNotes: 'Do not allow lumbar spine to round at bottom of stretch.',
+        difficulty: 'BEGINNER',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'HINGE',
+        primaryMuscleGroup: 'HAMSTRINGS',
+        secondaryMuscleGroups: ['GLUTES', 'CORE'],
+        equipment: 'DUMBBELL',
+        bodyPosition: 'STANDING',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+    ];
+
+    for (const ex of systemExercises) {
+      await prisma.exercise.upsert({
+        where: { id: ex.id },
+        update: {},
+        create: ex,
+      });
+    }
+
+    // 2. Custom Organisation Exercise (Second Wind Athletic Club)
+    const customExercise = await prisma.exercise.upsert({
+      where: { id: 'ex_custom_secondwind_turf_sled' },
+      update: {},
+      create: {
+        id: 'ex_custom_secondwind_turf_sled',
+        organisationId: secondWind.id,
+        createdByUserId: marcusTrainerUser?.id,
+        ownershipType: 'ORGANISATION',
+        name: 'Second Wind Turf Sled Push',
+        slug: 'second-wind-turf-sled-push',
+        description: 'High-intensity conditioning sled push on the Second Wind South Yarra high-performance sprint turf.',
+        instructions: 'Load sled. Grip low handles with arms extended or high uprights. Drive forcefully into the ground using athletic acceleration gait.',
+        coachingCues: ['Stay low like sprinting uphill', 'Drive balls of feet into turf', 'Rhythmic breathing'],
+        setupInstructions: 'Ensure turf track is clear for full 25-meter run length.',
+        executionInstructions: 'Sustained maximal leg drive over 20-25 meters per lap.',
+        safetyNotes: 'Stay hydrated and ensure footwear has adequate traction on turf.',
+        difficulty: 'INTERMEDIATE',
+        exerciseType: 'FUNCTIONAL',
+        movementPattern: 'CARRY',
+        primaryMuscleGroup: 'FULL_BODY',
+        secondaryMuscleGroups: ['QUADRICEPS', 'CALVES', 'CORE'],
+        equipment: 'OTHER',
+        bodyPosition: 'OTHER',
+        laterality: 'ALTERNATING',
+        defaultUnit: 'METERS',
+        status: 'ACTIVE',
+      },
+    });
+
+    // 3. Workout Template
+    const marcusStaffProfileId = staffProfilesMap.get('trainer@secondwind.com.au');
+    const alexMember = await prisma.memberProfile.findFirst({
+      where: { user: { email: 'member@secondwind.com.au' }, organisationId: secondWind.id },
+    });
+    const marcusTrainer = await prisma.trainerProfile.findFirst({
+      where: { professionalName: 'Marcus Vance' },
+    });
+    const activeProg = await prisma.trainingProgram.findFirst({
+      where: { id: 'prog_alex_strength_001' },
+    });
+
+    const upperTemplate = await prisma.workoutTemplate.upsert({
+      where: { id: 'template_upper_power_001' },
+      update: {},
+      create: {
+        id: 'template_upper_power_001',
+        organisationId: secondWind.id,
+        createdByStaffId: marcusStaffProfileId,
+        name: 'Upper Body Power & Hypertrophy A',
+        description: 'Heavy horizontal pressing paired with vertical pulling and shoulder stability accessories.',
+        goal: 'Hypertrophy & Upper Body 1RM Progression',
+        difficulty: 'INTERMEDIATE',
+        estimatedDurationMinutes: 60,
+        status: 'ACTIVE',
+        version: 1,
+      },
+    });
+
+    // Template Exercises
+    await prisma.workoutTemplateExercise.upsert({
+      where: { id: 'tpl_ex_001' },
+      update: {},
+      create: {
+        id: 'tpl_ex_001',
+        workoutTemplateId: upperTemplate.id,
+        exerciseId: 'ex_sys_barbell_bench_press',
+        orderIndex: 0,
+        sectionName: 'MAIN',
+        notes: 'Work up to top heavy set of 5 at RPE 8.',
+        prescriptionType: 'REPETITIONS',
+        targetSets: 4,
+        targetReps: 5,
+        targetLoad: 85,
+        targetRPE: 8,
+        restSeconds: 180,
+      },
+    });
+
+    await prisma.workoutTemplateExercise.upsert({
+      where: { id: 'tpl_ex_002' },
+      update: {},
+      create: {
+        id: 'tpl_ex_002',
+        workoutTemplateId: upperTemplate.id,
+        exerciseId: 'ex_sys_bodyweight_pull_up',
+        orderIndex: 1,
+        sectionName: 'MAIN',
+        notes: 'Strict form, full dead hang at bottom.',
+        prescriptionType: 'REPETITIONS',
+        targetSets: 3,
+        targetReps: 8,
+        targetRPE: 8.5,
+        restSeconds: 120,
+      },
+    });
+
+    await prisma.workoutTemplateExercise.upsert({
+      where: { id: 'tpl_ex_003' },
+      update: {},
+      create: {
+        id: 'tpl_ex_003',
+        workoutTemplateId: upperTemplate.id,
+        exerciseId: 'ex_sys_overhead_press',
+        orderIndex: 2,
+        sectionName: 'ACCESSORY',
+        notes: 'Strict vertical pressing. Squeeze glutes.',
+        prescriptionType: 'REPETITIONS',
+        targetSets: 3,
+        targetReps: 8,
+        targetLoad: 50,
+        targetRPE: 7.5,
+        restSeconds: 90,
+      },
+    });
+
+    // 4. Concrete Assigned Workout for Alex Mercer
+    if (alexMember && marcusTrainer) {
+      const alexWorkout = await prisma.workout.upsert({
+        where: { id: 'workout_alex_001' },
+        update: {},
+        create: {
+          id: 'workout_alex_001',
+          organisationId: secondWind.id,
+          outletId: perthCbd.id,
+          memberProfileId: alexMember.id,
+          trainerProfileId: marcusTrainer.id,
+          trainingProgramId: activeProg?.id,
+          workoutTemplateId: upperTemplate.id,
+          title: 'Upper Body Power & Hypertrophy A',
+          description: 'Phase 1 heavy upper pressing and pulling workout prescribed by Marcus Vance.',
+          status: 'SCHEDULED',
+          scheduledDate: new Date(),
+          estimatedDurationMinutes: 60,
+          notes: 'Focus on bench press arch tightness and leg drive.',
+        },
+      });
+
+      // Workout Exercises with immutable snapshots
+      const weBench = await prisma.workoutExercise.upsert({
+        where: { id: 'we_alex_001' },
+        update: {},
+        create: {
+          id: 'we_alex_001',
+          workoutId: alexWorkout.id,
+          exerciseId: 'ex_sys_barbell_bench_press',
+          orderIndex: 0,
+          sectionName: 'MAIN',
+          exerciseNameSnapshot: 'Barbell Bench Press',
+          instructionSnapshot: 'Lie on bench. Unrack, lower bar to sternum, drive back up to lockout.',
+          coachingCueSnapshot: 'Bend bar in half; drive with legs.',
+          prescriptionType: 'REPETITIONS',
+          targetSets: 3,
+          targetReps: 5,
+          targetLoad: 85,
+          targetRPE: 8,
+          restSeconds: 180,
+          status: 'PENDING',
+        },
+      });
+
+      const wePullUp = await prisma.workoutExercise.upsert({
+        where: { id: 'we_alex_002' },
+        update: {},
+        create: {
+          id: 'we_alex_002',
+          workoutId: alexWorkout.id,
+          exerciseId: 'ex_sys_bodyweight_pull_up',
+          orderIndex: 1,
+          sectionName: 'MAIN',
+          exerciseNameSnapshot: 'Bodyweight Pull-Up',
+          instructionSnapshot: 'Overhand grip wider than shoulders. Drive elbows down to hips.',
+          coachingCueSnapshot: 'Chest to bar, controlled descent.',
+          prescriptionType: 'REPETITIONS',
+          targetSets: 3,
+          targetReps: 8,
+          targetRPE: 8.5,
+          restSeconds: 120,
+          status: 'PENDING',
+        },
+      });
+
+      // Seed Sets for Bench Press
+      await prisma.workoutSet.upsert({
+        where: { id: 'set_alex_001' },
+        update: {},
+        create: {
+          id: 'set_alex_001',
+          workoutExerciseId: weBench.id,
+          setNumber: 1,
+          targetReps: 5,
+          targetLoad: 85,
+          loadUnit: 'KG',
+          targetRPE: 8,
+          completed: false,
+        },
+      });
+
+      await prisma.workoutSet.upsert({
+        where: { id: 'set_alex_002' },
+        update: {},
+        create: {
+          id: 'set_alex_002',
+          workoutExerciseId: weBench.id,
+          setNumber: 2,
+          targetReps: 5,
+          targetLoad: 85,
+          loadUnit: 'KG',
+          targetRPE: 8,
+          completed: false,
+        },
+      });
+
+      await prisma.workoutSet.upsert({
+        where: { id: 'set_alex_003' },
+        update: {},
+        create: {
+          id: 'set_alex_003',
+          workoutExerciseId: weBench.id,
+          setNumber: 3,
+          targetReps: 5,
+          targetLoad: 85,
+          loadUnit: 'KG',
+          targetRPE: 8,
+          completed: false,
+        },
+      });
+
+      // DAY 14 SEED: Exercise Group (Superset), Training Plan, Weeks, Days, and Progression Rule
+      const supersetGroup = await prisma.workoutExerciseGroup.upsert({
+        where: { id: 'group_alex_superset_001' },
+        update: {},
+        create: {
+          id: 'group_alex_superset_001',
+          workoutId: alexWorkout.id,
+          name: 'Upper Power Superset A',
+          type: 'SUPERSET',
+          section: 'MAIN',
+          orderIndex: 0,
+          rounds: 3,
+          restBetweenExercises: 45,
+          restBetweenRounds: 120,
+          notes: 'Perform bench press followed immediately by pull-ups.',
+        },
+      });
+
+      // Link exercises to the superset group
+      await prisma.workoutExercise.update({
+        where: { id: weBench.id },
+        data: { workoutExerciseGroupId: supersetGroup.id },
+      });
+      await prisma.workoutExercise.update({
+        where: { id: wePullUp.id },
+        data: { workoutExerciseGroupId: supersetGroup.id },
+      });
+
+      // Seed Training Plan
+      const trainingPlan = await prisma.trainingPlan.upsert({
+        where: { id: 'plan_alex_hypertrophy_001' },
+        update: {},
+        create: {
+          id: 'plan_alex_hypertrophy_001',
+          organisationId: secondWind.id,
+          trainingProgramId: 'prog_alex_strength_001',
+          memberProfileId: (alexMemberProfile || alexMember)!.id,
+          trainerProfileId: marcusTrainer!.id,
+          name: '4-Week Hypertrophy & Power Block',
+          description: 'Periodized intermediate hypertrophy phase with structured supersets and weekly linear overload.',
+          objective: 'Increase lean mass and foundational strength in bench, squat, and pull-up.',
+          durationWeeks: 4,
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+          status: 'ACTIVE',
+        },
+      });
+
+      // Link existing workout to plan
+      await prisma.workout.update({
+        where: { id: alexWorkout.id },
+        data: { trainingPlanId: trainingPlan.id },
+      });
+
+      // Seed Weeks
+      for (let w = 1; w <= 4; w++) {
+        const week = await prisma.trainingPlanWeek.upsert({
+          where: {
+            trainingPlanId_weekNumber: {
+              trainingPlanId: trainingPlan.id,
+              weekNumber: w,
+            },
+          },
+          update: {},
+          create: {
+            id: `week_alex_00${w}`,
+            trainingPlanId: trainingPlan.id,
+            weekNumber: w,
+            name: `Week ${w}: ${w === 4 ? 'Deload & Peak' : 'Accumulation'}`,
+            focus: w === 4 ? 'Volume deload and intensity peak' : 'Hypertrophy and progressive load',
+            status: w === 1 ? 'IN_PROGRESS' : 'PENDING',
+          },
+        });
+
+        // Seed 7 days for Week 1
+        if (w === 1) {
+          const daysData = [
+            { dayNumber: 1, name: 'Monday: Upper Body Power', focus: 'Chest & Back Superset', restDay: false, workoutId: alexWorkout.id },
+            { dayNumber: 2, name: 'Tuesday: Lower Body Strength', focus: 'Quads & Hamstrings', restDay: false, workoutId: null },
+            { dayNumber: 3, name: 'Wednesday: Active Rest', focus: 'Mobility & Walking', restDay: true, workoutId: null },
+            { dayNumber: 4, name: 'Thursday: Upper Body Hypertrophy', focus: 'Shoulders & Arms', restDay: false, workoutId: null },
+            { dayNumber: 5, name: 'Friday: Full Body Conditioning', focus: 'Metabolic Circuit', restDay: false, workoutId: null },
+            { dayNumber: 6, name: 'Saturday: Rest Day', focus: 'Recovery', restDay: true, workoutId: null },
+            { dayNumber: 7, name: 'Sunday: Rest Day', focus: 'Full Restoration', restDay: true, workoutId: null },
+          ];
+
+          for (const d of daysData) {
+            await prisma.trainingPlanDay.upsert({
+              where: {
+                trainingPlanWeekId_dayNumber: {
+                  trainingPlanWeekId: week.id,
+                  dayNumber: d.dayNumber,
+                },
+              },
+              update: {},
+              create: {
+                id: `day_alex_w1_d${d.dayNumber}`,
+                trainingPlanWeekId: week.id,
+                dayNumber: d.dayNumber,
+                name: d.name,
+                focus: d.focus,
+                restDay: d.restDay,
+                workoutId: d.workoutId,
+              },
+            });
+          }
+        }
+      }
+
+      // Seed Progression Rule
+      await prisma.workoutProgressionRule.upsert({
+        where: { id: 'prog_rule_bench_001' },
+        update: {},
+        create: {
+          id: 'prog_rule_bench_001',
+          organisationId: secondWind.id,
+          trainingPlanId: trainingPlan.id,
+          workoutTemplateId: upperTemplate.id,
+          exerciseId: 'ex_sys_barbell_bench_press',
+          progressionType: 'LINEAR_LOAD',
+          configuration: {
+            loadIncrementKg: 2.5,
+            frequencyWeeks: 1,
+            targetReps: 5,
+            targetSets: 3,
+          },
+          active: true,
+          notes: 'Increase working weight by 2.5kg each week upon successful completion of all sets at target reps.',
+        },
+      });
+    }
+  }
+
+  console.log('✅ FitCore Database Seeding Completed (Days 1-14: Advanced Workout Programming & Training Plans).');
 }
 
 main()

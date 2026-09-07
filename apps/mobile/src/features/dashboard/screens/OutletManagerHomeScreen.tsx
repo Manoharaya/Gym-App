@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Screen, Card, Badge, MetricCard, ProgressRing } from '../../../components/primitives';
+import { useNavigation } from '@react-navigation/native';
+import { Screen, Card, Badge, MetricCard, ProgressRing, Button } from '../../../components/primitives';
 import { themeColors, typography, spacing, radius } from '../../../theme';
 
 export const OutletManagerHomeScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
   return (
     <Screen safeAreaEdges={['top', 'bottom']} statusBarStyle="light">
       <View style={styles.header}>
@@ -122,6 +124,23 @@ export const OutletManagerHomeScreen: React.FC = () => {
               </View>
               <Badge label="FRONT DESK" variant="info" />
             </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: spacing[2], marginTop: spacing[3] }}>
+            <Button
+              title="Staff Directory"
+              variant="primary"
+              size="sm"
+              style={{ flex: 1 }}
+              onPress={() => navigation.navigate('StaffDirectory')}
+            />
+            <Button
+              title="Trainer Roster"
+              variant="outline"
+              size="sm"
+              style={{ flex: 1 }}
+              onPress={() => navigation.navigate('TrainerDirectory')}
+            />
           </View>
         </Card>
       </ScrollView>

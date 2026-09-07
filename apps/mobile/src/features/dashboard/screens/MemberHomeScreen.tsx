@@ -61,6 +61,14 @@ export const MemberHomeScreen: React.FC = () => {
 
           <View style={styles.topBarActions}>
             <TouchableOpacity
+              onPress={() => (navigation as any).navigate('VerificationShell')}
+              style={styles.iconButton}
+              accessibilityLabel="Back to Platform Launcher"
+            >
+              <Icon name="home" size={20} color={themeColors.textPrimary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => navigation.navigate('Notifications')}
               style={styles.iconButton}
             >
@@ -270,8 +278,8 @@ export const MemberHomeScreen: React.FC = () => {
               <Icon name="bolt" size={18} color={themeColors.streakFire} />
               <Text style={styles.streakTitle}>4-Day Training Streak</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Progress')}>
-              <Text style={styles.streakViewAll}>All Progress →</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('EngagementHome')}>
+              <Text style={styles.streakViewAll}>Engagement & Habits →</Text>
             </TouchableOpacity>
           </View>
 

@@ -298,7 +298,9 @@ export class CheckInService {
     );
 
     // Determine if departed early (> 15 minutes before scheduled end)
-    const earlyThreshold = new Date(record.classSession.endsAt.getTime() - 15 * 60 * 1000);
+    const earlyThreshold = record.classSession
+      ? new Date(record.classSession.endsAt.getTime() - 15 * 60 * 1000)
+      : now;
     const finalStatus = now < earlyThreshold ? 'LEFT_EARLY' : 'COMPLETED';
 
     const updated = await this.prisma.attendanceRecord.update({

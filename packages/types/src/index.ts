@@ -6,3 +6,4 @@ export * from './ai';
 export * from './notifications';
 export * from './documents';
 export * from './entities';
+export * from './engagement';

@@ -1,138 +1,167 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { MemberStackParamList } from '../../../navigation/types';
-import { Screen, Card, Badge, Icon, MetricCard } from '../../../components/primitives';
-import { themeColors, typography, spacing, radius } from '../../../theme';
+import { Screen, Card, Badge, Icon } from '../../../components/primitives';
+import { themeColors, typography, spacing } from '../../../theme';
+import { ExerciseService } from '../services/exerciseService';
+import type { Exercise } from '@fitcore/types';
+
+const sp = {
+  xs: spacing[1],
+  sm: spacing[2],
+  md: spacing[4],
+  lg: spacing[6],
+  xl: spacing[8],
+  xxl: spacing[12],
+};
+
+const colors = {
+  ...themeColors,
+  primary: themeColors.primary,
+  accent: themeColors.accent,
+  textTertiary: themeColors.textMuted,
+  surfaceHighlight: themeColors.surfaceElevated,
+};
 
 type RouteProps = RouteProp<MemberStackParamList, 'ExerciseDetail'>;
 
 export const ExerciseDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
-  const exerciseName = route.params?.exerciseName ?? 'Barbell Bench Press';
+  const { exerciseId, exerciseName: fallbackName } = route.params || {};
+
+  const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (exerciseId) {
+      ExerciseService.getExerciseById(exerciseId)
+        .then((data) => {
+          if (isMounted) setExercise(data);
+        })
+        .catch((err) => {
+          console.warn('Failed to load exercise details:', err);
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [exerciseId]);
+
+  const name = exercise?.name || fallbackName || 'Exercise';
+  const instructionsList: string[] = exercise?.instructions
+    ? exercise.instructions.split('\n').filter((s) => s.trim().length > 0)
+    : [];
+  const cues: string[] = Array.isArray(exercise?.coachingCues)
+    ? (exercise.coachingCues as string[])
+    : [];
 
   return (
     <Screen safeAreaEdges={['top', 'bottom']} statusBarStyle="light">
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="chevron-left" size={20} color={themeColors.textPrimary} />
+          <Icon name="chevron-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Exercise Library</Text>
+        <Text style={styles.headerTitle}>Exercise Detail</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Title & Muscle Badges */}
-        <View style={styles.titleSection}>
-          <Text style={styles.exerciseTitle}>{exerciseName}</Text>
-          <View style={styles.badgeRow}>
-            <Badge label="CHEST" variant="accent" />
-            <Badge label="COMPOUND" variant="primary" />
-            <Badge label="BARBELL" variant="neutral" />
-          </View>
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading exercise details...</Text>
         </View>
-
-        {/* 1RM & History Metrics */}
-        <View style={styles.metricsRow}>
-          <MetricCard
-            label="ESTIMATED 1RM"
-            value="102.5"
-            unit="kg"
-            change="+5 kg"
-            trend="up"
-            icon="trophy"
-            accentColor={themeColors.accent}
-            style={styles.flexMetric}
-          />
-          <MetricCard
-            label="PERSONAL RECORD"
-            value="90"
-            unit="kg x 5"
-            subtitle="Aug 28, 2026"
-            icon="award"
-            accentColor={themeColors.success}
-            style={styles.flexMetric}
-          />
-        </View>
-
-        {/* AI Form Cue Card */}
-        <Card style={styles.aiCueCard}>
-          <View style={styles.aiCueHeader}>
-            <View style={styles.aiIconBadge}>
-              <Icon name="sparkles" size={14} color="#FFFFFF" />
-            </View>
-            <Text style={styles.aiCueTitle}>AI BIOMECHANICAL CUE</Text>
-          </View>
-          <Text style={styles.aiCueText}>
-            "Retract and depress your scapulae into the bench before unclipping. Maintain a 45° to
-            60° elbow tuck on the eccentric descent to protect the anterior rotator cuff."
-          </Text>
-        </Card>
-
-        {/* Step-by-Step Instructions */}
-        <Card style={styles.instructionCard}>
-          <Text style={styles.sectionHeading}>EXECUTION STEPS</Text>
-          <View style={styles.stepsList}>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Setup & Grip</Text>
-                <Text style={styles.stepText}>
-                  Lie flat with eyes directly below bar. Grip slightly wider than shoulder width with
-                  thumbs wrapped securely.
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Controlled Descent</Text>
-                <Text style={styles.stepText}>
-                  Lower the barbell in a controlled tempo (2–3 seconds) until it gently contacts the
-                  mid-sternum.
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Concentric Drive</Text>
-                <Text style={styles.stepText}>
-                  Press forcefully through your heels and chest, driving the bar upward along a slight
-                  J-curve back over your shoulders.
-                </Text>
-              </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          {/* Title & Taxonomy Badges */}
+          <View style={styles.titleSection}>
+            <Text style={styles.exerciseTitle}>{name}</Text>
+            <View style={styles.badgeRow}>
+              {exercise?.primaryMuscleGroup && (
+                <Badge label={exercise.primaryMuscleGroup} variant="accent" />
+              )}
+              {exercise?.difficulty && (
+                <Badge label={exercise.difficulty} variant="primary" />
+              )}
+              {exercise?.equipment && (
+                <Badge label={exercise.equipment} variant="neutral" />
+              )}
+              {exercise?.movementPattern && (
+                <Badge label={exercise.movementPattern} variant="neutral" />
+              )}
             </View>
           </View>
-        </Card>
 
-        {/* Common Mistakes */}
-        <Card style={styles.mistakesCard}>
-          <Text style={styles.sectionHeading}>COMMON MISTAKES TO AVOID</Text>
-          <View style={styles.mistakeItem}>
-            <Icon name="close" size={16} color={themeColors.danger} />
-            <Text style={styles.mistakeText}>Flaring elbows 90° outwards from torso</Text>
-          </View>
-          <View style={styles.mistakeItem}>
-            <Icon name="close" size={16} color={themeColors.danger} />
-            <Text style={styles.mistakeText}>Bouncing the barbell off the ribcage</Text>
-          </View>
-          <View style={styles.mistakeItem}>
-            <Icon name="close" size={16} color={themeColors.danger} />
-            <Text style={styles.mistakeText}>Lifting glutes off the bench during drive</Text>
-          </View>
-        </Card>
-      </ScrollView>
+          {/* Description */}
+          {exercise?.description ? (
+            <Card style={styles.card}>
+              <Text style={styles.sectionHeading}>OVERVIEW</Text>
+              <Text style={styles.bodyText}>{exercise.description}</Text>
+            </Card>
+          ) : null}
+
+          {/* Coaching Cues */}
+          {cues.length > 0 ? (
+            <Card style={styles.cueCard}>
+              <View style={styles.cueHeader}>
+                <Icon name="sparkles" size={16} color={colors.accent} />
+                <Text style={styles.cueHeaderTitle}>COACHING CUES</Text>
+              </View>
+              {cues.map((cue, index) => (
+                <View key={index} style={styles.cueItem}>
+                  <Text style={styles.bulletPoint}>•</Text>
+                  <Text style={styles.cueText}>{cue}</Text>
+                </View>
+              ))}
+            </Card>
+          ) : null}
+
+          {/* Execution Steps */}
+          {instructionsList.length > 0 ? (
+            <Card style={styles.card}>
+              <Text style={styles.sectionHeading}>EXECUTION STEPS</Text>
+              <View style={styles.stepsList}>
+                {instructionsList.map((step, index) => (
+                  <View key={index} style={styles.stepItem}>
+                    <View style={styles.stepNumber}>
+                      <Text style={styles.stepNumberText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.stepContent}>
+                      <Text style={styles.stepText}>{step}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          ) : null}
+
+          {/* Safety Notes */}
+          {exercise?.safetyNotes ? (
+            <Card style={styles.safetyCard}>
+              <View style={styles.safetyHeader}>
+                <Icon name="alert-circle" size={16} color={colors.warning} />
+                <Text style={styles.safetyHeaderTitle}>SAFETY & FORM CHECK</Text>
+              </View>
+              <Text style={styles.safetyText}>{exercise.safetyNotes}</Text>
+            </Card>
+          ) : null}
+        </ScrollView>
+      )}
     </Screen>
   );
 };
@@ -142,134 +171,147 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.border,
+    paddingHorizontal: sp.lg,
+    paddingVertical: sp.md,
   },
   backButton: {
-    padding: spacing[2],
-    marginLeft: -spacing[2],
-  },
-  headerTitle: {
-    ...typography.bodySmall,
-    color: themeColors.textPrimary,
-    fontWeight: '700',
-  },
-  container: {
-    padding: spacing[4],
-    gap: spacing[4],
-    paddingBottom: spacing[10],
-  },
-  titleSection: {
-    gap: spacing[2],
-  },
-  exerciseTitle: {
-    ...typography.h1,
-    color: themeColors.textPrimary,
-    fontWeight: '800',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
-  flexMetric: {
-    flex: 1,
-  },
-  aiCueCard: {
-    backgroundColor: '#121624',
-    borderColor: '#2D2254',
-    borderWidth: 1,
-    padding: spacing[4],
-    gap: spacing[2],
-  },
-  aiCueHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
-  },
-  aiIconBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.xs,
-    backgroundColor: themeColors.aiPrimary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceHighlight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  aiCueTitle: {
-    ...typography.caption,
-    color: '#A78BFA',
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  headerTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
   },
-  aiCueText: {
-    ...typography.bodySmall,
-    color: themeColors.textPrimary,
-    lineHeight: 20,
-    fontStyle: 'italic',
+  container: {
+    paddingHorizontal: sp.lg,
+    paddingBottom: sp.xxl,
+    gap: sp.lg,
   },
-  instructionCard: {
-    padding: spacing[4],
-    gap: spacing[3],
+  titleSection: {
+    gap: sp.sm,
+  },
+  exerciseTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sp.xs,
+  },
+  card: {
+    padding: sp.lg,
+    gap: sp.sm,
   },
   sectionHeading: {
     ...typography.caption,
-    color: themeColors.textMuted,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    color: colors.textTertiary,
+    letterSpacing: 1,
+  },
+  bodyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 22,
+  },
+  cueCard: {
+    padding: sp.lg,
+    backgroundColor: colors.surface,
+    borderColor: colors.accent,
+    borderWidth: 1,
+    gap: sp.sm,
+  },
+  cueHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.xs,
+  },
+  cueHeaderTitle: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.accent,
+    letterSpacing: 1,
+  },
+  cueItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: sp.xs,
+  },
+  bulletPoint: {
+    color: colors.accent,
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  cueText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    flex: 1,
+    lineHeight: 20,
   },
   stepsList: {
-    gap: spacing[3],
+    gap: sp.md,
   },
   stepItem: {
     flexDirection: 'row',
-    gap: spacing[3],
+    alignItems: 'flex-start',
+    gap: sp.md,
   },
   stepNumber: {
     width: 28,
     height: 28,
-    borderRadius: radius.full,
-    backgroundColor: themeColors.surfaceActive,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: themeColors.border,
   },
   stepNumberText: {
     ...typography.caption,
-    color: themeColors.accent,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   stepContent: {
     flex: 1,
-    gap: 2,
-  },
-  stepTitle: {
-    ...typography.bodySmall,
-    color: themeColors.textPrimary,
-    fontWeight: '700',
   },
   stepText: {
-    ...typography.caption,
-    color: themeColors.textSecondary,
-    lineHeight: 18,
+    ...typography.body,
+    color: colors.textPrimary,
+    lineHeight: 20,
   },
-  mistakesCard: {
-    padding: spacing[4],
-    gap: spacing[2.5],
+  safetyCard: {
+    padding: sp.lg,
+    backgroundColor: colors.surface,
+    borderColor: colors.warning,
+    borderWidth: 1,
+    gap: sp.xs,
   },
-  mistakeItem: {
+  safetyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
+    gap: sp.xs,
   },
-  mistakeText: {
-    ...typography.bodySmall,
-    color: themeColors.textSecondary,
+  safetyHeaderTitle: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.warning,
+    letterSpacing: 1,
+  },
+  safetyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  centerContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: sp.sm,
   },
 });
