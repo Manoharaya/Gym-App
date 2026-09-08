@@ -117,6 +117,7 @@ export type TrainerStackParamList = {
   ReactivationQueue: undefined;
   RecoveryPlanDetail: { planId?: string; memberId?: string; memberName?: string; strategy?: any };
   RetentionAgentDashboard: undefined;
+  AutomationCenter: undefined;
 };
 
 export type ReceptionStackParamList = {
@@ -148,6 +149,7 @@ export type OutletManagerStackParamList = {
   ReactivationQueue: undefined;
   RecoveryPlanDetail: { planId?: string; memberId?: string; memberName?: string; strategy?: any };
   RetentionAgentDashboard: undefined;
+  AutomationCenter: undefined;
 };
 
 export type FinanceStackParamList = {
@@ -174,6 +176,7 @@ export type OrganisationOwnerStackParamList = {
   RecoveryPlanDetail: { planId?: string; memberId?: string; memberName?: string; strategy?: any };
   CommunicationCenter: undefined;
   RetentionAgentDashboard: undefined;
+  AutomationCenter: undefined;
 };
 
 export type AppStackParamList = {

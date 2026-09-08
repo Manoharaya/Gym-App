@@ -5,6 +5,35 @@ All notable changes to the FitCore platform will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-09-08
+
+### Added - Day 30 Automated Engagement Workflows
+
+- **Deterministic Workflow Engine (`services/api/src/automation/`)**:
+  - Event-driven deterministic orchestration pipeline: `EVENT -> RULE -> ELIGIBILITY -> SAFETY -> ACTION -> APPROVAL -> EXECUTION -> OUTCOME`.
+  - Leaf and compound (`AND`, `OR`, `NOT`) declarative condition evaluator consuming Day 29 canonical retention metrics.
+  - Multi-scope cooldown enforcement across `MEMBER`, `WORKFLOW`, `MEMBER_AND_WORKFLOW`, and `ORGANISATION` scopes.
+  - Strict prohibited action guardrails blocking autonomous membership cancellations, price changes, discounts, and gate permission mutations.
+  - Quiet hours protection automatically deferring overnight communications to daytime windows.
+  - Anti-shaming and brand safety linguistic filters.
+  - Human-in-the-Loop (HITL) approval queue (`AWAITING_APPROVAL`) for sensitive member touchpoints.
+  - Centralized communication integration routing exclusively through Day 28 `CommunicationOrchestratorService`.
+  - Non-causal outcome telemetry framing subsequent visits and bookings strictly as `FOLLOWING WORKFLOW`.
+  - 7 pre-configured gym engagement templates (`INACTIVE_MEMBER_14D`, `ATTENDANCE_DROP`, `CLASS_NO_SHOW_FOLLOWUP`, `MEMBERSHIP_EXPIRING_14D`, `MEMBER_REENGAGED`, `NEW_MEMBER_ONBOARDING`, `MILESTONE_CELEBRATION`).
+  - Simulation and dry-run engine providing instant trigger preview without side-effects.
+  - AI Workflow Architect Assistant (`AUTOMATION_ASSISTANT`) for intent-to-workflow drafting with bilingual English and Nepali copy support.
+- **Database & Prisma Schema (`services/api/prisma`)**:
+  - 4 core models: `EngagementWorkflow`, `EngagementWorkflowVersion`, `WorkflowInstance`, `WorkflowExecution`.
+- **Shared Contracts (`packages/types`)**:
+  - Comprehensive TypeScript contracts for triggers, conditions, actions, safety policies, dry-runs, and analytics.
+- **Mobile Staff Experience (`apps/mobile/src/features/automation/`)**:
+  - `AutomationCenterScreen`: Workflows dashboard, human review queue, 1-click template deployer, and AI Architect preview.
+  - Client service `AutomationService` and navigation stack integration.
+- **Testing & Verification**:
+  - 20 E2E tests passing in `automation-workflows.e2e-spec.ts`.
+  - 6 Section 41 scenario tests passing in `automation-workflows-section41.e2e-spec.ts`.
+  - 12 unit tests passing in `automation.test.tsx`.
+
 ## [0.2.0] - 2026-09-06
 
 ### Added - Day 2 Backend Foundation & PostgreSQL Multi-Tenant Architecture
