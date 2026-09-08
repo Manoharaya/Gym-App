@@ -103,6 +103,27 @@ model Organisation {
   fitnessCoachProfiles AIFitnessCoachProfile[]
   fitnessCoachConversations AIFitnessCoachConversation[]
   fitnessSafetyEscalations AIFitnessSafetyEscalation[]
+  nutritionCoachProfiles AINutritionCoachProfile[]
+  nutritionCoachConversations AINutritionCoachConversation[]
+  nutritionSafetyEscalations AINutritionSafetyEscalation[]
+  dailyCheckIns        DailyCheckIn[]
+  dailyCheckInSettings DailyCheckInSetting[]
+  wearableConnections  WearableConnection[]
+  healthDataRecords    HealthDataRecord[]
+  wearableSyncLogs     WearableSyncLog[]
+  wearableInsights     WearableInsight[]
+  engagementInsights   EngagementInsight[]
+  retentionAnalyses    RetentionAnalysis[]
+  retentionFollowUpTasks RetentionFollowUpTask[]
+  memberReactivationProfiles MemberReactivationProfile[]
+  memberRecoveryPlans        MemberRecoveryPlan[]
+  communications             Communication[]
+  communicationTemplates     CommunicationTemplate[]
+  communicationPreferences   CommunicationPreference[]
+  retentionAgentAnalyses     RetentionAgentAnalysis[]
+  retentionOutreaches        RetentionOutreach[]
+  engagementWorkflows        EngagementWorkflow[]
+  workflowInstances          WorkflowInstance[]
 
   @@index([slug])
   @@index([status])
@@ -170,6 +191,13 @@ model Outlet {
   aiRequests           AIRequest[]
   aiUsageRecords       AIUsageRecord[]
   aiAuditEvents        AIAuditEvent[]
+  retentionFollowUpTasks RetentionFollowUpTask[]
+  memberRecoveryPlans    MemberRecoveryPlan[]
+  communications         Communication[]
+  retentionAgentAnalyses RetentionAgentAnalysis[]
+  retentionOutreaches    RetentionOutreach[]
+  engagementWorkflows    EngagementWorkflow[]
+  workflowInstances      WorkflowInstance[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -233,6 +261,14 @@ model User {
   aiUsageRecords            AIUsageRecord[]
   aiAuditEvents             AIAuditEvent[]
   aiFeedbacks               AIFeedback[]
+  assignedRetentionTasks    RetentionFollowUpTask[] @relation("AssignedRetentionStaff")
+  completedRetentionTasks   RetentionFollowUpTask[] @relation("CompletedRetentionStaff")
+  assignedRecoveryPlans     MemberRecoveryPlan[]    @relation("AssignedRecoveryStaff")
+  approvedRecoveryPlans     MemberRecoveryPlan[]    @relation("ApprovedRecoveryStaff")
+  communicationsReceived    Communication[]         @relation("UserCommunications")
+  communicationPreferences  CommunicationPreference[] @relation("UserCommPreferences")
+  assignedRetentionOutreaches RetentionOutreach[]     @relation("AssignedOutreachStaff")
+  approvedRetentionOutreaches RetentionOutreach[]     @relation("ApprovedOutreachStaff")
 
   @@index([email])
   @@index([phone])
@@ -484,6 +520,24 @@ model MemberProfile {
   fitnessCoachProfile          AIFitnessCoachProfile?
   fitnessCoachConversations    AIFitnessCoachConversation[]
   fitnessSafetyEscalations     AIFitnessSafetyEscalation[]
+  nutritionCoachProfile        AINutritionCoachProfile?
+  nutritionCoachConversations  AINutritionCoachConversation[]
+  nutritionSafetyEscalations   AINutritionSafetyEscalation[]
+  dailyCheckIns                DailyCheckIn[]
+  dailyCheckInSetting          DailyCheckInSetting?
+  wearableConnections          WearableConnection[]
+  healthDataRecords            HealthDataRecord[]
+  wearableSyncLogs             WearableSyncLog[]
+  wearableInsights             WearableInsight[]
+  engagementInsights           EngagementInsight[]
+  retentionAnalyses            RetentionAnalysis[]
+  retentionFollowUpTasks       RetentionFollowUpTask[]
+  memberReactivationProfiles   MemberReactivationProfile[]
+  memberRecoveryPlans          MemberRecoveryPlan[]
+  communications               Communication[]             @relation("MemberCommunications")
+  retentionAgentAnalyses       RetentionAgentAnalysis[]
+  retentionOutreaches          RetentionOutreach[]
+  workflowInstances            WorkflowInstance[]
 
   @@index([userId])
   @@index([organisationId])
@@ -3721,11 +3775,890 @@ model AIFitnessSafetyEscalation {
   @@map("ai_fitness_safety_escalations")
 }
 
+// ==========================================
+// DAY 21: AI NUTRITION COACH DOMAIN MODELS
+// ==========================================
 
+model AINutritionCoachProfile {
+  id              String        @id @default(cuid())
+  organisationId  String
+  memberId        String        @unique
+  coachingStyle   String        @default("SUPPORTIVE") // SUPPORTIVE, CONCISE, EDUCATIONAL, MOTIVATIONAL, PRACTICAL
+  responseLength  String        @default("BALANCED")   // CONCISE, BALANCED, DETAILED
+  language        String        @default("en")
+  unitPreference  String        @default("METRIC")     // METRIC, IMPERIAL
+  enabled         Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
+  @@index([organisationId])
+  @@index([memberId])
+  @@map("ai_nutrition_coach_profiles")
+}
 
+model AINutritionCoachConversation {
+  id              String        @id @default(cuid())
+  organisationId  String
+  memberId        String
+  title           String?
+  status          String        @default("ACTIVE") // ACTIVE, ARCHIVED, DELETED
+  contextSnapshot Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  messages        AINutritionCoachMessage[]
+  summaries       AINutritionConversationSummary[]
+  escalations     AINutritionSafetyEscalation[]
+
+  @@index([memberId, updatedAt])
+  @@index([organisationId, updatedAt])
+  @@index([status])
+  @@map("ai_nutrition_coach_conversations")
+}
+
+model AINutritionCoachMessage {
+  id              String        @id @default(cuid())
+  conversationId  String
+  role            String        // USER, ASSISTANT, SYSTEM
+  content         String        @db.Text
+  structuredOutput Json?
+  tokens          Int?
+  latencyMs       Int?
+  status          String        @default("COMPLETED") // SENDING, THINKING, STREAMING, COMPLETED, FAILED, BLOCKED
+  createdAt       DateTime      @default(now())
+
+  conversation    AINutritionCoachConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("ai_nutrition_coach_messages")
+}
+
+model AINutritionConversationSummary {
+  id              String        @id @default(cuid())
+  conversationId  String
+  summary         String        @db.Text
+  keyTopics       Json?
+  model           String
+  promptVersion   Int           @default(1)
+  version         Int           @default(1)
+  generatedAt     DateTime      @default(now())
+
+  conversation    AINutritionCoachConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, generatedAt])
+  @@map("ai_nutrition_conversation_summaries")
+}
+
+model AINutritionSafetyEscalation {
+  id              String        @id @default(cuid())
+  organisationId  String
+  memberId        String
+  conversationId  String?
+  severity        String        // NONE, CAUTION, RECOMMEND_PROFESSIONAL, URGENT_ESCALATION
+  category        String        // EATING_DISORDER, EXTREME_RESTRICTION, DANGEROUS_FASTING, DEHYDRATION, UNSAFE_SUPPLEMENT, PERFORMANCE_ENHANCING_DRUG, MEDICATION_INTERACTION, DISEASE_TREATMENT, MEDICAL_DIAGNOSIS, ALLERGEN_VIOLATION, SELF_HARM_RESTRICTION
+  triggerPhrase   String?
+  actionTaken     String
+  resolved        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  conversation    AINutritionCoachConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, severity])
+  @@index([memberId, createdAt])
+  @@map("ai_nutrition_safety_escalations")
+}
+
+// ==========================================
+// DAY 22: AI DAILY CHECK-IN DOMAIN MODELS
+// ==========================================
+
+model DailyCheckIn {
+  id                         String        @id @default(cuid())
+  organisationId             String
+  memberId                   String
+  checkInDate                DateTime      @db.Date
+  status                     String        @default("PENDING") // PENDING, STARTED, COMPLETED, SKIPPED, EXPIRED
+  completedAt                DateTime?
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+
+  // Member-reported structured signals
+  energyLevel                String?       // VERY_LOW, LOW, MODERATE, GOOD, VERY_GOOD
+  wellbeingMood              String?       // VERY_LOW, LOW, NEUTRAL, GOOD, VERY_GOOD
+  sleepQuality               String?       // VERY_POOR, POOR, FAIR, GOOD, EXCELLENT
+  sleepDurationMinutes       Int?
+  sorenessLevel              String?       // NONE, MILD, MODERATE, HIGH, VERY_HIGH
+  stressLevel                String?       // VERY_LOW, LOW, MODERATE, HIGH, VERY_HIGH
+  motivationLevel            String?       // VERY_LOW, LOW, MODERATE, HIGH, VERY_HIGH
+  yesterdayWorkoutCompleted  Boolean?
+  notes                      String?       @db.Text
+
+  // Deterministic fitness planning indicator (Non-clinical)
+  readinessScore             Int?
+  readinessCategory          String?       // OPTIMAL, MODERATE, RECOVERY_FOCUSED
+
+  // Structured AI daily intelligence
+  aiSummary                  String?       @db.Text
+  aiCheckInInterpretation    String?       @db.Text
+  aiReadinessFraming         String?       @db.Text
+  aiTodayFocus               String?       @db.Text
+  aiRecommendations          Json?
+  aiCaution                  String?       @db.Text
+  aiEscalation               Json?
+  safetyFlagged              Boolean       @default(false)
+  safetyCategory             String?
+  suggestedNextAction        String?
+  sourceSummary              Json?
+
+  // Observability & Idempotency
+  aiModel                    String?
+  aiTokens                   Int?
+  aiLatencyMs                Int?
+  idempotencyKey             String?
+
+  // Feedback loop
+  feedbackRating             String?
+  feedbackComment            String?       @db.Text
+
+  organisation               Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile              MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, checkInDate])
+  @@index([organisationId, checkInDate])
+  @@index([memberId, status])
+  @@index([idempotencyKey])
+  @@map("daily_check_ins")
+}
+
+model DailyCheckInSetting {
+  id                         String        @id @default(cuid())
+  organisationId             String
+  memberId                   String?       @unique
+  checkInEnabled             Boolean       @default(true)
+  reminderEnabled            Boolean       @default(true)
+  reminderTime               String        @default("08:00")
+  trainerVisibility          String        @default("SUMMARIZED") // NONE, SUMMARIZED, FULL
+  availableQuestions         Json?
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+
+  organisation               Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile              MemberProfile? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@map("daily_check_in_settings")
+}
+
+// ------------------------------------------
+// Wearables & Health Data Sync Domain
+// ------------------------------------------
+
+model WearableConnection {
+  id                    String             @id @default(cuid())
+  organisationId        String
+  memberId              String
+  provider              String             // APPLE_HEALTH, GOOGLE_HEALTH_CONNECT, FITBIT, GARMIN, WHOOP, OURA
+  status                String             @default("PENDING") // PENDING, CONNECTED, SYNCING, SYNC_ERROR, REAUTH_REQUIRED, DISCONNECTED, REVOKED
+  connectedAt           DateTime?
+  lastSyncAt            DateTime?
+  lastSuccessfulSyncAt  DateTime?
+  lastFailedSyncAt      DateTime?
+  lastErrorCode         String?
+  lastErrorMessage      String?            @db.Text
+  providerUserReference String?
+  scopes                String[]           @default([])
+  encryptedAccessToken  String?            @db.Text
+  encryptedRefreshToken String?            @db.Text
+  tokenExpiresAt        DateTime?
+  metadata              Json?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  revokedAt             DateTime?
+
+  organisation          Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile         MemberProfile      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  healthDataRecords     HealthDataRecord[]
+  syncLogs              WearableSyncLog[]
+  rawData               WearableRawData[]
+
+  @@unique([memberId, provider])
+  @@index([organisationId, memberId])
+  @@index([status])
+  @@index([provider])
+  @@map("wearable_connections")
+}
+
+model HealthDataRecord {
+  id              String             @id @default(cuid())
+  organisationId  String
+  memberId        String
+  connectionId    String
+  provider        String             // APPLE_HEALTH, GOOGLE_HEALTH_CONNECT, FITBIT, etc.
+  dataType        String             // STEPS, DISTANCE, ACTIVE_CALORIES, HEART_RATE, etc.
+  sourceRecordId  String?
+  startTime       DateTime           // UTC
+  endTime         DateTime?          // UTC
+  value           Float
+  unit            String             // count, steps, km, kcal, bpm, ms, minutes, etc.
+  timezone        String?
+  sourceName      String?            // Apple Watch, Fitbit Charge 6, Pixel Watch
+  sourceDevice    String?
+  metadata        Json?
+  fingerprint     String?            // Deterministic hash for deduplication when sourceRecordId is missing
+  recordedAt      DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  organisation    Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  connection      WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, dataType, sourceRecordId])
+  @@index([memberId, dataType, startTime])
+  @@index([organisationId, memberId])
+  @@index([connectionId, startTime])
+  @@index([fingerprint])
+  @@map("health_data_records")
+}
+
+model WearableSyncLog {
+  id                 String             @id @default(cuid())
+  connectionId       String
+  memberId           String
+  organisationId     String
+  provider           String
+  syncType           String             // INITIAL, INCREMENTAL, RETRY, MANUAL
+  status             String             // SUCCESS, FAILED, PARTIAL
+  recordsFetched     Int                @default(0)
+  recordsInserted    Int                @default(0)
+  duplicatesSkipped  Int                @default(0)
+  validationFailures Int                @default(0)
+  startedAt          DateTime           @default(now())
+  completedAt        DateTime?
+  durationMs         Int?
+  errorCode          String?
+  errorMessage       String?            @db.Text
+  createdAt          DateTime           @default(now())
+
+  organisation       Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  connection         WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, startedAt])
+  @@index([memberId, startedAt])
+  @@map("wearable_sync_logs")
+}
+
+model WearableRawData {
+  id               String             @id @default(cuid())
+  connectionId     String
+  memberId         String
+  organisationId   String
+  provider         String
+  encryptedPayload String             @db.Text
+  recordCount      Int                @default(0)
+  expiresAt        DateTime
+  createdAt        DateTime           @default(now())
+
+  connection       WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId])
+  @@index([expiresAt])
+  @@map("wearable_raw_data")
+}
+
+model WearableInsight {
+  id                String        @id @default(cuid())
+  organisationId    String
+  memberId          String
+  insightType       String        @default("DAILY_SUMMARY") // DAILY_SUMMARY, RECOVERY, TREND, TRAINING_CORRELATION
+  summary           String        @db.Text
+  structuredOutput  Json
+  sourceWindowStart DateTime
+  sourceWindowEnd   DateTime
+  dataVersion       Int           @default(1)
+  model             String?
+  promptVersion     Int           @default(1)
+  recoveryCategory  String?       // LOW, MODERATE, GOOD, INSUFFICIENT_DATA
+  confidence        String?       // HIGH, MEDIUM, LOW, INSUFFICIENT_DATA
+  idempotencyKey    String?
+  feedbackRating    String?       // HELPFUL, NOT_HELPFUL
+  feedbackComment   String?       @db.Text
+  feedbackCategory  String?       // NOT_RELEVANT, INCORRECT, TOO_GENERIC, CONFUSING, OTHER
+  createdAt         DateTime      @default(now())
+  expiresAt         DateTime?
+
+  organisation      Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile     MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, memberId, createdAt])
+  @@index([memberId, insightType, createdAt])
+  @@index([idempotencyKey])
+  @@map("wearable_insights")
+}
+
+// ==========================================
+// DAY 25: MEMBER ENGAGEMENT INTELLIGENCE & RETENTION RISK FOUNDATION
+// ==========================================
+
+model EngagementInsight {
+  id                 String        @id @default(cuid())
+  organisationId     String
+  memberId           String
+  summary            String        @db.Text
+  structuredOutput   Json
+  overallEngagement  String        // VERY_LOW, LOW, MODERATE, HIGH, VERY_HIGH, INSUFFICIENT_DATA
+  trend              String        // IMPROVING, STABLE, DECLINING, INSUFFICIENT_DATA
+  retentionRiskLevel String        // INSUFFICIENT_DATA, LOW, MODERATE, ELEVATED, HIGH
+  confidence         String        @default("MEDIUM") // HIGH, MEDIUM, LOW, INSUFFICIENT_DATA
+  workflowState      String        @default("NO_ACTION") // NO_ACTION, FOLLOW_UP_RECOMMENDED, FOLLOW_UP_IN_PROGRESS, REENGAGED
+  sourceWindowStart  DateTime
+  sourceWindowEnd    DateTime
+  dataVersion        Int           @default(1)
+  model              String?
+  promptVersion      Int           @default(1)
+  idempotencyKey     String?
+  feedbackRating     String?       // HELPFUL, NOT_HELPFUL
+  feedbackComment    String?       @db.Text
+  createdAt          DateTime      @default(now())
+  expiresAt          DateTime?
+
+  organisation       Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, memberId, createdAt])
+  @@index([memberId, createdAt])
+  @@index([organisationId, retentionRiskLevel])
+  @@index([idempotencyKey])
+  @@map("engagement_insights")
+}
+
+// ==========================================
+// DAY 26: AI RETENTION INTELLIGENCE
+// ==========================================
+
+model RetentionAnalysis {
+  id                       String        @id @default(cuid())
+  organisationId           String
+  memberId                 String
+  riskLevel                String        // INSUFFICIENT_DATA, LOW, MODERATE, ELEVATED, HIGH
+  riskTrend                String        // IMPROVING, STABLE, WORSENING, INSUFFICIENT_DATA
+  analysisVersion          Int           @default(1)
+  dataVersion              Int           @default(1)
+  primaryFactors           Json          // RetentionRiskFactor[]
+  secondaryFactors         Json?         // Secondary factors
+  positiveSignals          Json?         // RetentionPositiveSignal[]
+  recommendedInterventions  Json          // RetentionInterventionRecommendation[]
+  suggestedStaffNote       String?       @db.Text
+  summary                  String        @db.Text
+  confidence               String        @default("MEDIUM") // HIGH, MEDIUM, LOW, INSUFFICIENT_DATA
+  generatedBy              String        @default("AI")     // AI, DETERMINISTIC
+  model                    String?
+  promptVersion            Int           @default(1)
+  idempotencyKey           String?
+  feedbackRating           String?       // HELPFUL, NOT_HELPFUL, INCORRECT, NOT_RELEVANT
+  feedbackComment          String?       @db.Text
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+  expiresAt                DateTime?
+
+  organisation             Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile            MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, memberId, createdAt])
+  @@index([memberId, createdAt])
+  @@index([organisationId, riskLevel])
+  @@index([idempotencyKey])
+  @@map("retention_analyses")
+}
+
+model RetentionFollowUpTask {
+  id                  String        @id @default(cuid())
+  organisationId      String
+  outletId            String?
+  memberId            String
+  assignedStaffId     String?
+  riskLevel           String        // INSUFFICIENT_DATA, LOW, MODERATE, ELEVATED, HIGH
+  interventionType    String        // TRAINER_CHECK_IN, GOAL_REVIEW, etc.
+  source              String        @default("AI_RECOMMENDATION") // AI_RECOMMENDATION, MANUAL, STAFF_DASHBOARD
+  status              String        @default("OPEN") // OPEN, ASSIGNED, IN_PROGRESS, COMPLETED, DISMISSED, EXPIRED
+  priority            String        @default("MEDIUM") // LOW, MEDIUM, HIGH
+  title               String?
+  notes               String?       @db.Text
+  dueAt               DateTime?
+  completedAt         DateTime?
+  completedByStaffId  String?
+  dismissalReason     String?       @db.Text
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  organisation        Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet              Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  memberProfile       MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  assignedStaff       User?         @relation("AssignedRetentionStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  completedByStaff    User?         @relation("CompletedRetentionStaff", fields: [completedByStaffId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([memberId])
+  @@index([assignedStaffId, status])
+  @@index([outletId, status])
+  @@map("retention_followup_tasks")
+}
+
+model MemberReactivationProfile {
+  id                       String        @id @default(cuid())
+  organisationId           String
+  memberId                 String
+  lifecycleState           String        @default("ELIGIBLE") // NOT_ELIGIBLE, ELIGIBLE, IN_REACTIVATION, REENGAGED, CLOSED
+  reactivationStatus       String        @default("FOLLOW_UP_RECOMMENDED") // NO_ACTION, FOLLOW_UP_RECOMMENDED, FOLLOW_UP_IN_PROGRESS, REENGAGED, DISMISSED, EXPIRED
+  recoveryState              String        @default("NO_RECOVERY_SIGNAL") // NO_RECOVERY_SIGNAL, EARLY_REENGAGEMENT, PARTIAL_REENGAGEMENT, STABLE_REENGAGEMENT, REENGAGED
+  inactivityStartDate        DateTime?
+  lastMeaningfulActivityAt   DateTime?
+  lastMeaningfulActivityType String?
+  inactivityDays             Int           @default(0)
+  baselineWeeklyVisits       Float?
+  currentWeeklyVisits        Float?
+  dropPct                    Float?
+  previousEngagementLevel    String?       // VERY_LOW, LOW, MODERATE, HIGH, VERY_HIGH
+  currentEngagementLevel     String?
+  retentionRiskLevel         String?       // INSUFFICIENT_DATA, LOW, MODERATE, ELEVATED, HIGH
+  retentionRiskTrend         String?       // IMPROVING, STABLE, WORSENING, INSUFFICIENT_DATA
+  primaryBarriers            Json          // ReactivationBarrierItem[]
+  positiveSignals            Json          // ReactivationPositiveSignalItem[]
+  recommendedStrategy        String?       // One of the 13 controlled strategies
+  confidenceScore            Float?
+  explanationSummary         String?       @db.Text
+  draftMessage               String?       @db.Text
+  reengagementDetectedAt     DateTime?
+  reengagementAchievedAt     DateTime?
+  currentRecoveryPlanId      String?
+  aiGeneratedAt              DateTime?
+  rawAnalysis                Json?
+  analysisVersion            Int           @default(1)
+  dataVersion                Int           @default(1)
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+  expiresAt                  DateTime?
+
+  organisation               Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile              MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  currentRecoveryPlan        MemberRecoveryPlan? @relation("CurrentRecoveryPlan", fields: [currentRecoveryPlanId], references: [id], onDelete: SetNull)
+
+  @@unique([organisationId, memberId])
+  @@index([organisationId, reactivationStatus])
+  @@index([organisationId, lifecycleState])
+  @@index([organisationId, recoveryState])
+  @@index([memberId])
+  @@map("member_reactivation_profiles")
+}
+
+model MemberRecoveryPlan {
+  id                    String        @id @default(cuid())
+  organisationId        String
+  outletId              String?
+  memberId              String
+  strategyType          String        @default("GENERAL_SUPPORT") // One of the 13 controlled strategies
+  strategy              String?       // backwards compatibility
+  priority              String        @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  targetChannel         String        @default("TRAINER_MESSAGE")
+  recommendedAction     String        @db.Text
+  reason                String?       @db.Text
+  draftMessage          String?       @db.Text
+  suggestedStaffMessage String?       @db.Text
+  suggestedNextStep     String?       @db.Text
+  staffNotes            String?       @db.Text
+  outcomeNotes          String?       @db.Text
+  assignedStaffId       String?
+  approvedByStaffId     String?
+  status                String        @default("PENDING_APPROVAL") // DRAFT, PENDING_APPROVAL, APPROVED, IN_PROGRESS, REENGAGED, COMPLETED, DISMISSED, EXPIRED
+  dismissalReason       String?       @db.Text
+  recommendedAt         DateTime      @default(now())
+  approvedAt            DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  dismissedAt           DateTime?
+  expiresAt             DateTime?
+  source                String        @default("AI_RECOMMENDATION") // AI_RECOMMENDATION, MANUAL_STAFF
+  analysisVersion       Int           @default(1)
+  dataVersion           Int           @default(1)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  organisation          Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  memberProfile         MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  assignedStaff         User?         @relation("AssignedRecoveryStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  approvedByStaff       User?         @relation("ApprovedRecoveryStaff", fields: [approvedByStaffId], references: [id], onDelete: SetNull)
+  currentInProfiles     MemberReactivationProfile[] @relation("CurrentRecoveryPlan")
+
+  @@index([organisationId, status])
+  @@index([memberId])
+  @@index([assignedStaffId, status])
+  @@index([outletId, status])
+  @@map("member_recovery_plans")
+}
+
+// ==========================================
+// DAY 28: COMMUNICATION & NOTIFICATION ENGINE
+// ==========================================
+
+model Communication {
+  id                 String                       @id @default(cuid())
+  organisationId     String
+  outletId           String?
+  recipientUserId    String?
+  recipientMemberId  String?
+  recipientStaffId   String?
+
+  type               String                       // TRANSACTIONAL, OPERATIONAL, ENGAGEMENT, REACTIVATION, REMINDER, SYSTEM, MARKETING, STAFF, SECURITY
+  channel            String                       // EMAIL, SMS, PUSH, WHATSAPP, IN_APP, VOICE
+
+  templateId         String?
+  templateVersionId  String?
+
+  subject            String?
+  contentPreview     String?
+  body               String?                      @db.Text
+  variables          Json?
+
+  status             String                       @default("QUEUED") // DRAFT, PENDING_APPROVAL, APPROVED, QUEUED, SENDING, SENT, DELIVERED, READ, FAILED, CANCELLED, EXPIRED, SUPPRESSED
+
+  scheduledAt        DateTime?
+  queuedAt           DateTime                     @default(now())
+  sentAt             DateTime?
+  deliveredAt        DateTime?
+  failedAt           DateTime?
+  readAt             DateTime?
+
+  provider           String                       // DEVELOPMENT, CONSOLE, SENDGRID, TWILIO, WHATSAPP, FCM, APNS, etc.
+  providerMessageId  String?
+  attemptCount       Int                          @default(0)
+  maxAttempts        Int                          @default(3)
+
+  source             String                       // BOOKING, PAYMENT, MEMBERSHIP, REACTIVATION, DAILY_CHECKIN, SYSTEM, STAFF, MARKETING, AI_AGENT
+  sourceReferenceId  String?
+  idempotencyKey     String?                      @unique
+
+  cost               Decimal?                     @db.Decimal(10, 4)
+  currency           String                       @default("USD")
+  suppressionReason  String?
+  metadata           Json?
+
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+
+  organisation       Organisation                 @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet?                      @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  recipientUser      User?                        @relation("UserCommunications", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientMember    MemberProfile?               @relation("MemberCommunications", fields: [recipientMemberId], references: [id], onDelete: SetNull)
+  template           CommunicationTemplate?       @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  templateVersion    CommunicationTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull)
+  deliveryEvents     CommunicationDeliveryEvent[]
+  retentionOutreaches RetentionOutreach[]
+
+  @@index([organisationId, createdAt])
+  @@index([recipientUserId])
+  @@index([recipientMemberId])
+  @@index([status])
+  @@index([channel])
+  @@index([type])
+  @@index([scheduledAt])
+  @@index([providerMessageId])
+  @@index([source, sourceReferenceId])
+  @@map("communications")
+}
+
+model CommunicationTemplate {
+  id             String                         @id @default(cuid())
+  organisationId String?                        // null = SYSTEM template
+  name           String
+  type           String                         // TRANSACTIONAL, OPERATIONAL, ENGAGEMENT, REACTIVATION, etc.
+  channel        String                         // EMAIL, SMS, PUSH, WHATSAPP, IN_APP, VOICE
+  status         String                         @default("ACTIVE") // ACTIVE, ARCHIVED, DRAFT
+  description    String?
+  isSystem       Boolean                        @default(false)
+  createdAt      DateTime                       @default(now())
+  updatedAt      DateTime                       @updatedAt
+
+  organisation   Organisation?                  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  versions       CommunicationTemplateVersion[]
+  communications Communication[]
+
+  @@unique([organisationId, name, channel])
+  @@index([type, channel, status])
+  @@index([organisationId])
+  @@map("communication_templates")
+}
+
+model CommunicationTemplateVersion {
+  id              String                @id @default(cuid())
+  templateId      String
+  version         Int
+  subjectTemplate String?
+  bodyTemplate    String                @db.Text
+  variablesSchema Json                  // JSON schema or list of variables
+  status          String                @default("ACTIVE") // DRAFT, ACTIVE, ARCHIVED
+  createdBy       String?
+  createdAt       DateTime              @default(now())
+
+  template        CommunicationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  communications  Communication[]
+
+  @@unique([templateId, version])
+  @@index([templateId, status])
+  @@map("communication_template_versions")
+}
+
+model CommunicationPreference {
+  id             String       @id @default(cuid())
+  userId         String
+  organisationId String
+  channel        String       // EMAIL, SMS, PUSH, WHATSAPP, IN_APP
+  type           String       // TRANSACTIONAL, OPERATIONAL, ENGAGEMENT, REACTIVATION, REMINDER, SYSTEM, MARKETING, STAFF, SECURITY
+  enabled        Boolean      @default(true)
+  optedOutAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User         @relation("UserCommPreferences", fields: [userId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organisationId, channel, type])
+  @@index([userId, organisationId])
+  @@map("communication_preferences")
+}
+
+model CommunicationDeliveryEvent {
+  id              String        @id @default(cuid())
+  communicationId String
+  status          String        // QUEUED, SENDING, SENT, DELIVERED, READ, FAILED, BOUNCED, COMPLAINT, UNSUBSCRIBED
+  providerStatus  String?
+  providerEventId String?
+  payload         Json?
+  timestamp       DateTime      @default(now())
+
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+
+  @@index([communicationId])
+  @@index([providerEventId])
+  @@map("communication_delivery_events")
+}
+
+// ==========================================
+// DAY 29: AI RETENTION AGENT
+// ==========================================
+
+model RetentionAgentAnalysis {
+  id                       String              @id @default(cuid())
+  organisationId           String
+  memberId                 String
+  outletId                 String?
+  retentionRiskId          String?             // Day 26 retention analysis reference
+  analysisVersion          Int                 @default(1)
+  contextVersion           Int                 @default(1)
+  status                   String              @default("GENERATED") // GENERATED, REVIEW_REQUIRED, APPROVED, REJECTED, SCHEDULED, SENT, DELIVERED, ENGAGED, REENGAGED, COMPLETED, EXPIRED, CANCELLED
+  priority                 String              @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  riskLevel                String              // INSUFFICIENT_DATA, LOW, MODERATE, ELEVATED, HIGH
+  riskTrend                String              // IMPROVING, STABLE, WORSENING, INSUFFICIENT_DATA
+  primaryFactors           Json                // RetentionRiskFactor[]
+  positiveSignals          Json                // RetentionPositiveSignal[]
+  recommendedInterventions Json                // RetentionInterventionRecommendation[]
+  recommendedChannel       String              @default("WHATSAPP") // EMAIL, SMS, PUSH, WHATSAPP, IN_APP
+  recommendedTiming        Json?               // { recommendedAt, timezone, reason, confidence }
+  summary                  String              @db.Text
+  staffNote                String?             @db.Text
+  nextBestAction           String?
+  confidence               String              @default("MEDIUM") // HIGH, MEDIUM, LOW, INSUFFICIENT_DATA
+  caution                  String?
+  sources                  Json?
+  generatedBy              String              @default("AI") // AI, DETERMINISTIC
+  model                    String?
+  promptVersion            Int                 @default(1)
+  expiresAt                DateTime?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  organisation             Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                   Outlet?             @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  memberProfile            MemberProfile       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  outreaches               RetentionOutreach[]
+
+  @@index([organisationId, memberId, createdAt])
+  @@index([organisationId, status])
+  @@index([organisationId, priority])
+  @@index([memberId, createdAt])
+  @@map("retention_agent_analyses")
+}
+
+model RetentionOutreach {
+  id                    String                  @id @default(cuid())
+  organisationId        String
+  memberId              String
+  outletId              String?
+  retentionAnalysisId   String?
+  interventionType      String                  @default("TRAINER_CHECK_IN")
+  communicationId       String?
+  assignedStaffId       String?
+  approvedByStaffId     String?
+  status                String                  @default("PENDING_APPROVAL") // DRAFT, PENDING_APPROVAL, APPROVED, SCHEDULED, SENT, DELIVERED, ENGAGED, REENGAGED, NO_RESPONSE, DECLINED, CANCELLED, EXPIRED, FAILED
+  approvalStatus        String                  @default("PENDING") // NOT_REQUIRED, PENDING, APPROVED, REJECTED
+  recommendedChannel    String                  @default("WHATSAPP") // EMAIL, SMS, PUSH, WHATSAPP, IN_APP
+  selectedChannel       String                  @default("WHATSAPP") // EMAIL, SMS, PUSH, WHATSAPP, IN_APP
+  messageDraft          String                  @db.Text
+  finalMessage          String?                 @db.Text
+  staffNotes            String?                 @db.Text
+  rejectionReason       String?                 @db.Text
+  scheduledAt           DateTime?
+  sentAt                DateTime?
+  deliveredAt           DateTime?
+  respondedAt           DateTime?
+  outcome               String?                 // REENGAGED, BOOKING_CREATED, CLASS_ATTENDED, WORKOUT_COMPLETED, PT_SESSION_BOOKED, MEMBER_RESPONDED, MEMBER_DECLINED, NO_RESPONSE, MEMBERSHIP_RENEWED, MEMBERSHIP_CANCELLED, STAFF_FOLLOW_UP_REQUIRED, UNKNOWN
+  outcomeReason         String?                 @db.Text
+  outcomeRecordedAt     DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  organisation          Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                Outlet?                 @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  memberProfile         MemberProfile           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  retentionAnalysis     RetentionAgentAnalysis? @relation(fields: [retentionAnalysisId], references: [id], onDelete: SetNull)
+  communication         Communication?          @relation(fields: [communicationId], references: [id], onDelete: SetNull)
+  assignedStaff         User?                   @relation("AssignedOutreachStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  approvedByStaff       User?                   @relation("ApprovedOutreachStaff", fields: [approvedByStaffId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([organisationId, memberId])
+  @@index([memberId, createdAt])
+  @@index([assignedStaffId, status])
+  @@index([retentionAnalysisId])
+  @@index([communicationId])
+  @@index([scheduledAt])
+  @@map("retention_outreaches")
+}
+
+// ==========================================
+// DAY 30: AUTOMATED ENGAGEMENT WORKFLOWS
+// ==========================================
+
+model EngagementWorkflow {
+  id             String                      @id @default(cuid())
+  organisationId String
+  outletId       String?
+  name           String
+  description    String?
+  status         String                      @default("DRAFT") // DRAFT, ACTIVE, PAUSED, ARCHIVED
+  category       String                      @default("ENGAGEMENT") // ONBOARDING, ENGAGEMENT, RETENTION, REACTIVATION, MILESTONE, MEMBERSHIP, ATTENDANCE, TRAINING, COMMUNICATION, SYSTEM
+  triggerType    String                      // e.g. MEMBER_INACTIVE, CLASS_NO_SHOW, etc.
+  version        Int                         @default(1)
+  enabled        Boolean                     @default(false)
+  approvalMode   String                      @default("CONFIGURABLE") // ALWAYS_REQUIRED, CONFIGURABLE, NOT_REQUIRED
+  timezone       String                      @default("UTC")
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  organisation   Organisation                @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet         Outlet?                     @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  versions       EngagementWorkflowVersion[]
+  instances      WorkflowInstance[]
+  executions     WorkflowExecution[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, triggerType])
+  @@index([organisationId, category])
+  @@map("engagement_workflows")
+}
+
+model EngagementWorkflowVersion {
+  id                  String             @id @default(cuid())
+  workflowId          String
+  version             Int
+  triggerDefinition   Json               // Trigger criteria, filters
+  conditionDefinition Json               // Declarative conditions (leaf & compound AND/OR/NOT)
+  actionDefinition    Json               // Ordered step actions, params, templates
+  settings            Json?              // Cooldown, frequency limits, quiet hours, stop conditions, branching
+  createdBy           String?
+  createdAt           DateTime           @default(now())
+  publishedAt         DateTime?
+  archivedAt          DateTime?
+
+  workflow            EngagementWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  instances           WorkflowInstance[]
+
+  @@unique([workflowId, version])
+  @@index([workflowId])
+  @@map("engagement_workflow_versions")
+}
+
+model WorkflowInstance {
+  id                 String                    @id @default(cuid())
+  organisationId     String
+  outletId           String?
+  workflowId         String
+  workflowVersionId  String
+  memberId           String
+  status             String                    @default("PENDING") // PENDING, RUNNING, WAITING, AWAITING_APPROVAL, SCHEDULED, COMPLETED, CANCELLED, FAILED, EXPIRED, SUPPRESSED
+  currentStep        Int                       @default(0)
+  triggerEventId     String?
+  triggerData        Json?
+  contextData        Json?
+  actionPayload      Json?
+  startedAt          DateTime                  @default(now())
+  scheduledAt        DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  expiresAt          DateTime?
+  lastEvaluatedAt    DateTime?
+  failureReason      String?                   @db.Text
+  outcome            String?                   // COMPLETED, MEMBER_REENGAGED, MEMBER_RESPONDED, BOOKING_CREATED, ATTENDANCE_RECORDED, WORKOUT_COMPLETED, MEMBERSHIP_RENEWED, TASK_COMPLETED, NO_RESPONSE, SUPPRESSED, CANCELLED, EXPIRED, FAILED
+  outcomeRecordedAt  DateTime?
+  outcomeDetails     Json?
+  idempotencyKey     String?                   @unique
+
+  organisation       Organisation              @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet?                   @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  workflow           EngagementWorkflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowVersion    EngagementWorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  executions         WorkflowExecution[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, workflowId, status])
+  @@index([organisationId, memberId, workflowId])
+  @@index([organisationId, scheduledAt])
+  @@index([memberId, status])
+  @@map("workflow_instances")
+}
+
+model WorkflowExecution {
+  id                 String             @id @default(cuid())
+  workflowInstanceId String
+  workflowId         String
+  stepId             String
+  stepType           String             // TRIGGER, CONDITION, ACTION, DELAY, APPROVAL, AI_ASSISTANT
+  status             String             @default("PENDING") // PENDING, RUNNING, COMPLETED, SKIPPED, FAILED, SUPPRESSED, AWAITING_APPROVAL
+  inputReference     Json?
+  outputReference    Json?
+  startedAt          DateTime           @default(now())
+  completedAt        DateTime?
+  failureReason      String?            @db.Text
+  retryCount         Int                @default(0)
+
+  workflowInstance   WorkflowInstance   @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  workflow           EngagementWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowInstanceId])
+  @@index([workflowId, status])
+  @@map("workflow_executions")
+}
 
 
 

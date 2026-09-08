@@ -244,6 +244,45 @@ export class AIContextEngineService {
       }
     }
 
+    // 7. Wearable Health Data (Day 23 Foundation for Day 24 AI Intelligence)
+    if (authorizedSources.includes('WEARABLE_HEALTH_DATA')) {
+      const activeConnections = await this.prisma.wearableConnection.findMany({
+        where: { memberId, status: 'CONNECTED' },
+        select: { provider: true },
+      });
+
+      if (activeConnections.length > 0) {
+        const todayStart = new Date();
+        todayStart.setUTCHours(0, 0, 0, 0);
+
+        const todayRecords = await this.prisma.healthDataRecord.findMany({
+          where: { memberId, startTime: { gte: todayStart } },
+        });
+
+        let steps = 0;
+        let activeCalories = 0;
+        let distanceKm = 0;
+        let restingHeartRate: number | null = null;
+
+        for (const rec of todayRecords) {
+          if (rec.dataType === 'STEPS') steps += Math.round(rec.value);
+          if (rec.dataType === 'ACTIVE_CALORIES') activeCalories += Math.round(rec.value);
+          if (rec.dataType === 'DISTANCE') distanceKm += rec.value;
+          if (rec.dataType === 'RESTING_HEART_RATE') restingHeartRate = Math.round(rec.value);
+        }
+
+        context.wearables = {
+          connectedProviders: activeConnections.map((c) => c.provider),
+          todayActivity: {
+            steps,
+            activeCaloriesKcal: activeCalories,
+            distanceKm: Number(distanceKm.toFixed(2)),
+            restingHeartRateBpm: restingHeartRate,
+          },
+        };
+      }
+    }
+
     return context;
   }
 }

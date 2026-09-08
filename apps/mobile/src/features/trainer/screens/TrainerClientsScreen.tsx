@@ -404,6 +404,18 @@ export const TrainerClientsScreen: React.FC = () => {
                         style={styles.reassignBtn}
                       />
                       <Button
+                        title="Retention Risk"
+                        variant="secondary"
+                        size="sm"
+                        onPress={() =>
+                          navigation.navigate('RetentionDetail', {
+                            memberId: item.memberProfile.id,
+                            memberName: fullName,
+                          })
+                        }
+                        style={styles.reassignBtn}
+                      />
+                      <Button
                         title="Reassign Coach"
                         variant="secondary"
                         size="sm"

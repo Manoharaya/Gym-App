@@ -22,6 +22,11 @@ import {
 import { BottomNavDock } from '../../../components/navigation/BottomNavDock';
 import { themeColors, typography, spacing, radius } from '../../../theme';
 import { useTenant } from '../../../providers/TenantProvider';
+import { dailyCheckInService } from '../../check-ins/services/dailyCheckInService';
+import { WearablesService } from '../../wearables/services/wearablesService';
+import { FitnessMomentumCard } from '../../retention';
+import { MemberRecoveryHubCard, reactivationService } from '../../reactivation';
+import type { DailyCheckInDto } from '@fitcore/types';
 
 type NavigationProp = NativeStackNavigationProp<MemberStackParamList, 'MemberHome'>;
 
@@ -29,11 +34,54 @@ export const MemberHomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { tenant } = useTenant();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [todayCheckIn, setTodayCheckIn] = React.useState<DailyCheckInDto | null>(null);
+  const [wearableInfo, setWearableInfo] = React.useState<{
+    provider?: string;
+    lastSync?: string;
+    steps?: number;
+  } | null>(null);
+  const [recoveryState, setRecoveryState] = React.useState<any>(null);
+
+  const fetchDashboardData = React.useCallback(async () => {
+    try {
+      const [checkInRes, connectionsRes, summaryRes, recoveryRes] = await Promise.all([
+        dailyCheckInService.getTodayCheckIn().catch(() => null),
+        WearablesService.getConnections().catch(() => []),
+        WearablesService.getHealthSummary().catch(() => null),
+        reactivationService.getMemberRecoveryState().catch(() => null),
+      ]);
+      setTodayCheckIn(checkInRes);
+      setRecoveryState(recoveryRes);
+
+      const activeConn = connectionsRes?.find((c: any) => c.status === 'CONNECTED');
+      if (activeConn) {
+        const todayStats = summaryRes?.dailySummaries?.[summaryRes.dailySummaries.length - 1];
+        setWearableInfo({
+          provider: activeConn.provider,
+          lastSync: activeConn.lastSuccessfulSyncAt
+            ? new Date(activeConn.lastSuccessfulSyncAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : undefined,
+          steps: todayStats?.steps,
+        });
+      } else {
+        setWearableInfo(null);
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 600);
-  }, []);
+    fetchDashboardData().finally(() => setRefreshing(false));
+  }, [fetchDashboardData]);
 
   return (
     <Screen safeAreaEdges={['top']} statusBarStyle="light">
@@ -104,28 +152,136 @@ export const MemberHomeScreen: React.FC = () => {
               </View>
               <Text style={styles.aiBadgeText}>FITCORE AI INSIGHT</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('DailyCheckIn')}>
-              <Text style={styles.checkInAction}>Daily Check-In →</Text>
+            <TouchableOpacity
+              onPress={() =>
+                todayCheckIn?.status === 'COMPLETED'
+                  ? navigation.navigate('DailyCheckInResult', { checkInId: todayCheckIn.id })
+                  : navigation.navigate('DailyCheckIn')
+              }
+            >
+              <Text style={styles.checkInAction}>
+                {todayCheckIn?.status === 'COMPLETED' ? 'View Details →' : 'Daily Check-In →'}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.aiBody}>
-            <ProgressRing
-              progress={88}
-              size={76}
-              strokeWidth={8}
-              color={themeColors.success}
-              valueText="88%"
-              label="READY"
-            />
-            <View style={styles.aiRecommendation}>
-              <Text style={styles.readinessTitle}>Optimal Training Window</Text>
-              <Text style={styles.readinessDescription}>
-                HRV is +8ms above baseline with 8h 12m sleep recorded. Optimal condition for high-intensity intervals or heavy compound lifts today.
+          {todayCheckIn?.status === 'COMPLETED' ? (
+            <View style={styles.aiBody}>
+              <ProgressRing
+                progress={todayCheckIn.readinessScore ?? 75}
+                size={76}
+                strokeWidth={8}
+                color={
+                  todayCheckIn.readinessCategory === 'OPTIMAL'
+                    ? themeColors.success
+                    : todayCheckIn.readinessCategory === 'RECOVERY_FOCUSED'
+                    ? themeColors.warning
+                    : themeColors.accent
+                }
+                valueText={`${todayCheckIn.readinessScore ?? 75}%`}
+                label="READINESS"
+              />
+              <View style={styles.aiRecommendation}>
+                <Text style={styles.readinessTitle}>
+                  {todayCheckIn.todayFocus ||
+                    (todayCheckIn.readinessCategory === 'OPTIMAL'
+                      ? 'High Training Capacity'
+                      : 'Active Daily Maintenance')}
+                </Text>
+                <Text style={styles.readinessDescription} numberOfLines={2}>
+                  {todayCheckIn.aiSummary ||
+                    todayCheckIn.readinessRationale ||
+                    'Daily check-in completed. Training volume aligned with recovery status.'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.aiBody}>
+              <View style={styles.checkInPromptIcon}>
+                <Icon name="activity" size={32} color={themeColors.accent} />
+              </View>
+              <View style={styles.aiRecommendation}>
+                <Text style={styles.readinessTitle}>Log Today's Readiness</Text>
+                <Text style={styles.readinessDescription}>
+                  Take 30 seconds to report your sleep, soreness, and stress to unlock personalized training adjustments.
+                </Text>
+              </View>
+            </View>
+          )}
+        </Card>
+
+        {/* Wearables Telemetry Status Widget */}
+        <Card style={styles.wearablesWidgetCard}>
+          <View style={styles.aiHeader}>
+            <View style={styles.aiBadgeRow}>
+              <View style={[styles.aiSparkleIcon, { backgroundColor: themeColors.accent }]}>
+                <Icon name="activity" size={12} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.aiBadgeText, { color: themeColors.accent }]}>
+                WEARABLES & TELEMETRY
               </Text>
             </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Wearables')}>
+              <Text style={styles.checkInAction}>
+                {wearableInfo?.provider ? 'View Health Data →' : 'Connect Devices →'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.wearablesWidgetBody}>
+            {wearableInfo?.provider ? (
+              <View style={styles.wearableConnectedRow}>
+                <View style={styles.wearableIconBox}>
+                  <Icon name="activity" size={20} color={themeColors.success} />
+                </View>
+                <View style={styles.wearableInfo}>
+                  <View style={styles.wearableTitleRow}>
+                    <Text style={styles.wearableProviderText}>{wearableInfo.provider}</Text>
+                    <Badge label="CONNECTED" variant="success" />
+                  </View>
+                  <Text style={styles.wearableSyncText}>
+                    {wearableInfo.lastSync ? `Synced ${wearableInfo.lastSync}` : 'Active'}
+                    {wearableInfo.steps ? ` · ${wearableInfo.steps.toLocaleString()} steps today` : ''}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.wearablePromptRow}>
+                <View style={styles.wearableIconBox}>
+                  <Icon name="bolt" size={20} color={themeColors.accent} />
+                </View>
+                <View style={styles.wearableInfo}>
+                  <Text style={styles.wearablePromptTitle}>Connect Your Health Data</Text>
+                  <Text style={styles.wearablePromptSub}>
+                    Link Apple Health, Health Connect, or Fitbit to automatically sync your workouts.
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </Card>
+
+        {/* Day 27: AI Reactivation Member Recovery Hub Card */}
+        {recoveryState && (recoveryState.recoveryState === 'RECOVERING' || recoveryState.recoveryState === 'INACTIVE' || recoveryState.recoveryState === 'DISENGAGED' || (recoveryState.inactivityDays && recoveryState.inactivityDays >= 14)) && (
+          <MemberRecoveryHubCard
+            daysAway={recoveryState.inactivityDays ?? 14}
+            welcomeMessage={recoveryState.suggestedFocus ? `We're happy to see you! Ready to rebuild your momentum with ${recoveryState.suggestedFocus.toLowerCase()}?` : undefined}
+            onExploreWorkouts={() => navigation.navigate('WorkoutSession', { workoutId: 'wk_upper_01' })}
+            onBookClass={() => navigation.navigate('Bookings')}
+            onCheckIn={() => navigation.navigate('DailyCheckIn')}
+            onMessageCoach={() => navigation.navigate('MyTrainer')}
+          />
+        )}
+
+        {/* Member Motivation: Fitness Momentum Card */}
+        <FitnessMomentumCard
+          workoutsThisWeek={3}
+          streakWeeks={2}
+          onNavigateWorkouts={() => navigation.navigate('WorkoutSession', { workoutId: 'wk_upper_01' })}
+          onNavigateClasses={() => navigation.navigate('Bookings')}
+          onNavigateGoals={() => navigation.navigate('Goals')}
+          onNavigateCheckIn={() => navigation.navigate('DailyCheckIn')}
+        />
 
         {/* Today's Workout Hero */}
         <Card style={styles.workoutCard}>
@@ -449,6 +605,14 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  checkInPromptIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: radius.full || 30,
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   readinessTitle: {
     ...typography.bodySmall,
     color: themeColors.textPrimary,
@@ -636,5 +800,60 @@ const styles = StyleSheet.create({
   dayLetterToday: {
     color: themeColors.textPrimary,
     fontWeight: '700',
+  },
+  wearablesWidgetCard: {
+    backgroundColor: '#0F172A',
+    borderColor: '#1E293B',
+    borderWidth: 1,
+    padding: spacing[4],
+    gap: spacing[3],
+  },
+  wearablesWidgetBody: {
+    paddingTop: spacing[1],
+  },
+  wearableConnectedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  wearablePromptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  wearableIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    backgroundColor: themeColors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  wearableInfo: {
+    flex: 1,
+  },
+  wearableTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  wearableProviderText: {
+    ...typography.body,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+  },
+  wearableSyncText: {
+    ...typography.caption,
+    color: themeColors.textSecondary,
+  },
+  wearablePromptTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+  },
+  wearablePromptSub: {
+    ...typography.caption,
+    color: themeColors.textSecondary,
+    marginTop: 2,
   },
 });

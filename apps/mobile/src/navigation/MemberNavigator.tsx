@@ -7,15 +7,31 @@ import { MemberHomeScreen } from '../features/dashboard';
 import { WorkoutSessionScreen } from '../features/training';
 import { ExerciseDetailScreen, ExerciseLibraryScreen } from '../features/exercises';
 import { ProgressScreen } from '../features/progress';
-import { NutritionScreen } from '../features/nutrition';
-import { DailyCheckInScreen } from '../features/check-ins';
+import { NutritionScreen, NutritionCoachScreen } from '../features/nutrition';
+import {
+  DailyCheckInHomeScreen,
+  DailyCheckInQuestionScreen,
+  DailyCheckInResultScreen,
+  DailyCheckInHistoryScreen,
+  DailyCheckInDetailScreen,
+} from '../features/check-ins';
 import { AICoachScreen } from '../features/ai-coach';
-import { WearablesScreen } from '../features/wearables';
+import {
+  WearablesScreen,
+  WearablesHomeScreen,
+  WearableProviderDetailScreen,
+  WearableConnectionScreen,
+  WearableDataScreen,
+  WearableSyncStatusScreen,
+  WearablePrivacyScreen,
+  WearableIntelligenceScreen,
+} from '../features/wearables';
 import {
   NotificationsScreen,
   NotificationDetailScreen,
   NotificationPreferencesScreen,
 } from '../features/notifications';
+import { CommunicationPreferencesScreen } from '../features/communication';
 import { ProfileScreen } from '../features/profile';
 import { SettingsScreen } from '../features/settings';
 import {
@@ -23,6 +39,7 @@ import {
   HabitsScreen,
   ChallengesScreen,
   RewardsScreen,
+  MemberEngagementScreen,
 } from '../features/engagement';
 
 import {
@@ -110,12 +127,26 @@ export const MemberNavigator: React.FC = () => {
       {/* Analytics, Nutrition & AI */}
       <Stack.Screen name="Progress" component={ProgressScreen} />
       <Stack.Screen name="Nutrition" component={NutritionScreen} />
-      <Stack.Screen name="DailyCheckIn" component={DailyCheckInScreen} />
+      <Stack.Screen name="NutritionCoach" component={NutritionCoachScreen} />
+      <Stack.Screen name="DailyCheckIn" component={DailyCheckInHomeScreen} />
+      <Stack.Screen name="DailyCheckInHome" component={DailyCheckInHomeScreen} />
+      <Stack.Screen name="DailyCheckInQuestion" component={DailyCheckInQuestionScreen} />
+      <Stack.Screen name="DailyCheckInResult" component={DailyCheckInResultScreen} />
+      <Stack.Screen name="DailyCheckInHistory" component={DailyCheckInHistoryScreen} />
+      <Stack.Screen name="DailyCheckInDetail" component={DailyCheckInDetailScreen} />
       <Stack.Screen name="AICoach" component={AICoachScreen} />
       <Stack.Screen name="Wearables" component={WearablesScreen} />
+      <Stack.Screen name="WearablesHome" component={WearablesHomeScreen} />
+      <Stack.Screen name="WearableProviderDetail" component={WearableProviderDetailScreen} />
+      <Stack.Screen name="WearableConnection" component={WearableConnectionScreen} />
+      <Stack.Screen name="WearableData" component={WearableDataScreen} />
+      <Stack.Screen name="WearableSyncStatus" component={WearableSyncStatusScreen} />
+      <Stack.Screen name="WearablePrivacy" component={WearablePrivacyScreen} />
+      <Stack.Screen name="WearableIntelligence" component={WearableIntelligenceScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
+      <Stack.Screen name="CommunicationPreferences" component={CommunicationPreferencesScreen} />
 
       {/* Profile & Settings */}
       <Stack.Screen name="MemberProfile" component={ProfileScreen} />
@@ -160,8 +191,9 @@ export const MemberNavigator: React.FC = () => {
       <Stack.Screen name="TrainingPlanOverview" component={TrainingPlanOverviewScreen} />
       <Stack.Screen name="TrainingCalendar" component={TrainingCalendarScreen} />
 
-      {/* Day 18: Engagement, Habits, Challenges & Rewards */}
+      {/* Day 18 & 25: Engagement & Fitness Momentum */}
       <Stack.Screen name="EngagementHome" component={EngagementHomeScreen} />
+      <Stack.Screen name="MemberEngagement" component={MemberEngagementScreen} />
       <Stack.Screen name="Habits" component={HabitsScreen} />
       <Stack.Screen name="HabitsScreen" component={HabitsScreen} />
       <Stack.Screen name="Challenges" component={ChallengesScreen} />

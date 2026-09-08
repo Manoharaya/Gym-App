@@ -60,6 +60,8 @@ export interface FitnessCoachGroundedContext {
     engagementLevel: string;
     totalWorkoutsCompleted: number;
     totalVisits: number;
+    trend?: string;
+    recentMomentum?: string;
   };
   attendance: {
     recentCheckInsCount30d: number;
@@ -169,9 +171,14 @@ export class FitnessCoachContextBuilderService {
       },
     });
 
-    // 6. Medium Relevance: Engagement Profile (Day 18)
+    // 6. Medium Relevance: Engagement Profile (Day 18 & Day 25)
     const engagementProfile = await this.prisma.memberEngagementProfile.findUnique({
       where: { memberId },
+    });
+    const latestInsight = await this.prisma.engagementInsight.findFirst({
+      where: { memberId },
+      orderBy: { createdAt: 'desc' },
+      select: { trend: true, summary: true },
     });
 
     // 7. Medium Relevance: Attendance Check-ins (last 30 days)
@@ -283,6 +290,8 @@ export class FitnessCoachContextBuilderService {
         engagementLevel: engagementProfile?.engagementLevel || 'NEW',
         totalWorkoutsCompleted: engagementProfile?.totalWorkouts || 0,
         totalVisits: engagementProfile?.totalVisits || 0,
+        trend: latestInsight?.trend || undefined,
+        recentMomentum: latestInsight?.summary || undefined,
       },
       attendance: {
         recentCheckInsCount30d: checkInsCount,

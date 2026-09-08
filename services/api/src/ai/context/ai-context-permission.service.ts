@@ -18,6 +18,7 @@ export const CONTEXT_SOURCE_REGISTRY: Record<AIContextSource, ContextSourceDefin
       'FITNESS_COACH',
       'NUTRITION_COACH',
       'DAILY_CHECKIN',
+      'WEARABLE_INTELLIGENCE',
       'PROGRESS_INSIGHTS',
       'ENGAGEMENT_ASSISTANT',
       'RECEPTIONIST',
@@ -33,7 +34,7 @@ export const CONTEXT_SOURCE_REGISTRY: Record<AIContextSource, ContextSourceDefin
     source: 'TRAINING',
     sensitivity: 'PERSONAL',
     description: 'Active training program, recent workouts, upcoming sessions',
-    allowedFeatures: ['AI_PLATFORM_TEST', 'FITNESS_COACH', 'DAILY_CHECKIN', 'PROGRESS_INSIGHTS'],
+    allowedFeatures: ['AI_PLATFORM_TEST', 'FITNESS_COACH', 'NUTRITION_COACH', 'DAILY_CHECKIN', 'WEARABLE_INTELLIGENCE', 'PROGRESS_INSIGHTS'],
   },
   PROGRESS: {
     source: 'PROGRESS',
@@ -69,7 +70,13 @@ export const CONTEXT_SOURCE_REGISTRY: Record<AIContextSource, ContextSourceDefin
     source: 'ATTENDANCE',
     sensitivity: 'INTERNAL',
     description: 'Gym check-in frequency and attendance recency',
-    allowedFeatures: ['AI_PLATFORM_TEST', 'FITNESS_COACH', 'ENGAGEMENT_ASSISTANT', 'CHURN_INTELLIGENCE'],
+    allowedFeatures: ['AI_PLATFORM_TEST', 'FITNESS_COACH', 'DAILY_CHECKIN', 'ENGAGEMENT_ASSISTANT', 'CHURN_INTELLIGENCE'],
+  },
+  WEARABLE_HEALTH_DATA: {
+    source: 'WEARABLE_HEALTH_DATA',
+    sensitivity: 'PERSONAL',
+    description: 'Summarized daily activity, steps, resting HR, and sleep from connected wearables',
+    allowedFeatures: ['AI_PLATFORM_TEST', 'FITNESS_COACH', 'DAILY_CHECKIN', 'WEARABLE_INTELLIGENCE', 'PROGRESS_INSIGHTS'],
   },
 };
 

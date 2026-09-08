@@ -26,3 +26,4 @@ export * from './support';
 export * from './staff';
 export * from './engagement';
 export * from './ai';
+export * from './automation';

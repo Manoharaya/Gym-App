@@ -3,7 +3,15 @@ import { Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-export const spacing = baseSpacing;
+export const spacing = {
+  ...baseSpacing,
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+} as const;
 export const radius = baseRadius;
 export const shadows = baseShadows;
 

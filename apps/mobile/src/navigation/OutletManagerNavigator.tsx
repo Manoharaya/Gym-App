@@ -9,6 +9,8 @@ import {
   TrainerProfileScreen,
   TrainerClientsScreen,
 } from '../features/trainer/screens';
+import { RetentionQueueScreen, RetentionDetailScreen } from '../features/retention';
+import { ReactivationQueueScreen, RecoveryPlanDetailScreen } from '../features/reactivation';
 
 const Stack = createNativeStackNavigator<OutletManagerStackParamList>();
 
@@ -25,6 +27,12 @@ export const OutletManagerNavigator: React.FC = () => {
       <Stack.Screen name="TrainerDirectory" component={TrainerDirectoryScreen} />
       <Stack.Screen name="TrainerProfile" component={TrainerProfileScreen} />
       <Stack.Screen name="TrainerClients" component={TrainerClientsScreen} />
+      {/* Day 26: AI Retention Intelligence */}
+      <Stack.Screen name="RetentionQueue" component={RetentionQueueScreen} />
+      <Stack.Screen name="RetentionDetail" component={RetentionDetailScreen} />
+      {/* Day 27: AI Reactivation & Recovery */}
+      <Stack.Screen name="ReactivationQueue" component={ReactivationQueueScreen} />
+      <Stack.Screen name="RecoveryPlanDetail" component={RecoveryPlanDetailScreen} />
     </Stack.Navigator>
   );
 };

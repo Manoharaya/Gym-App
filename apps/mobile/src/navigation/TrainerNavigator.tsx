@@ -22,6 +22,8 @@ import {
   WorkoutPreviewScreen,
   TrainingCalendarScreen,
 } from '../features/training-plans';
+import { RetentionDetailScreen } from '../features/retention';
+import { ReactivationQueueScreen, RecoveryPlanDetailScreen } from '../features/reactivation';
 
 const Stack = createNativeStackNavigator<TrainerStackParamList>();
 
@@ -49,6 +51,11 @@ export const TrainerNavigator: React.FC = () => {
       <Stack.Screen name="TrainerProgramming" component={TrainerProgrammingScreen} />
       <Stack.Screen name="WorkoutPreview" component={WorkoutPreviewScreen} />
       <Stack.Screen name="TrainingCalendar" component={TrainingCalendarScreen} />
+      {/* Day 26: AI Retention Intelligence */}
+      <Stack.Screen name="RetentionDetail" component={RetentionDetailScreen} />
+      {/* Day 27: AI Reactivation & Member Recovery */}
+      <Stack.Screen name="ReactivationQueue" component={ReactivationQueueScreen} />
+      <Stack.Screen name="RecoveryPlanDetail" component={RecoveryPlanDetailScreen} />
     </Stack.Navigator>
   );
 };

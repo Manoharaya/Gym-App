@@ -83,6 +83,7 @@ export class SensitiveDataSanitizerService {
         engagementLevel: rawContext.engagement?.engagementLevel,
         points: rawContext.engagement?.points,
       },
+      wearables: rawContext.wearables ? this.cleanObject(rawContext.wearables) : undefined,
     };
   }
 

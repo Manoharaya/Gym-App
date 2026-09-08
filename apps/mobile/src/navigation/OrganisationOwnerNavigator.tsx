@@ -9,6 +9,9 @@ import {
   TrainerProfileScreen,
   TrainerClientsScreen,
 } from '../features/trainer/screens';
+import { RetentionQueueScreen, RetentionDetailScreen, RetentionAgentDashboardScreen } from '../features/retention';
+import { ReactivationQueueScreen, RecoveryPlanDetailScreen } from '../features/reactivation';
+import { CommunicationCenterScreen } from '../features/communication';
 
 const Stack = createNativeStackNavigator<OrganisationOwnerStackParamList>();
 
@@ -25,6 +28,16 @@ export const OrganisationOwnerNavigator: React.FC = () => {
       <Stack.Screen name="TrainerDirectory" component={TrainerDirectoryScreen} />
       <Stack.Screen name="TrainerProfile" component={TrainerProfileScreen} />
       <Stack.Screen name="TrainerClients" component={TrainerClientsScreen} />
+      {/* Day 26: AI Retention Intelligence */}
+      <Stack.Screen name="RetentionQueue" component={RetentionQueueScreen} />
+      <Stack.Screen name="RetentionDetail" component={RetentionDetailScreen} />
+      {/* Day 27: AI Reactivation & Member Recovery */}
+      <Stack.Screen name="ReactivationQueue" component={ReactivationQueueScreen} />
+      <Stack.Screen name="RecoveryPlanDetail" component={RecoveryPlanDetailScreen} />
+      {/* Day 28: Communication & Notification Engine */}
+      <Stack.Screen name="CommunicationCenter" component={CommunicationCenterScreen} />
+      {/* Day 29: AI Retention Agent */}
+      <Stack.Screen name="RetentionAgentDashboard" component={RetentionAgentDashboardScreen} />
     </Stack.Navigator>
   );
 };

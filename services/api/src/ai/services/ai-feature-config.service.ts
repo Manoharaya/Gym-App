@@ -8,12 +8,18 @@ export const ALL_AI_FEATURES: AIFeature[] = [
   'FITNESS_COACH',
   'NUTRITION_COACH',
   'DAILY_CHECKIN',
+  'WEARABLE_INTELLIGENCE',
+  'ENGAGEMENT_INTELLIGENCE',
+  'RETENTION_INTELLIGENCE',
+  'AI_REACTIVATION',
+  'RETENTION_AGENT',
   'PROGRESS_INSIGHTS',
   'ENGAGEMENT_ASSISTANT',
   'RECEPTIONIST',
   'SALES_AGENT',
   'MARKETING_ASSISTANT',
   'CHURN_INTELLIGENCE',
+  'AUTOMATION_ASSISTANT',
 ];
 
 @Injectable()
@@ -24,20 +30,38 @@ export class AIFeatureConfigService {
 
   /**
    * Platform default configuration fallback.
-   * Only AI_PLATFORM_TEST is enabled by default on Day 19.
    */
   getPlatformDefaults(feature: AIFeature): AIFeatureConfigurationDto {
-    const isTestFeature = feature === 'AI_PLATFORM_TEST';
+    const isSupportedFeature =
+      feature === 'AI_PLATFORM_TEST' ||
+      feature === 'FITNESS_COACH' ||
+      feature === 'NUTRITION_COACH' ||
+      feature === 'DAILY_CHECKIN' ||
+      feature === 'WEARABLE_INTELLIGENCE' ||
+      feature === 'ENGAGEMENT_INTELLIGENCE' ||
+      feature === 'RETENTION_INTELLIGENCE' ||
+      feature === 'AI_REACTIVATION' ||
+      feature === 'RETENTION_AGENT' ||
+      feature === 'AUTOMATION_ASSISTANT';
+
+    const isStaffOnlyFeature =
+      feature === 'RETENTION_INTELLIGENCE' ||
+      feature === 'AI_REACTIVATION' ||
+      feature === 'RETENTION_AGENT' ||
+      feature === 'AUTOMATION_ASSISTANT';
+
     return {
       organisationId: 'PLATFORM_DEFAULT',
       feature,
-      enabled: isTestFeature,
-      dailyLimit: isTestFeature ? 500 : 100,
-      monthlyLimit: isTestFeature ? 10000 : 3000,
-      allowedRoles: ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'TRAINER', 'MEMBER'],
+      enabled: isSupportedFeature,
+      dailyLimit: isSupportedFeature ? 500 : 100,
+      monthlyLimit: isSupportedFeature ? 10000 : 3000,
+      allowedRoles: isStaffOnlyFeature
+        ? ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'TRAINER', 'RECEPTION']
+        : ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'TRAINER', 'MEMBER'],
       configuration: {
-        maxTokens: 1000,
-        temperature: 0.7,
+        maxTokens: isStaffOnlyFeature ? 1200 : 1000,
+        temperature: isStaffOnlyFeature ? 0.3 : 0.7,
       },
     };
   }

@@ -26,10 +26,20 @@ import { TrainingPlansModule } from './training-plans/training-plans.module';
 import { ProgressModule } from './progress/progress.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { CommunicationModule } from './communication/communication.module';
+import { CommunicationsModule } from './communications/communications.module';
 import { EngagementModule } from './engagement/engagement.module';
 import { AIModule } from './ai/ai.module';
 import { FitnessCoachModule } from './ai/features/fitness-coach/fitness-coach.module';
+import { NutritionCoachModule } from './ai/features/nutrition-coach/nutrition-coach.module';
+import { DailyCheckInModule } from './ai/features/daily-checkin/daily-checkin.module';
+import { WearableIntelligenceModule } from './ai/features/wearable-intelligence/wearable-intelligence.module';
+import { EngagementIntelligenceModule } from './ai/features/engagement-intelligence/engagement-intelligence.module';
+import { RetentionIntelligenceModule } from './ai/features/retention-intelligence/retention-intelligence.module';
+import { ReactivationModule } from './ai/features/reactivation/reactivation.module';
+import { RetentionAgentModule } from './ai/features/retention-agent/retention-agent.module';
+import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
+import { WearablesModule } from './wearables/wearables.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -68,10 +78,20 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     ProgressModule,
     NutritionModule,
     CommunicationModule,
+    CommunicationsModule,
     EngagementModule,
     AIModule,
     FitnessCoachModule,
+    NutritionCoachModule,
+    DailyCheckInModule,
+    WearableIntelligenceModule,
+    EngagementIntelligenceModule,
+    RetentionIntelligenceModule,
+    ReactivationModule,
+    RetentionAgentModule,
+    AutomationModule,
     HealthModule,
+    WearablesModule,
   ],
   providers: [
     {

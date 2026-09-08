@@ -2,6 +2,11 @@ import { Injectable, Logger, OnModuleInit, NotFoundException } from '@nestjs/com
 import { PrismaService } from '../../database/prisma.service';
 import { CreateAIPromptDto } from '../dto/ai.dto';
 import { AIFeature, AIPromptStatus } from '@fitcore/types';
+import { WEARABLE_INTELLIGENCE_PROMPT_DEFINITION } from '../features/wearable-intelligence/prompts/wearable_intelligence.v1';
+import { ENGAGEMENT_INTELLIGENCE_PROMPT_DEFINITION } from '../features/engagement-intelligence/prompts/engagement_intelligence.v1';
+import { RETENTION_INTELLIGENCE_PROMPT_DEFINITION } from '../features/retention-intelligence/prompts/retention_intelligence.v1';
+import { REACTIVATION_PROMPT_DEFINITION } from '../features/reactivation/prompts/reactivation.v1';
+import { RETENTION_AGENT_PROMPT_DEFINITION } from '../features/retention-agent/prompts/retention_agent.v1';
 
 @Injectable()
 export class PromptRegistryService implements OnModuleInit {
@@ -129,6 +134,202 @@ export class PromptRegistryService implements OnModuleInit {
         },
         status: 'ACTIVE',
       },
+      {
+        organisationId: null,
+        feature: 'NUTRITION_COACH',
+        key: 'nutrition_coach.v1',
+        version: 1,
+        systemPrompt:
+          'You are the FitCore AI Nutrition Coach, an intelligent nutrition, dietary guidance, and consistency assistant.\nYou help members understand their nutrition targets, meal plans, food alternatives, and daily intake.\nCRITICAL SAFETY & OPERATIONAL DIRECTIVES:\n1. You are a nutrition coaching assistant, NOT a medical doctor, registered dietitian, or clinical practitioner.\n2. NEVER diagnose diseases, prescribe medical nutrition therapy, or prescribe treatment for clinical conditions. If the member asks to cure, treat, or diagnose diseases (e.g. diabetes, cancer, renal failure, celiac), direct them to consult a qualified physician or registered dietitian.\n3. BASE ALL ANSWERS ON ACTUAL STORED FITCORE DATA. Never fabricate, assume, or hallucinate food logs, calories, macro targets, meal plans, or historical intake. If data does not exist, explicitly state: "I don\'t have enough recorded nutrition data to determine that."\n4. ALLERGY & INTOLERANCE SAFETY: Distinguish clearly between preferences, dislikes, intolerances, and allergies. NEVER recommend a food containing a known allergen under ANY circumstances. Do NOT bypass allergy restrictions even if requested by the user.\n5. NO AUTONOMOUS WRITES: You cannot autonomously change nutrition targets (calories, protein, carbs, fat, water) or modify assigned meal plans. All responses are read-only and educational.\n6. Provide structured output conforming strictly to the NutritionCoachResponse schema.',
+        developerPrompt:
+          'Ensure output conforms strictly to the NutritionCoachResponse schema with answer, responseType, confidence, recommendations, mealSuggestions, foodAlternatives, warnings, and followUpQuestions.',
+        outputSchema: {
+          type: 'object',
+          properties: {
+            answer: { type: 'string' },
+            responseType: {
+              type: 'string',
+              enum: ['EXPLANATION', 'SUGGESTION', 'SUMMARY', 'SAFETY_INTERVENTION', 'EDUCATIONAL'],
+            },
+            confidence: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'] },
+            groundedSources: { type: 'array', items: { type: 'string' } },
+            recommendations: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: {
+                    type: 'string',
+                    enum: [
+                      'MEAL_SUGGESTION',
+                      'FOOD_ALTERNATIVE',
+                      'HYDRATION',
+                      'MEAL_TIMING',
+                      'CONSISTENCY',
+                      'TARGET_EDUCATION',
+                      'LOGGING_GUIDANCE',
+                      'TRAINING_NUTRITION',
+                      'GENERAL_EDUCATION',
+                    ],
+                  },
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  rationale: { type: 'string' },
+                  priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+                },
+                required: ['type', 'title', 'description'],
+              },
+            },
+            mealSuggestions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  ingredients: { type: 'array', items: { type: 'string' } },
+                  estimatedCalories: { type: 'number' },
+                  estimatedProtein: { type: 'number' },
+                  estimatedCarbs: { type: 'number' },
+                  estimatedFat: { type: 'number' },
+                  whyItFits: { type: 'string' },
+                  allergySafetyNote: { type: 'string' },
+                  isAiSuggestion: { type: 'boolean' },
+                },
+                required: ['name', 'ingredients', 'whyItFits', 'isAiSuggestion'],
+              },
+            },
+            foodAlternatives: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  originalFood: { type: 'string' },
+                  substituteFood: { type: 'string' },
+                  reason: { type: 'string' },
+                  nutritionalComparison: { type: 'string' },
+                  confidence: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'] },
+                  allergyWarning: { type: 'string' },
+                },
+                required: ['originalFood', 'substituteFood', 'reason', 'confidence'],
+              },
+            },
+            warnings: { type: 'array', items: { type: 'string' } },
+            followUpQuestions: { type: 'array', items: { type: 'string' } },
+            requiresProfessionalReview: { type: 'boolean' },
+          },
+          required: ['answer', 'responseType', 'confidence', 'requiresProfessionalReview'],
+        },
+        status: 'ACTIVE',
+      },
+      {
+        organisationId: null,
+        feature: 'DAILY_CHECKIN',
+        key: 'daily_checkin.v1',
+        version: 1,
+        systemPrompt:
+          'You are the FitCore AI Daily Intelligence Assistant.\nYou synthesize the member\'s daily check-in responses, training schedule, progress, and nutrition summaries into a personalized, grounded daily briefing.\nCRITICAL SAFETY & OPERATIONAL DIRECTIVES:\n1. You are a fitness and wellness planning assistant, NOT a medical doctor, physical therapist, or diagnostic clinician.\n2. Readiness is strictly a TRAINING-PLANNING INDICATOR, never claim or imply medical or clinical readiness.\n3. NEVER diagnose medical or mental health conditions, and do not provide clinical psychiatric assessment.\n4. BASE ALL EVALUATIONS ON ACTUAL STORED FITCORE DATA. Never fabricate, assume, or hallucinate workouts, logs, attendance, or goals. Missing data must be treated as unrecorded.\n5. PROTECT TRAINER-ASSIGNED PROGRAMS: Do not change sets, reps, load, or exercises prescribed by a personal trainer. If member has high fatigue/soreness, advise them to discuss adjustments with their trainer.\n6. ZERO AUTONOMOUS ACTIONS: You cannot modify workouts, bookings, nutrition targets, or memberships.\n7. Provide structured output conforming strictly to the DailyCheckInResponse schema.',
+        developerPrompt:
+          'Ensure output conforms strictly to DailyCheckInResponse schema with summary, checkInInterpretation, readinessFraming, todayFocus, recommendations (3-5 items max), caution, escalation, suggestedNextAction, coachHandoff, and sourceSummary.',
+        outputSchema: {
+          type: 'object',
+          properties: {
+            summary: { type: 'string' },
+            checkInInterpretation: { type: 'string' },
+            readinessFraming: { type: 'string' },
+            todayFocus: { type: 'string' },
+            recommendations: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: {
+                    type: 'string',
+                    enum: [
+                      'TRAINING',
+                      'RECOVERY',
+                      'NUTRITION',
+                      'HYDRATION',
+                      'CONSISTENCY',
+                      'GOAL',
+                      'ATTENDANCE',
+                      'ENGAGEMENT',
+                      'SUPPORT',
+                    ],
+                  },
+                  title: { type: 'string' },
+                  explanation: { type: 'string' },
+                  priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+                  relatedDomain: {
+                    type: 'string',
+                    enum: ['TRAINING', 'NUTRITION', 'PROGRESS', 'RECOVERY', 'WELLNESS'],
+                  },
+                  suggestedAction: {
+                    type: 'object',
+                    properties: {
+                      action: {
+                        type: 'string',
+                        enum: [
+                          'VIEW_WORKOUT',
+                          'VIEW_NUTRITION',
+                          'VIEW_GOALS',
+                          'VIEW_COACH',
+                          'VIEW_ATTENDANCE',
+                        ],
+                      },
+                      label: { type: 'string' },
+                      params: { type: 'object' },
+                    },
+                    required: ['action', 'label'],
+                  },
+                },
+                required: ['type', 'title', 'explanation', 'priority', 'relatedDomain'],
+              },
+            },
+            caution: { type: 'string' },
+            escalation: {
+              type: 'object',
+              properties: {
+                severity: { type: 'string', enum: ['CAUTION', 'RECOMMEND_PROFESSIONAL', 'URGENT_ESCALATION'] },
+                category: { type: 'string' },
+                guidance: { type: 'string' },
+                helplineOrReferral: { type: 'string' },
+              },
+              required: ['severity', 'category', 'guidance'],
+            },
+            suggestedNextAction: { type: 'string' },
+            coachHandoff: {
+              type: 'object',
+              properties: {
+                recommendedCoach: { type: 'string', enum: ['FITNESS_COACH', 'NUTRITION_COACH', 'NONE'] },
+                reason: { type: 'string' },
+                suggestedPrompt: { type: 'string' },
+              },
+              required: ['recommendedCoach'],
+            },
+            sourceSummary: {
+              type: 'object',
+              properties: {
+                used: { type: 'array', items: { type: 'string' } },
+                excluded: { type: 'array', items: { type: 'string' } },
+              },
+              required: ['used', 'excluded'],
+            },
+          },
+          required: [
+            'summary',
+            'checkInInterpretation',
+            'readinessFraming',
+            'todayFocus',
+            'recommendations',
+          ],
+        },
+        status: 'ACTIVE',
+      },
+      WEARABLE_INTELLIGENCE_PROMPT_DEFINITION,
+      ENGAGEMENT_INTELLIGENCE_PROMPT_DEFINITION,
+      RETENTION_INTELLIGENCE_PROMPT_DEFINITION,
+      REACTIVATION_PROMPT_DEFINITION,
+      RETENTION_AGENT_PROMPT_DEFINITION,
     ];
 
     for (const p of defaultPrompts) {
@@ -166,7 +367,24 @@ export class PromptRegistryService implements OnModuleInit {
    * 2. Platform default system prompt matching (feature, key) with highest active version
    */
   async resolvePrompt(organisationId: string, feature: AIFeature, key: string = 'default', version?: number) {
-    const effectiveKey = key === 'default' && feature === 'FITNESS_COACH' ? 'fitness_coach.v1' : key;
+    const effectiveKey =
+      key === 'default' && feature === 'FITNESS_COACH'
+        ? 'fitness_coach.v1'
+        : key === 'default' && feature === 'NUTRITION_COACH'
+        ? 'nutrition_coach.v1'
+        : key === 'default' && feature === 'DAILY_CHECKIN'
+        ? 'daily_checkin.v1'
+        : key === 'default' && feature === 'WEARABLE_INTELLIGENCE'
+        ? 'wearable_intelligence.v1'
+        : key === 'default' && feature === 'ENGAGEMENT_INTELLIGENCE'
+        ? 'engagement_intelligence.v1'
+        : key === 'default' && feature === 'RETENTION_INTELLIGENCE'
+        ? 'retention_intelligence.v1'
+        : key === 'default' && feature === 'AI_REACTIVATION'
+        ? 'reactivation.v1'
+        : key === 'default' && feature === 'RETENTION_AGENT'
+        ? 'retention_agent.v1'
+        : key;
 
     if (version) {
       // Specific version requested

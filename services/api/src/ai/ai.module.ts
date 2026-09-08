@@ -100,6 +100,8 @@ import { AIOrchestratorService } from './orchestrator/ai-orchestrator.service';
     ModelRegistryService,
     AIFeatureConfigService,
     AIContextEngineService,
+    AIContextPermissionService,
+    SensitiveDataSanitizerService,
     AIUsageService,
     AISafetyService,
     AIToolRegistryService,

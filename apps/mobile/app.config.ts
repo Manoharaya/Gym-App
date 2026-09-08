@@ -23,11 +23,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSPhotoLibraryUsageDescription:
         'FitCore needs access to select progress photos and health documents.',
       NSHealthShareUsageDescription:
-        'FitCore integrates with Apple Health to monitor workouts, heart rate, and steps for your coach.',
+        'FitCore reads steps, heart rate, active calories, distance, and sleep from Apple Health to evaluate your training capacity and recovery.',
       NSHealthUpdateUsageDescription:
-        'FitCore writes workout records and active energy data to Apple Health.',
+        'FitCore writes completed gym workout records and active energy data to Apple Health.',
       NSFaceIDUsageDescription:
         'FitCore uses Face ID to securely authenticate your session and protect sensitive health data.',
+    },
+    entitlements: {
+      'com.apple.developer.healthkit': true,
+      'com.apple.developer.healthkit.access': [],
     },
   },
   android: {
@@ -43,9 +47,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.USE_BIOMETRIC',
       'android.permission.USE_FINGERPRINT',
       'android.permission.health.READ_STEPS',
-      'android.permission.health.READ_HEART_RATE',
-      'android.permission.health.READ_SLEEP',
+      'android.permission.health.READ_DISTANCE',
       'android.permission.health.READ_TOTAL_CALORIES_BURNED',
+      'android.permission.health.READ_HEART_RATE',
+      'android.permission.health.READ_RESTING_HEART_RATE',
+      'android.permission.health.READ_SLEEP',
+      'android.permission.health.READ_EXERCISE',
     ],
   },
   plugins: ['expo-secure-store'],

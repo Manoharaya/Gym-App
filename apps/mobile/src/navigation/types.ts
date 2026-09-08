@@ -33,12 +33,26 @@ export type MemberStackParamList = {
   MyBookings: undefined;
   Progress: undefined;
   Nutrition: undefined;
+  NutritionCoach: undefined;
   DailyCheckIn: undefined;
+  DailyCheckInHome: undefined;
+  DailyCheckInQuestion: { checkInId?: string } | undefined;
+  DailyCheckInResult: { checkInId?: string } | undefined;
+  DailyCheckInHistory: undefined;
+  DailyCheckInDetail: { checkInId: string };
   AICoach: undefined;
   Wearables: undefined;
+  WearablesHome: undefined;
+  WearableProviderDetail: { provider: string };
+  WearableConnection: { connectionId: string };
+  WearableData: undefined;
+  WearableSyncStatus: undefined;
+  WearablePrivacy: undefined;
+  WearableIntelligence: undefined;
   Notifications: undefined;
   NotificationDetail: { notificationId: string };
   NotificationPreferences: undefined;
+  CommunicationPreferences: undefined;
   MemberProfile: undefined;
   Settings: undefined;
   MembershipHome: undefined;
@@ -70,6 +84,7 @@ export type MemberStackParamList = {
   TrainingPlanOverview: { planId?: string } | undefined;
   TrainingCalendar: { planId?: string } | undefined;
   EngagementHome: undefined;
+  MemberEngagement: undefined;
   Habits: undefined;
   HabitsScreen: undefined;
   Challenges: undefined;
@@ -98,6 +113,10 @@ export type TrainerStackParamList = {
   TrainerProgramming: { memberProfileId?: string; programId?: string; planId?: string } | undefined;
   WorkoutPreview: { workoutId: string };
   TrainingCalendar: { planId?: string; memberProfileId?: string } | undefined;
+  RetentionDetail: { memberId: string; memberName?: string };
+  ReactivationQueue: undefined;
+  RecoveryPlanDetail: { planId?: string; memberId?: string; memberName?: string; strategy?: any };
+  RetentionAgentDashboard: undefined;
 };
 
 export type ReceptionStackParamList = {
@@ -106,6 +125,12 @@ export type ReceptionStackParamList = {
   MemberLookup: undefined;
   ClassRoster: { classId: string };
   POSRetail: undefined;
+  CheckInDesk: undefined;
+  VisitorManagement: undefined;
+  PassManagement: undefined;
+  MemberSearch: undefined;
+  ReactivationQueue: undefined;
+  RecoveryPlanDetail: { planId?: string; memberId?: string; memberName?: string; strategy?: any };
 };
 
 export type OutletManagerStackParamList = {
@@ -118,6 +143,11 @@ export type OutletManagerStackParamList = {
   TrainerClients: { trainerId?: string } | undefined;
   AccessControl: undefined;
   OutletReports: undefined;
+  RetentionQueue: undefined;
+  RetentionDetail: { memberId: string; memberName?: string };
+  ReactivationQueue: undefined;
+  RecoveryPlanDetail: { planId?: string; memberId?: string; memberName?: string; strategy?: any };
+  RetentionAgentDashboard: undefined;
 };
 
 export type FinanceStackParamList = {
@@ -138,6 +168,12 @@ export type OrganisationOwnerStackParamList = {
   RevenueAnalytics: undefined;
   ExecutiveReports: undefined;
   OrganisationSettings: undefined;
+  RetentionQueue: undefined;
+  RetentionDetail: { memberId: string; memberName?: string };
+  ReactivationQueue: undefined;
+  RecoveryPlanDetail: { planId?: string; memberId?: string; memberName?: string; strategy?: any };
+  CommunicationCenter: undefined;
+  RetentionAgentDashboard: undefined;
 };
 
 export type AppStackParamList = {

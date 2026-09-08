@@ -189,7 +189,13 @@ export const NutritionScreen: React.FC = () => {
             <Text style={styles.clientSubheading}>{params.clientName}</Text>
           )}
         </View>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          onPress={() => (navigation as any).navigate('NutritionCoach')}
+          style={styles.aiCoachHeaderBtn}
+          accessibilityLabel="Open AI Nutrition Coach"
+        >
+          <Text style={styles.aiCoachHeaderIcon}>✨ AI Coach</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -1179,4 +1185,18 @@ const styles = StyleSheet.create({
     color: themeColors.textSecondary,
     marginTop: 2,
   },
+  aiCoachHeaderBtn: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing[3],
+    paddingVertical: 4,
+  },
+  aiCoachHeaderIcon: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
 });
+

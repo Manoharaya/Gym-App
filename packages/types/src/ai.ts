@@ -15,12 +15,18 @@ export type AIFeature =
   | 'FITNESS_COACH'
   | 'NUTRITION_COACH'
   | 'DAILY_CHECKIN'
+  | 'WEARABLE_INTELLIGENCE'
+  | 'ENGAGEMENT_INTELLIGENCE'
+  | 'RETENTION_INTELLIGENCE'
+  | 'AI_REACTIVATION'
+  | 'RETENTION_AGENT'
   | 'PROGRESS_INSIGHTS'
   | 'ENGAGEMENT_ASSISTANT'
   | 'RECEPTIONIST'
   | 'SALES_AGENT'
   | 'MARKETING_ASSISTANT'
-  | 'CHURN_INTELLIGENCE';
+  | 'CHURN_INTELLIGENCE'
+  | 'AUTOMATION_ASSISTANT';
 
 export type AIModelCapability =
   | 'TEXT_GENERATION'
@@ -51,7 +57,8 @@ export type AIContextSource =
   | 'NUTRITION'
   | 'ENGAGEMENT'
   | 'BOOKING'
-  | 'ATTENDANCE';
+  | 'ATTENDANCE'
+  | 'WEARABLE_HEALTH_DATA';
 
 export type SensitivityLevel =
   | 'PUBLIC'
@@ -90,7 +97,29 @@ export type AIAuditEventType =
   | 'FITNESS_COACH_FAILED'
   | 'FITNESS_COACH_SAFETY_ESCALATION'
   | 'FITNESS_COACH_FEEDBACK_RECEIVED'
-  | 'FITNESS_COACH_TOOL_USED';
+  | 'FITNESS_COACH_TOOL_USED'
+  | 'AI_NUTRITION_REQUESTED'
+  | 'AI_NUTRITION_RESPONSE_GENERATED'
+  | 'AI_NUTRITION_SUGGESTION_GENERATED'
+  | 'AI_NUTRITION_FEEDBACK_SUBMITTED'
+  | 'AI_FOOD_LOG_PROPOSAL_CREATED'
+  | 'AI_NUTRITION_SAFETY_BLOCK'
+  | 'AI_NUTRITION_ESCALATION'
+  | 'AI_NUTRITION_CONTEXT_ACCESSED'
+  | 'NUTRITION_COACH_REQUESTED'
+  | 'NUTRITION_COACH_COMPLETED'
+  | 'NUTRITION_COACH_BLOCKED'
+  | 'NUTRITION_COACH_FAILED'
+  | 'NUTRITION_COACH_SAFETY_ESCALATION'
+  | 'NUTRITION_COACH_FEEDBACK_RECEIVED'
+  | 'NUTRITION_COACH_TOOL_USED'
+  | 'DAILY_CHECKIN_STARTED'
+  | 'DAILY_CHECKIN_COMPLETED'
+  | 'DAILY_CHECKIN_AI_GENERATED'
+  | 'DAILY_CHECKIN_AI_FAILED'
+  | 'DAILY_CHECKIN_SAFETY_TRIGGERED'
+  | 'DAILY_CHECKIN_FEEDBACK_SUBMITTED'
+  | 'DAILY_CHECKIN_TOOL_USED';
 
 export type AIFeedbackRating = 'HELPFUL' | 'NOT_HELPFUL' | 'REPORT';
 
@@ -202,6 +231,21 @@ export interface MemberAIContext {
     streak?: number;
     engagementLevel?: string;
     points?: number;
+  };
+  wearables?: {
+    connectedProviders: string[];
+    todayActivity?: {
+      steps: number;
+      activeCaloriesKcal: number;
+      distanceKm: number;
+      restingHeartRateBpm?: number | null;
+    };
+    weeklyAverages?: {
+      avgDailySteps: number;
+      avgDailyCaloriesKcal: number;
+      avgSleepMinutes?: number | null;
+      workoutCount: number;
+    };
   };
 }
 
@@ -458,4 +502,184 @@ export interface AIFitnessSafetyEscalationDto {
   resolved: boolean;
   createdAt: string;
 }
+
+// ============================================================================
+// Day 21: AI Nutrition Coach Contracts
+// ============================================================================
+
+export type NutritionCoachCoachingStyle =
+  | 'SUPPORTIVE'
+  | 'CONCISE'
+  | 'EDUCATIONAL'
+  | 'MOTIVATIONAL'
+  | 'PRACTICAL';
+
+export type NutritionCoachResponseLength = 'CONCISE' | 'BALANCED' | 'DETAILED';
+
+export type NutritionRecommendationType =
+  | 'MEAL_SUGGESTION'
+  | 'FOOD_ALTERNATIVE'
+  | 'HYDRATION'
+  | 'MEAL_TIMING'
+  | 'CONSISTENCY'
+  | 'TARGET_EDUCATION'
+  | 'LOGGING_GUIDANCE'
+  | 'TRAINING_NUTRITION'
+  | 'GENERAL_EDUCATION';
+
+export type NutritionSafetyEscalationSeverity =
+  | 'NONE'
+  | 'CAUTION'
+  | 'RECOMMEND_PROFESSIONAL'
+  | 'URGENT_ESCALATION';
+
+export type NutritionSafetyEscalationCategory =
+  | 'EATING_DISORDER'
+  | 'EXTREME_RESTRICTION'
+  | 'DANGEROUS_FASTING'
+  | 'DEHYDRATION'
+  | 'UNSAFE_SUPPLEMENT'
+  | 'PERFORMANCE_ENHANCING_DRUG'
+  | 'MEDICATION_INTERACTION'
+  | 'DISEASE_TREATMENT'
+  | 'MEDICAL_DIAGNOSIS'
+  | 'ALLERGEN_VIOLATION'
+  | 'SELF_HARM_RESTRICTION';
+
+export interface NutritionInsight {
+  type: string;
+  title: string;
+  description: string;
+  confidence?: number;
+}
+
+export interface NutritionRecommendation {
+  type: NutritionRecommendationType;
+  title: string;
+  description: string;
+  rationale?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
+export interface MealSuggestion {
+  name: string;
+  ingredients: string[];
+  estimatedCalories?: number;
+  estimatedProtein?: number;
+  estimatedCarbs?: number;
+  estimatedFat?: number;
+  whyItFits: string;
+  allergySafetyNote?: string;
+  isAiSuggestion: boolean;
+}
+
+export interface FoodAlternative {
+  originalFood: string;
+  substituteFood: string;
+  reason: string;
+  nutritionalComparison?: string;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  allergyWarning?: string;
+}
+
+export interface NutritionCoachResponse {
+  answer: string;
+  responseType: 'EXPLANATION' | 'SUGGESTION' | 'SUMMARY' | 'SAFETY_INTERVENTION' | 'EDUCATIONAL';
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  groundedSources?: string[];
+  recommendations?: NutritionRecommendation[];
+  mealSuggestions?: MealSuggestion[];
+  foodAlternatives?: FoodAlternative[];
+  warnings?: string[];
+  followUpQuestions?: string[];
+  requiresProfessionalReview: boolean;
+}
+
+export interface ParsedFoodLogItem {
+  foodName: string;
+  quantity: number;
+  unit: string;
+  mealType: string;
+  foodId?: string;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber?: number;
+  confidence: number;
+}
+
+export interface ParsedFoodLogProposal {
+  mealType: string;
+  consumedAt?: string;
+  items: ParsedFoodLogItem[];
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbohydrates: number;
+  totalFat: number;
+  requiresConfirmation: true;
+  warning?: string;
+}
+
+export interface AINutritionCoachProfileDto {
+  id?: string;
+  organisationId: string;
+  memberId: string;
+  coachingStyle: NutritionCoachCoachingStyle;
+  responseLength: NutritionCoachResponseLength;
+  language: string;
+  unitPreference: 'METRIC' | 'IMPERIAL';
+  enabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AINutritionCoachMessageDto {
+  id: string;
+  conversationId: string;
+  role: 'USER' | 'ASSISTANT' | 'SYSTEM';
+  content: string;
+  structuredOutput?: NutritionCoachResponse | null;
+  tokens?: number | null;
+  latencyMs?: number | null;
+  status: 'SENDING' | 'THINKING' | 'STREAMING' | 'COMPLETED' | 'FAILED' | 'BLOCKED';
+  createdAt: string;
+}
+
+export interface AINutritionCoachConversationDto {
+  id: string;
+  organisationId: string;
+  memberId: string;
+  title?: string | null;
+  status: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
+  contextSnapshot?: Record<string, any> | null;
+  messages?: AINutritionCoachMessageDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AINutritionConversationSummaryDto {
+  id: string;
+  conversationId: string;
+  summary: string;
+  keyTopics?: string[];
+  model: string;
+  promptVersion: number;
+  version: number;
+  generatedAt: string;
+}
+
+export interface AINutritionSafetyEscalationDto {
+  id: string;
+  organisationId: string;
+  memberId: string;
+  conversationId?: string | null;
+  severity: NutritionSafetyEscalationSeverity;
+  category: NutritionSafetyEscalationCategory;
+  triggerPhrase?: string | null;
+  actionTaken: string;
+  resolved: boolean;
+  createdAt: string;
+}
+
 
