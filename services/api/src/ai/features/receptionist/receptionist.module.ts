@@ -1,11 +1,12 @@
 /**
- * Day 31 — AI Receptionist Module
+ * Day 31 & 32 — AI Receptionist Module
  */
 
 import { Module, forwardRef } from '@nestjs/common';
 import { DatabaseModule } from '../../../database/database.module';
 import { AuditModule } from '../../../audit/audit.module';
 import { RedisModule } from '../../../redis/redis.module';
+import { BookingsModule } from '../../../bookings/bookings.module';
 import { AIModule } from '../../ai.module';
 
 // Conversation
@@ -34,6 +35,22 @@ import { TrainerTools } from './tools/trainer-tools';
 import { MembershipTools } from './tools/membership-tools';
 import { ReceptionistToolRegistry } from './tools/receptionist-tool-registry';
 
+// Day 32 Booking Tools
+import { BookingSearchTool } from './tools/booking-search.tool';
+import { BookingDetailsTool } from './tools/booking-details.tool';
+import { BookingCreateTool } from './tools/booking-create.tool';
+import { BookingCancelTool } from './tools/booking-cancel.tool';
+import { BookingRescheduleTool } from './tools/booking-reschedule.tool';
+import { BookingWaitlistTool } from './tools/booking-waitlist.tool';
+
+// Day 32 Booking Domain Services
+import { ReceptionistMemberIdentityService } from './identity/receptionist-member-identity.service';
+import { ConfirmationStateService } from './confirmation/confirmation-state.service';
+import { BookingSearchService } from './booking/booking-search.service';
+import { ReceptionistBookingEligibilityService } from './booking/booking-eligibility.service';
+import { BookingVerificationService } from './booking/booking-verification.service';
+import { ReceptionistBookingService } from './booking/receptionist-booking.service';
+
 // Safety
 import { PromptInjectionService } from './safety/prompt-injection.service';
 import { SensitiveDataFilterService } from './safety/sensitive-data-filter.service';
@@ -49,18 +66,20 @@ import { ReceptionistAIService } from './ai/receptionist-ai.service';
 import { ConversationSummaryJob } from './jobs/conversation-summary.job';
 import { KnowledgeRefreshJob } from './jobs/knowledge-refresh.job';
 
-// Facade & Controller
+// Facades & Controllers
 import { ReceptionistService } from './receptionist.service';
 import { ReceptionistController } from './receptionist.controller';
+import { ReceptionistBookingController } from './receptionist-booking.controller';
 
 @Module({
   imports: [
     DatabaseModule,
     AuditModule,
     RedisModule,
+    BookingsModule,
     forwardRef(() => AIModule),
   ],
-  controllers: [ReceptionistController],
+  controllers: [ReceptionistController, ReceptionistBookingController],
   providers: [
     // Conversation
     ReceptionistConversationService,
@@ -88,6 +107,22 @@ import { ReceptionistController } from './receptionist.controller';
     MembershipTools,
     ReceptionistToolRegistry,
 
+    // Day 32 Booking Tools
+    BookingSearchTool,
+    BookingDetailsTool,
+    BookingCreateTool,
+    BookingCancelTool,
+    BookingRescheduleTool,
+    BookingWaitlistTool,
+
+    // Day 32 Booking Services
+    ReceptionistMemberIdentityService,
+    ConfirmationStateService,
+    BookingSearchService,
+    ReceptionistBookingEligibilityService,
+    BookingVerificationService,
+    ReceptionistBookingService,
+
     // Safety
     PromptInjectionService,
     SensitiveDataFilterService,
@@ -112,6 +147,12 @@ import { ReceptionistController } from './receptionist.controller';
     ReceptionistKnowledgeService,
     ReceptionistHandoffService,
     ReceptionistToolRegistry,
+    ReceptionistBookingService,
+    ConfirmationStateService,
+    ReceptionistMemberIdentityService,
+    BookingSearchService,
+    ReceptionistBookingEligibilityService,
+    BookingVerificationService,
   ],
 })
 export class ReceptionistModule {}

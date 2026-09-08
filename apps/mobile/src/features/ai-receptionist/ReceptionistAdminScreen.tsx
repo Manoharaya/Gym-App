@@ -26,7 +26,9 @@ interface Props {
 }
 
 export const ReceptionistAdminScreen: React.FC<Props> = () => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'CONVERSATIONS' | 'HANDOFFS' | 'TEST_CHAT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<
+    'OVERVIEW' | 'BOOKINGS' | 'CONVERSATIONS' | 'HANDOFFS' | 'TEST_CHAT'
+  >('OVERVIEW');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [metrics, setMetrics] = useState<{
@@ -36,6 +38,7 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
     publishedKnowledgeSources: number;
     unresolvedGaps: number;
   } | null>(null);
+  const [bookingMetrics, setBookingMetrics] = useState<any | null>(null);
 
   const [conversations, setConversations] = useState<ReceptionistConversationDto[]>([]);
   const [handoffs, setHandoffs] = useState<ReceptionistHandoffDto[]>([]);
@@ -45,17 +48,25 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
   const [simulating, setSimulating] = useState(false);
   const [simulatorResponse, setSimulatorResponse] = useState<ReceptionistResponseDto | null>(null);
 
+  // Booking Dry-Run Simulator State
+  const [dryRunSessionId, setDryRunSessionId] = useState('');
+  const [dryRunMemberId, setDryRunMemberId] = useState('');
+  const [dryRunning, setDryRunning] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<any | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
-      const [m, c, h] = await Promise.all([
+      const [m, c, h, bm] = await Promise.all([
         ReceptionistService.getMetrics().catch(() => null),
         ReceptionistService.listConversations({ limit: 10 }).catch(() => ({ total: 0, items: [] })),
         ReceptionistService.listHandoffs({ status: 'PENDING', limit: 10 }).catch(() => ({ total: 0, items: [] })),
+        ReceptionistService.getBookingMetrics().catch(() => null),
       ]);
 
       if (m) setMetrics(m);
       setConversations(c.items || []);
       setHandoffs(h.items || []);
+      if (bm) setBookingMetrics(bm);
     } catch (err) {
       console.error('Failed to load receptionist data:', err);
     } finally {
@@ -103,6 +114,23 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
     }
   };
 
+  const handleRunDryRun = async () => {
+    if (!dryRunSessionId.trim()) return;
+    setDryRunning(true);
+    setDryRunResult(null);
+    try {
+      const res = await ReceptionistService.dryRunBooking({
+        classSessionId: dryRunSessionId.trim(),
+        memberProfileId: dryRunMemberId.trim() || undefined,
+      });
+      setDryRunResult(res);
+    } catch (err: any) {
+      setDryRunResult({ error: err.message || 'Simulation failed' });
+    } finally {
+      setDryRunning(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -122,7 +150,7 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
 
       {/* Navigation Tabs */}
       <View style={styles.tabBar}>
-        {(['OVERVIEW', 'CONVERSATIONS', 'HANDOFFS', 'TEST_CHAT'] as const).map((tab) => (
+        {(['OVERVIEW', 'BOOKINGS', 'CONVERSATIONS', 'HANDOFFS', 'TEST_CHAT'] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
@@ -161,6 +189,37 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
               </View>
             </View>
 
+            {/* Booking & Scheduling Activity */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Booking & Scheduling Activity</Text>
+              <View style={styles.metricsGrid}>
+                <View style={styles.metricCard}>
+                  <Text style={[styles.metricValue, { color: '#4CAF50' }]}>
+                    {bookingMetrics?.confirmedBookings ?? 0}
+                  </Text>
+                  <Text style={styles.metricLabel}>Confirmed</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>
+                    {bookingMetrics?.availabilitySearches ?? 0}
+                  </Text>
+                  <Text style={styles.metricLabel}>Searches</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>
+                    {bookingMetrics?.waitlistJoins ?? 0}
+                  </Text>
+                  <Text style={styles.metricLabel}>Waitlists</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={[styles.metricValue, { color: '#FF9800' }]}>
+                    {(bookingMetrics?.cancellations ?? 0) + (bookingMetrics?.reschedules ?? 0)}
+                  </Text>
+                  <Text style={styles.metricLabel}>Changes</Text>
+                </View>
+              </View>
+            </View>
+
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>Receptionist Health & Guardrails</Text>
               <View style={styles.statusRow}>
@@ -172,13 +231,152 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
                 <Text style={styles.statusBadge}>Enabled (Zero Leaks)</Text>
               </View>
               <View style={styles.statusRow}>
+                <Text style={styles.statusLabel}>Booking Operations:</Text>
+                <Text style={styles.statusBadge}>2-Step Confirmation & Atomic</Text>
+              </View>
+              <View style={styles.statusRow}>
                 <Text style={styles.statusLabel}>Tool Execution:</Text>
-                <Text style={styles.statusBadge}>Strict Read-Only Guardrails</Text>
+                <Text style={styles.statusBadge}>Strict Risk-Tiered Guardrails</Text>
               </View>
               <View style={styles.statusRow}>
                 <Text style={styles.statusLabel}>Operational Mode:</Text>
                 <Text style={styles.statusBadge}>Platform Grounded</Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* BOOKINGS TAB */}
+        {activeTab === 'BOOKINGS' && (
+          <View>
+            <Text style={styles.sectionTitle}>Booking & Scheduling Operations</Text>
+            <Text style={styles.helperText}>
+              Monitor booking conversion funnel, inspect live sessions, and simulate customer booking evaluations.
+            </Text>
+
+            {/* Funnel Metrics */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Conversion Funnel</Text>
+              <View style={styles.funnelRow}>
+                <View style={styles.funnelStep}>
+                  <Text style={styles.funnelValue}>{bookingMetrics?.conversionFunnel?.conversations ?? 0}</Text>
+                  <Text style={styles.funnelLabel}>Conversations</Text>
+                </View>
+                <Text style={styles.funnelArrow}>→</Text>
+                <View style={styles.funnelStep}>
+                  <Text style={styles.funnelValue}>{bookingMetrics?.conversionFunnel?.searches ?? 0}</Text>
+                  <Text style={styles.funnelLabel}>Searches</Text>
+                </View>
+                <Text style={styles.funnelArrow}>→</Text>
+                <View style={styles.funnelStep}>
+                  <Text style={styles.funnelValue}>{bookingMetrics?.conversionFunnel?.confirmations ?? 0}</Text>
+                  <Text style={styles.funnelLabel}>Confirmations</Text>
+                </View>
+                <Text style={styles.funnelArrow}>→</Text>
+                <View style={styles.funnelStep}>
+                  <Text style={[styles.funnelValue, { color: '#4CAF50' }]}>
+                    {bookingMetrics?.conversionFunnel?.completedBookings ?? 0}
+                  </Text>
+                  <Text style={styles.funnelLabel}>Completed</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Dry-Run Simulator */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Booking Assessment Simulator (Dry-Run)</Text>
+              <Text style={styles.helperText}>
+                Zero-side-effect assessment of capacity, eligibility rules, and required confirmation tokens.
+              </Text>
+
+              <Text style={styles.fieldLabel}>Class Session ID</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Session UUID..."
+                placeholderTextColor="#757575"
+                value={dryRunSessionId}
+                onChangeText={setDryRunSessionId}
+              />
+
+              <Text style={styles.fieldLabel}>Member Profile ID (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Leave blank for anonymous prospect..."
+                placeholderTextColor="#757575"
+                value={dryRunMemberId}
+                onChangeText={setDryRunMemberId}
+              />
+
+              <TouchableOpacity
+                style={[styles.dryRunButton, (!dryRunSessionId.trim() || dryRunning) && styles.sendButtonDisabled]}
+                onPress={handleRunDryRun}
+                disabled={!dryRunSessionId.trim() || dryRunning}
+              >
+                {dryRunning ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.dryRunButtonText}>Simulate Booking Assessment</Text>
+                )}
+              </TouchableOpacity>
+
+              {dryRunResult && (
+                <View style={styles.dryRunResultContainer}>
+                  {dryRunResult.error ? (
+                    <Text style={styles.dryRunErrorText}>Error: {dryRunResult.error}</Text>
+                  ) : (
+                    <>
+                      <View style={styles.resultBadgeRow}>
+                        <Text style={[styles.badge, styles.badgeHighlight]}>
+                          {dryRunResult.identityStatus}
+                        </Text>
+                        <Text style={[styles.badge, styles.badgeSuccess]}>
+                          {dryRunResult.availabilityStatus}
+                        </Text>
+                        <Text style={[styles.badge, styles.badgeWarning]}>
+                          {dryRunResult.eligibilityStatus}
+                        </Text>
+                      </View>
+
+                      <View style={styles.statusRow}>
+                        <Text style={styles.statusLabel}>Proposed Action:</Text>
+                        <Text style={styles.statusBadge}>{dryRunResult.proposedAction}</Text>
+                      </View>
+                      <View style={styles.statusRow}>
+                        <Text style={styles.statusLabel}>Confirmation Required:</Text>
+                        <Text style={styles.statusBadge}>
+                          {dryRunResult.confirmationRequired ? 'YES (Two-Step Token)' : 'NO'}
+                        </Text>
+                      </View>
+                      <View style={styles.statusRow}>
+                        <Text style={styles.statusLabel}>Production Side Effect:</Text>
+                        <Text style={[styles.statusBadge, { color: '#4CAF50' }]}>
+                          {dryRunResult.productionSideEffect}
+                        </Text>
+                      </View>
+
+                      {dryRunResult.reasons && dryRunResult.reasons.length > 0 && (
+                        <View style={styles.reasonsBox}>
+                          <Text style={styles.reasonsTitle}>Assessment Reasons:</Text>
+                          {dryRunResult.reasons.map((r: string, idx: number) => (
+                            <Text key={idx} style={styles.reasonText}>• {r}</Text>
+                          ))}
+                        </View>
+                      )}
+
+                      {dryRunResult.sessionSnapshot && (
+                        <View style={styles.snapshotBox}>
+                          <Text style={styles.snapshotTitle}>
+                            {dryRunResult.sessionSnapshot.className || 'Class Session'}
+                          </Text>
+                          <Text style={styles.snapshotDetails}>
+                            Outlet: {dryRunResult.sessionSnapshot.outletName} | Spots Left: {dryRunResult.sessionSnapshot.spotsRemaining} / {dryRunResult.sessionSnapshot.capacity}
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  )}
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -275,6 +473,33 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
                 }}
               >
                 <Text style={styles.presetText}>Nepali: नमस्ते</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.presetChip}
+                onPress={() => {
+                  setSimulatorQuery('Can I book tomorrow morning HIIT class?');
+                  handleTestChat('Can I book tomorrow morning HIIT class?');
+                }}
+              >
+                <Text style={styles.presetText}>Book HIIT</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.presetChip}
+                onPress={() => {
+                  setSimulatorQuery('Can I cancel my upcoming class booking?');
+                  handleTestChat('Can I cancel my upcoming class booking?');
+                }}
+              >
+                <Text style={styles.presetText}>Cancel Booking</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.presetChip}
+                onPress={() => {
+                  setSimulatorQuery('भोलिको HIIT क्लास बुक गरिदिनुहोस्');
+                  handleTestChat('भोलिको HIIT क्लास बुक गरिदिनुहोस्');
+                }}
+              >
+                <Text style={styles.presetText}>Nepali: कक्षा बुक</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.presetChip}
@@ -683,5 +908,123 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64B5F6',
     marginBottom: 2,
+  },
+  funnelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  funnelStep: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  funnelValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  funnelLabel: {
+    fontSize: 10,
+    color: '#9E9E9E',
+    textAlign: 'center',
+  },
+  funnelArrow: {
+    fontSize: 16,
+    color: '#616161',
+    marginHorizontal: 2,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    color: '#B0B0B0',
+    marginBottom: 4,
+    marginTop: 8,
+    fontWeight: '600',
+  },
+  dryRunButton: {
+    backgroundColor: '#FF5722',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  dryRunButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dryRunResultContainer: {
+    backgroundColor: '#161616',
+    borderRadius: 8,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  dryRunErrorText: {
+    color: '#EF5350',
+    fontSize: 12,
+  },
+  resultBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  badge: {
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  badgeHighlight: {
+    backgroundColor: '#2196F322',
+    color: '#64B5F6',
+  },
+  badgeSuccess: {
+    backgroundColor: '#4CAF5022',
+    color: '#81C784',
+  },
+  badgeWarning: {
+    backgroundColor: '#FF980022',
+    color: '#FFB74D',
+  },
+  reasonsBox: {
+    backgroundColor: '#222222',
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 10,
+  },
+  reasonsTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B0B0B0',
+    marginBottom: 4,
+  },
+  reasonText: {
+    fontSize: 11,
+    color: '#E0E0E0',
+    lineHeight: 16,
+  },
+  snapshotBox: {
+    backgroundColor: '#1E293B',
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#38BDF8',
+  },
+  snapshotTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginBottom: 2,
+  },
+  snapshotDetails: {
+    fontSize: 11,
+    color: '#94A3B8',
   },
 });

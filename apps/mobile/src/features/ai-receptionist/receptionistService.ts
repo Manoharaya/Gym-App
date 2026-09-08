@@ -110,4 +110,60 @@ export class ReceptionistService {
     const res = await apiClient.post<any>('/ai/receptionist/chat', dto);
     return (res as any).data || res;
   }
+
+  // Day 32 — Booking Operations
+  static async getAvailability(params?: Record<string, any>): Promise<any> {
+    const query = new URLSearchParams(params as any).toString();
+    const res = await apiClient.get<any>(
+      `/ai/receptionist/booking/availability${query ? `?${query}` : ''}`,
+    );
+    return (res as any).data || res;
+  }
+
+  static async getMyBookings(upcomingOnly?: boolean): Promise<any[]> {
+    const query = upcomingOnly ? '?upcomingOnly=true' : '';
+    const res = await apiClient.get<any[]>(`/ai/receptionist/booking/my-bookings${query}`);
+    return (res as any).data || res;
+  }
+
+  static async getBookingDetails(id: string): Promise<any> {
+    const res = await apiClient.get<any>(`/ai/receptionist/booking/bookings/${id}`);
+    return (res as any).data || res;
+  }
+
+  static async createBookingConfirmation(dto: any): Promise<any> {
+    const res = await apiClient.post<any>('/ai/receptionist/booking/confirmations/create', dto);
+    return (res as any).data || res;
+  }
+
+  static async executeBookingConfirmation(dto: any): Promise<any> {
+    const res = await apiClient.post<any>('/ai/receptionist/booking/confirmations/execute', dto);
+    return (res as any).data || res;
+  }
+
+  static async cancelBooking(dto: { confirmationToken: string; reason?: string }): Promise<any> {
+    const res = await apiClient.post<any>('/ai/receptionist/booking/cancel', dto);
+    return (res as any).data || res;
+  }
+
+  static async rescheduleBooking(dto: { confirmationToken: string }): Promise<any> {
+    const res = await apiClient.post<any>('/ai/receptionist/booking/reschedule', dto);
+    return (res as any).data || res;
+  }
+
+  static async joinWaitlist(dto: { confirmationToken: string; notes?: string }): Promise<any> {
+    const res = await apiClient.post<any>('/ai/receptionist/booking/waitlist', dto);
+    return (res as any).data || res;
+  }
+
+  static async dryRunBooking(dto: { classSessionId: string; memberProfileId?: string }): Promise<any> {
+    const res = await apiClient.post<any>('/ai/receptionist/booking/dry-run', dto);
+    return (res as any).data || res;
+  }
+
+  static async getBookingMetrics(outletId?: string): Promise<any> {
+    const query = outletId ? `?outletId=${outletId}` : '';
+    const res = await apiClient.get<any>(`/ai/receptionist/booking/metrics${query}`);
+    return (res as any).data || res;
+  }
 }

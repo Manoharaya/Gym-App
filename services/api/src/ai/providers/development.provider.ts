@@ -972,6 +972,30 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       queryToCheck.includes('namaskar');
 
     if (isNepali) {
+      if (
+        userPrompt.includes('कक्षा') ||
+        userPrompt.includes('बुक') ||
+        userPrompt.includes('बुकिङ') ||
+        queryToCheck.includes('book')
+      ) {
+        return {
+          message:
+            'नमस्ते! FitCore मा भोलिको बिहान ७:०० बजेको HIIT कक्षा उपलब्ध छ (८ सिट बाँकी)। के तपाईं यो कक्षा बुक गर्न चाहनुहुन्छ? कृपया पुष्टि गर्नुहोस्।',
+          intent: 'BOOK_CLASS',
+          confidence: 0.98,
+          requiresClarification: false,
+          suggestedNextStep: 'कक्षा बुकिङ पुष्टि गर्नुहोस्।',
+          citations: [
+            {
+              sourceType: 'CLASS_TYPE',
+              title: 'Group Class Catalog',
+              snippet: 'Authoritative class schedule.',
+            },
+          ],
+          handoffRecommended: false,
+        };
+      }
+
       return {
         message:
           'नमस्ते! FitCore मा स्वागत छ। हाम्रो जिम सम्बन्धी जानकारी, शुल्क, समय तालिका र कक्षाहरू बारे म तपाईंलाई मद्दत गर्न सक्छु। म तपाईंलाई कसरी सहयोग गर्न सक्छु?',
@@ -984,6 +1008,88 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
             sourceType: 'ORGANISATION_PROFILE',
             title: 'FitCore Overview',
             snippet: 'Authoritative organisation profile.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 3.1 Booking Cancellation & Rescheduling
+    if (queryToCheck.includes('cancel') && (queryToCheck.includes('booking') || queryToCheck.includes('class') || queryToCheck.includes('session'))) {
+      return {
+        message:
+          'You can cancel your upcoming class booking up to 2 hours before the session starts without penalty. Would you like me to process this cancellation for you?',
+        intent: 'CANCEL_BOOKING',
+        confidence: 0.97,
+        requiresClarification: false,
+        suggestedNextStep: 'Confirm booking cancellation.',
+        citations: [
+          {
+            sourceType: 'POLICY',
+            title: 'Class Cancellation Policy',
+            snippet: '2-hour advance cancellation window for member group classes.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    if (queryToCheck.includes('reschedule') || queryToCheck.includes('change my class') || queryToCheck.includes('move my session')) {
+      return {
+        message:
+          'I can help you reschedule your class to another available session today or tomorrow. Which time works best for you?',
+        intent: 'RESCHEDULE_BOOKING',
+        confidence: 0.96,
+        requiresClarification: false,
+        suggestedNextStep: 'Select alternative session time.',
+        citations: [
+          {
+            sourceType: 'POLICY',
+            title: 'Rescheduling Guidelines',
+            snippet: 'Members may atomically reschedule to sessions with open capacity.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 3.2 Waitlist Inquiries
+    if (queryToCheck.includes('waitlist')) {
+      return {
+        message:
+          'This class session is currently at full capacity, but you can join the waitlist. When a spot opens up, candidates are automatically promoted in order. Would you like to join the waitlist?',
+        intent: 'WAITLIST_JOIN',
+        confidence: 0.96,
+        requiresClarification: false,
+        suggestedNextStep: 'Confirm joining the session waitlist.',
+        citations: [
+          {
+            sourceType: 'POLICY',
+            title: 'Waitlist Policy',
+            snippet: 'Automatic FIFO waitlist promotion upon member cancellation.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 3.3 Direct Class Booking & Availability Discovery
+    if (
+      (queryToCheck.includes('book') || queryToCheck.includes('reserve')) &&
+      (queryToCheck.includes('class') || queryToCheck.includes('hiit') || queryToCheck.includes('yoga') || queryToCheck.includes('tomorrow') || queryToCheck.includes('session'))
+    ) {
+      return {
+        message:
+          'I found a Morning HIIT class tomorrow at 7:00 AM with Coach Sarah at Downtown (8 spots remaining). Would you like me to reserve this spot for you?',
+        intent: 'BOOK_CLASS',
+        confidence: 0.98,
+        requiresClarification: false,
+        suggestedNextStep: 'Please confirm to finalize your class booking.',
+        citations: [
+          {
+            sourceType: 'CLASS_TYPE',
+            title: 'Group Class Catalog',
+            snippet: 'Live session availability and capacity snapshot.',
           },
         ],
         handoffRecommended: false,

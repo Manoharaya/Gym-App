@@ -116,3 +116,20 @@ The system is architected around five foundational pillars:
 ### 3.6 Handoff & Triage Subsystem
 * **`EscalationService`**: Computes priority levels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) based on reason (`COMPLAINT`, `CUSTOMER_REQUESTED`, `UNKNOWN_INFORMATION`, `POLICY_EXCEPTION`).
 * **`ReceptionistHandoffService`**: Creates handoff records and allows staff to assign, review, and mark tickets resolved.
+
+### 3.7 Booking & Scheduling Subsystem (Day 32)
+* **`BookingSearchService`**: Live discovery engine resolving temporal phrases (`"today"`, `"tomorrow morning"`, `"this weekend"`), computing live spots remaining (`capacity - confirmedBookings`), and detecting multi-outlet ambiguity.
+* **`ReceptionistMemberIdentityService`**: Resolves authenticated member profiles, enforces multi-tenant boundaries, and restricts unauthenticated prospects to read-only discovery.
+* **`ConfirmationStateService`**: Manages the two-step confirmation state machine, generates 256-bit cryptographic tokens, enforces 10-minute TTLs, and blocks replay attacks.
+* **`BookingEligibilityService`**: Bridges canonical domain rules (active memberships, `GROUP_CLASSES` entitlement, outlet access scopes, advance booking windows).
+* **`BookingVerificationService`**: Asserts physical database records post-mutation before the AI informs the customer of success.
+* **`ReceptionistBookingService`**: Master orchestrator for class booking, cancellation policy evaluation, atomic rescheduling (spot preservation), zero-side-effect dry-run simulations, and booking conversion funnel telemetry.
+* **Controlled Booking Tools**:
+  - `search_class_availability` (LOW risk, read-only)
+  - `get_booking_details` (LOW risk, read-only)
+  - `dry_run_booking` (LOW risk, simulation mode)
+  - `join_waitlist` (MEDIUM risk, mutation, confirmation token required)
+  - `create_booking` (HIGH risk, mutation, confirmation token required)
+  - `cancel_booking` (HIGH risk, mutation, confirmation token required)
+  - `reschedule_booking` (HIGH risk, mutation, confirmation token required)
+

@@ -16,6 +16,7 @@ export const ALL_AI_FEATURES: AIFeature[] = [
   'PROGRESS_INSIGHTS',
   'ENGAGEMENT_ASSISTANT',
   'RECEPTIONIST',
+  'RECEPTIONIST_BOOKING',
   'SALES_AGENT',
   'MARKETING_ASSISTANT',
   'CHURN_INTELLIGENCE',
@@ -43,7 +44,8 @@ export class AIFeatureConfigService {
       feature === 'AI_REACTIVATION' ||
       feature === 'RETENTION_AGENT' ||
       feature === 'AUTOMATION_ASSISTANT' ||
-      feature === 'RECEPTIONIST';
+      feature === 'RECEPTIONIST' ||
+      feature === 'RECEPTIONIST_BOOKING';
 
     const isStaffOnlyFeature =
       feature === 'RETENTION_INTELLIGENCE' ||

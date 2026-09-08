@@ -8,6 +8,7 @@ import { RETENTION_INTELLIGENCE_PROMPT_DEFINITION } from '../features/retention-
 import { REACTIVATION_PROMPT_DEFINITION } from '../features/reactivation/prompts/reactivation.v1';
 import { RETENTION_AGENT_PROMPT_DEFINITION } from '../features/retention-agent/prompts/retention_agent.v1';
 import { RECEPTIONIST_PROMPT_DEFINITION } from '../features/receptionist/prompts/receptionist.v1';
+import { RECEPTIONIST_BOOKING_PROMPT_DEFINITION } from '../features/receptionist/prompts/receptionist-booking.v1';
 
 @Injectable()
 export class PromptRegistryService implements OnModuleInit {
@@ -332,6 +333,7 @@ export class PromptRegistryService implements OnModuleInit {
       REACTIVATION_PROMPT_DEFINITION,
       RETENTION_AGENT_PROMPT_DEFINITION,
       RECEPTIONIST_PROMPT_DEFINITION,
+      RECEPTIONIST_BOOKING_PROMPT_DEFINITION,
     ];
 
     for (const p of defaultPrompts) {
