@@ -124,6 +124,14 @@ model Organisation {
   retentionOutreaches        RetentionOutreach[]
   engagementWorkflows        EngagementWorkflow[]
   workflowInstances          WorkflowInstance[]
+  aiReceptionists              AIReceptionist[]
+  receptionistKnowledgeSources ReceptionistKnowledgeSource[]
+  receptionistConversations    ReceptionistConversation[]
+  receptionistHandoffs         ReceptionistHandoff[]
+  receptionistKnowledgeGaps    ReceptionistKnowledgeGap[]
+  receptionistFeedbacks        ReceptionistFeedback[]
+  bookingConfirmations         BookingConfirmationState[]
+  receptionistBookingInteractions ReceptionistBookingInteraction[]
 
   @@index([slug])
   @@index([status])
@@ -198,6 +206,13 @@ model Outlet {
   retentionOutreaches    RetentionOutreach[]
   engagementWorkflows    EngagementWorkflow[]
   workflowInstances      WorkflowInstance[]
+  aiReceptionists              AIReceptionist[]
+  receptionistKnowledgeSources ReceptionistKnowledgeSource[]
+  receptionistConversations    ReceptionistConversation[]
+  receptionistHandoffs         ReceptionistHandoff[]
+  receptionistKnowledgeGaps    ReceptionistKnowledgeGap[]
+  bookingConfirmations         BookingConfirmationState[]
+  receptionistBookingInteractions ReceptionistBookingInteraction[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -538,6 +553,10 @@ model MemberProfile {
   retentionAgentAnalyses       RetentionAgentAnalysis[]
   retentionOutreaches          RetentionOutreach[]
   workflowInstances            WorkflowInstance[]
+  receptionistConversations    ReceptionistConversation[]
+  receptionistHandoffs         ReceptionistHandoff[]
+  bookingConfirmations         BookingConfirmationState[]
+  receptionistBookingInteractions ReceptionistBookingInteraction[]
 
   @@index([userId])
   @@index([organisationId])
@@ -1607,6 +1626,7 @@ model ClassSession {
   bookings             Booking[]
   waitlistEntries      WaitlistEntry[]
   attendanceRecords    AttendanceRecord[]
+  bookingConfirmations BookingConfirmationState[]
 
   @@index([organisationId])
   @@index([outletId])
@@ -4659,6 +4679,275 @@ model WorkflowExecution {
   @@index([workflowId, status])
   @@map("workflow_executions")
 }
+
+// ==========================================
+// DAY 31: AI RECEPTIONIST FOUNDATION
+// ==========================================
+
+model AIReceptionist {
+  id                   String                      @id @default(cuid())
+  organisationId       String
+  outletId             String?
+  name                 String
+  displayName          String
+  type                 String                      @default("RECEPTIONIST") // RECEPTIONIST
+  status               String                      @default("ACTIVE") // DRAFT, ACTIVE, PAUSED, DISABLED
+  language             String                      @default("en")
+  tone                 String                      @default("FRIENDLY") // PROFESSIONAL, FRIENDLY, ENERGETIC, PREMIUM, CONCISE
+  greeting             String                      @db.Text
+  timezone             String                      @default("UTC")
+  knowledgeScope       String                      @default("ORGANISATION") // ORGANISATION, OUTLET
+  escalationEnabled    Boolean                     @default(true)
+  humanHandoffEnabled  Boolean                     @default(true)
+  systemPromptOverride String?                     @db.Text
+  metadata             Json?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+
+  organisation         Organisation                @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet               Outlet?                     @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  conversations        ReceptionistConversation[]
+  handoffs             ReceptionistHandoff[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@map("ai_receptionists")
+}
+
+model ReceptionistKnowledgeSource {
+  id                String                         @id @default(cuid())
+  organisationId    String
+  outletId          String?
+  type              String                         // ORGANISATION_PROFILE, OUTLET_PROFILE, OPENING_HOURS, HOLIDAY_HOURS, MEMBERSHIP_PLAN, CLASS_TYPE, CLASS_POLICY, TRAINER_PROFILE, FACILITY, AMENITY, POLICY, FAQ, TRIAL_INFORMATION, CONTACT_INFORMATION, PARKING_INFORMATION, BOOKING_POLICY, CANCELLATION_POLICY, GUEST_POLICY, CUSTOM
+  title             String
+  description       String?                        @db.Text
+  content           String                         @db.Text
+  sourceReferenceId String?
+  status            String                         @default("PUBLISHED") // DRAFT, PUBLISHED, ARCHIVED
+  priority          Int                            @default(0)
+  visibility        String                         @default("PUBLIC") // PUBLIC, CUSTOMER_VISIBLE, STAFF_ONLY, INTERNAL
+  effectiveFrom     DateTime?
+  effectiveUntil    DateTime?
+  version           Int                            @default(1)
+  metadata          Json?
+  createdBy         String?
+  updatedBy         String?
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+
+  organisation      Organisation                   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet            Outlet?                        @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  versions          ReceptionistKnowledgeVersion[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, type])
+  @@index([organisationId, outletId])
+  @@index([organisationId, visibility])
+  @@index([effectiveFrom, effectiveUntil])
+  @@map("receptionist_knowledge_sources")
+}
+
+model ReceptionistKnowledgeVersion {
+  id                String                       @id @default(cuid())
+  knowledgeSourceId String
+  version           Int
+  content           String                       @db.Text
+  metadata          Json?
+  createdBy         String?
+  createdAt         DateTime                     @default(now())
+  publishedAt       DateTime?
+  archivedAt        DateTime?
+
+  knowledgeSource   ReceptionistKnowledgeSource  @relation(fields: [knowledgeSourceId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeSourceId, version])
+  @@index([knowledgeSourceId])
+  @@map("receptionist_knowledge_versions")
+}
+
+model ReceptionistConversation {
+  id                 String                     @id @default(cuid())
+  organisationId     String
+  outletId           String?
+  receptionistId     String
+  customerId         String?                    // MemberProfile ID if authenticated
+  externalContactId  String?                    // External prospect identifier
+  channel            String                     @default("WEB_CHAT") // WEB_CHAT, MOBILE, SMS, WHATSAPP, VOICE, IN_APP
+  status             String                     @default("ACTIVE") // ACTIVE, WAITING, HANDOFF_REQUESTED, ESCALATED, RESOLVED, CLOSED
+  language           String                     @default("en")
+  startedAt          DateTime                   @default(now())
+  lastMessageAt      DateTime                   @default(now())
+  endedAt            DateTime?
+  summary            String?                    @db.Text
+  summaryVersion     Int                        @default(1)
+  metadata           Json?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  organisation       Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet?                    @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  receptionist       AIReceptionist             @relation(fields: [receptionistId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  messages           ReceptionistMessage[]
+  handoffs           ReceptionistHandoff[]
+  feedbacks          ReceptionistFeedback[]
+  bookingConfirmations BookingConfirmationState[]
+  bookingInteractions ReceptionistBookingInteraction[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, receptionistId, status])
+  @@index([organisationId, customerId])
+  @@index([organisationId, channel])
+  @@index([lastMessageAt])
+  @@map("receptionist_conversations")
+}
+
+model ReceptionistMessage {
+  id                 String                     @id @default(cuid())
+  conversationId     String
+  direction          String                     @default("INBOUND") // INBOUND, OUTBOUND
+  role               String                     // CUSTOMER, AI, SYSTEM, STAFF
+  content            String                     @db.Text
+  contentType        String                     @default("TEXT") // TEXT, STRUCTURED, TOOL_RESULT, HANDOFF, SYSTEM_EVENT
+  language           String                     @default("en")
+  status             String                     @default("DELIVERED") // SENT, DELIVERED, READ, FAILED
+  metadata           Json?                      // intent, confidence, citations, toolCalls, latency, model, provider
+  correlationId      String?
+  createdAt          DateTime                   @default(now())
+
+  conversation       ReceptionistConversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  feedbacks          ReceptionistFeedback[]
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@map("receptionist_messages")
+}
+
+model ReceptionistHandoff {
+  id                 String                     @id @default(cuid())
+  organisationId     String
+  outletId           String?
+  conversationId     String
+  receptionistId     String
+  memberProfileId    String?
+  reason             String                     // LOW_CONFIDENCE, UNKNOWN_INFORMATION, CUSTOMER_REQUESTED, COMPLEX_REQUEST, COMPLAINT, SENSITIVE_REQUEST, POLICY_EXCEPTION, TOOL_FAILURE, REPEATED_MISUNDERSTANDING
+  status             String                     @default("PENDING") // PENDING, ASSIGNED, IN_PROGRESS, RESOLVED, REJECTED
+  customerSummary    String                     @db.Text
+  suggestedAction    String?                    @db.Text
+  assignedStaffId    String?
+  resolvedAt         DateTime?
+  resolvedBy         String?
+  notes              String?                    @db.Text
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  organisation       Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet?                    @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  conversation       ReceptionistConversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  receptionist       AIReceptionist             @relation(fields: [receptionistId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile?             @relation(fields: [memberProfileId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId, status])
+  @@index([conversationId])
+  @@map("receptionist_handoffs")
+}
+
+model ReceptionistKnowledgeGap {
+  id                 String                     @id @default(cuid())
+  organisationId     String
+  outletId           String?
+  questionCategory   String
+  normalizedQuestion String                     @db.Text
+  frequency          Int                        @default(1)
+  firstSeenAt        DateTime                   @default(now())
+  lastSeenAt         DateTime                   @default(now())
+  status             String                     @default("NEW") // NEW, REVIEW_REQUIRED, RESOLVED, IGNORED
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  organisation       Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet?                    @relation(fields: [outletId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@map("receptionist_knowledge_gaps")
+}
+
+model ReceptionistFeedback {
+  id                 String                     @id @default(cuid())
+  organisationId     String
+  conversationId     String
+  messageId          String?
+  rating             String                     // THUMBS_UP, THUMBS_DOWN
+  category           String?                    // INCORRECT_INFO, OUTDATED_INFO, DIDNT_ANSWER, WANTED_HUMAN, OTHER
+  comment            String?                    @db.Text
+  createdAt          DateTime                   @default(now())
+
+  organisation       Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  conversation       ReceptionistConversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message            ReceptionistMessage?       @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([conversationId])
+  @@map("receptionist_feedbacks")
+}
+
+model BookingConfirmationState {
+  id                 String                     @id @default(cuid())
+  organisationId     String
+  outletId           String?
+  conversationId     String
+  receptionistId     String?
+  memberProfileId    String
+  classSessionId     String
+  existingBookingId  String?
+  action             String                     // CREATE_BOOKING, CANCEL_BOOKING, RESCHEDULE_BOOKING, JOIN_WAITLIST
+  confirmationToken  String                     @unique
+  status             String                     @default("PENDING") // PENDING, CONFIRMED, EXPIRED, CANCELLED, EXECUTED, FAILED
+  displayedDetails   Json?
+  expiresAt          DateTime
+  executedAt         DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  organisation       Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet?                    @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  conversation       ReceptionistConversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile              @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  classSession       ClassSession               @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, conversationId, status])
+  @@index([organisationId, memberProfileId, status])
+  @@index([organisationId, classSessionId, status])
+  @@index([organisationId, expiresAt])
+  @@map("receptionist_booking_confirmations")
+}
+
+model ReceptionistBookingInteraction {
+  id                 String                     @id @default(cuid())
+  organisationId     String
+  outletId           String?
+  conversationId     String
+  memberProfileId    String?
+  action             String                     // SEARCH, ELIGIBILITY_CHECK, CONFIRMATION_REQUEST, BOOKING_CREATED, BOOKING_FAILED, CANCELLATION, RESCHEDULE, WAITLIST_JOIN
+  classSessionId     String?
+  bookingId          String?
+  confirmationId     String?
+  status             String                     // SUCCESS, FAILED, REJECTED, EXPIRED
+  metadata           Json?
+  createdAt          DateTime                   @default(now())
+
+  organisation       Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet             Outlet?                    @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  conversation       ReceptionistConversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile?             @relation(fields: [memberProfileId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, action, createdAt])
+  @@index([conversationId])
+  @@map("receptionist_booking_interactions")
+}
+
 
 
 

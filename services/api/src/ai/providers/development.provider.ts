@@ -101,6 +101,11 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       return this.generateReactivationIntelligenceJson(contextText, userPrompt);
     }
 
+    // Check if this is the ReceptionistResponse schema
+    if (schema.properties?.requiresClarification && schema.properties?.citations && schema.properties?.handoffRecommended) {
+      return this.generateReceptionistJson(contextText, userPrompt);
+    }
+
     const result: Record<string, any> = {};
     const properties = schema.properties || {};
 
@@ -904,6 +909,285 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       confidence: 'HIGH',
       caution: 'Ensure outreach is delivered during gym operating hours and strictly respects member quiet hours.',
       sources: ['MEMBER_PROFILE', 'ATTENDANCE', 'BOOKING', 'ENGAGEMENT'],
+    };
+  }
+
+  private generateReceptionistJson(contextText: string, userPrompt: string): Record<string, any> {
+    const lowerPrompt = userPrompt.toLowerCase();
+    const lowerContext = contextText.toLowerCase();
+
+    // Extract user inquiry from structured promptContext if present
+    const inquiryMatch = userPrompt.match(/=== USER INQUIRY ===\s*([\s\S]*?)(?:###|$)/i);
+    const queryToCheck = (inquiryMatch ? inquiryMatch[1].trim() : userPrompt).toLowerCase();
+
+    // 1. Prompt Injection Defense
+    if (
+      lowerPrompt.includes('ignore previous instructions') ||
+      lowerPrompt.includes('disregard all previous') ||
+      lowerPrompt.includes('system prompt') ||
+      lowerPrompt.includes('dan mode') ||
+      lowerPrompt.includes('jailbreak') ||
+      lowerPrompt.includes('developer instructions') ||
+      lowerPrompt.includes('override your instructions')
+    ) {
+      return {
+        message:
+          'I am only able to assist with questions about our gym facilities, memberships, schedules, and policies. How can I help you with your fitness journey today?',
+        intent: 'UNKNOWN',
+        confidence: 0.99,
+        requiresClarification: false,
+        suggestedNextStep: 'Ask a question regarding gym hours, memberships, or classes.',
+        citations: [],
+        handoffRecommended: false,
+        safetyFlag: 'PROMPT_INJECTION_DETECTED',
+      };
+    }
+
+    // 2. Medical / Diagnostic Safety Disclaimer
+    if (
+      queryToCheck.includes('diagnose') ||
+      queryToCheck.includes('torn muscle') ||
+      queryToCheck.includes('severe chest pain') ||
+      queryToCheck.includes('chest pain') ||
+      queryToCheck.includes('prescribe medication') ||
+      queryToCheck.includes('injury diagnosis')
+    ) {
+      return {
+        message:
+          'I am an AI receptionist and cannot provide medical diagnoses or treatment advice. If you are experiencing acute pain or an injury, please consult a qualified healthcare professional. Our staff can also connect you with certified trainers for safe exercise modifications once you are cleared.',
+        intent: 'GENERAL_FAQ',
+        confidence: 0.98,
+        requiresClarification: false,
+        suggestedNextStep: 'Consult a medical doctor for injury evaluation.',
+        citations: [],
+        handoffRecommended: false,
+        safetyFlag: 'MEDICAL_DISCLAIMER',
+      };
+    }
+
+    // 3. Multilingual Support (Nepali)
+    const isNepali =
+      /[\u0900-\u097F]/.test(userPrompt) ||
+      queryToCheck.includes('namaste') ||
+      queryToCheck.includes('namaskar');
+
+    if (isNepali) {
+      return {
+        message:
+          'नमस्ते! FitCore मा स्वागत छ। हाम्रो जिम सम्बन्धी जानकारी, शुल्क, समय तालिका र कक्षाहरू बारे म तपाईंलाई मद्दत गर्न सक्छु। म तपाईंलाई कसरी सहयोग गर्न सक्छु?',
+        intent: 'GREETING',
+        confidence: 0.98,
+        requiresClarification: false,
+        suggestedNextStep: 'जिमको समय, सदस्यता शुल्क वा कक्षाहरू बारे सोध्नुहोस्।',
+        citations: [
+          {
+            sourceType: 'ORGANISATION_PROFILE',
+            title: 'FitCore Overview',
+            snippet: 'Authoritative organisation profile.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 4. Multi-outlet Ambiguity Check
+    // If context indicates multi-outlet organisation and no specific outlet was resolved in question
+    const hasMultipleOutlets =
+      lowerContext.includes('multiple outlets') ||
+      lowerContext.includes('outlet ambiguity') ||
+      lowerContext.includes('ambiguous_outlet') ||
+      (lowerContext.includes('downtown') && lowerContext.includes('westside') && !queryToCheck.includes('downtown') && !queryToCheck.includes('westside'));
+
+    const isLocationSpecificQuery =
+      queryToCheck.includes('hour') ||
+      queryToCheck.includes('open') ||
+      queryToCheck.includes('time') ||
+      queryToCheck.includes('parking') ||
+      queryToCheck.includes('where');
+
+    if (hasMultipleOutlets && isLocationSpecificQuery) {
+      return {
+        message:
+          'We have multiple locations available to serve you. Which location are you interested in (e.g., Downtown or Westside)?',
+        intent: 'HOURS_INQUIRY',
+        confidence: 0.95,
+        requiresClarification: true,
+        suggestedNextStep: 'Please specify which branch you are asking about.',
+        citations: [
+          {
+            sourceType: 'OUTLET',
+            title: 'Locations Directory',
+            snippet: 'Multi-outlet directory.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 5. Human Handoff / Complaint Escalation
+    if (
+      queryToCheck.includes('talk to a human') ||
+      queryToCheck.includes('speak to a person') ||
+      queryToCheck.includes('manager') ||
+      queryToCheck.includes('complaint') ||
+      queryToCheck.includes('human agent') ||
+      queryToCheck.includes('filing a complaint')
+    ) {
+      return {
+        message:
+          'I understand you would like to speak with our team. I have flagged this conversation for our front desk staff, and a team member will be with you shortly.',
+        intent: 'HUMAN_HANDOFF',
+        confidence: 0.99,
+        requiresClarification: false,
+        suggestedNextStep: 'Front desk staff notified.',
+        citations: [],
+        handoffRecommended: true,
+      };
+    }
+
+    // 6. Unknown Facility / Policy (No Hallucination, Recommend Handoff)
+    if (
+      queryToCheck.includes('swimming pool') ||
+      queryToCheck.includes('pool') ||
+      queryToCheck.includes('cryotherapy') ||
+      (queryToCheck.includes('sauna') && !lowerContext.includes('sauna')) ||
+      queryToCheck.includes('creche') ||
+      queryToCheck.includes('childcare')
+    ) {
+      return {
+        message:
+          'I checked our official facility directory and we do not have a swimming pool or childcare listed at this location. Would you like me to connect you with our front desk team for more details?',
+        intent: 'FACILITIES',
+        confidence: 0.85,
+        requiresClarification: false,
+        suggestedNextStep: 'Connect with front desk.',
+        citations: [],
+        handoffRecommended: true,
+      };
+    }
+
+    // 7. Membership / Pricing Inquiry
+    if (
+      queryToCheck.includes('membership') ||
+      queryToCheck.includes('pricing') ||
+      queryToCheck.includes('cost') ||
+      queryToCheck.includes('price') ||
+      queryToCheck.includes('fee') ||
+      queryToCheck.includes('plan')
+    ) {
+      return {
+        message:
+          'We offer flexible membership options including our Standard ($49/month) and Premium All-Access ($89/month) plans. Both include full gym floor access, locker rooms, and a complimentary wellness consultation.',
+        intent: 'PRICING_INQUIRY',
+        confidence: 0.96,
+        requiresClarification: false,
+        suggestedNextStep: 'Book a free trial or visit our front desk to sign up.',
+        citations: [
+          {
+            sourceType: 'MEMBERSHIP_PLAN',
+            title: 'Membership Plans & Pricing',
+            snippet: 'Verified active membership pricing tiers.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 8. Class Inquiry / Schedule
+    if (
+      queryToCheck.includes('class') ||
+      queryToCheck.includes('hiit') ||
+      queryToCheck.includes('yoga') ||
+      queryToCheck.includes('schedule')
+    ) {
+      return {
+        message:
+          'We offer dynamic group classes including Morning HIIT, Vinyasa Yoga, and Functional Strength. Classes can be viewed and reserved up to 7 days in advance through the FitCore mobile app.',
+        intent: 'CLASS_INQUIRY',
+        confidence: 0.95,
+        requiresClarification: false,
+        suggestedNextStep: 'View upcoming class schedule on the FitCore app.',
+        citations: [
+          {
+            sourceType: 'CLASS_TYPE',
+            title: 'Group Class Catalog',
+            snippet: 'Authoritative class descriptions and schedules.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 9. Trainer Inquiry
+    if (
+      queryToCheck.includes('trainer') ||
+      queryToCheck.includes('coach') ||
+      queryToCheck.includes('personal training') ||
+      queryToCheck.includes('pt')
+    ) {
+      return {
+        message:
+          'Our certified personal trainers specialize in progressive strength training, athletic conditioning, and injury-preventative movement. You can schedule an introductory consultation with our head coaches.',
+        intent: 'TRAINER_INQUIRY',
+        confidence: 0.95,
+        requiresClarification: false,
+        suggestedNextStep: 'Request an introductory consultation with a coach.',
+        citations: [
+          {
+            sourceType: 'TRAINER_PROFILE',
+            title: 'Trainer Profiles & Specializations',
+            snippet: 'Certified personal training staff roster.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 10. Operating Hours & Location / Outlet Resolution
+    if (
+      queryToCheck.includes('hour') ||
+      queryToCheck.includes('time') ||
+      queryToCheck.includes('open') ||
+      queryToCheck.includes('close') ||
+      queryToCheck.includes('where') ||
+      queryToCheck.includes('parking') ||
+      queryToCheck.includes('downtown') ||
+      queryToCheck.includes('westside')
+    ) {
+      return {
+        message:
+          'Our facility is open Monday to Friday from 6:00 AM to 10:00 PM, and weekends from 8:00 AM to 8:00 PM. We offer dedicated member parking and secure bicycle storage.',
+        intent: 'HOURS_INQUIRY',
+        confidence: 0.97,
+        requiresClarification: false,
+        suggestedNextStep: 'Check in with the FitCore app on arrival.',
+        citations: [
+          {
+            sourceType: 'OUTLET',
+            title: 'Operating Hours & Facilities',
+            snippet: 'Verified operating hours and parking facilities.',
+          },
+        ],
+        handoffRecommended: false,
+      };
+    }
+
+    // 11. General Greeting / Fallback
+    return {
+      message:
+        'Hello! Welcome to FitCore. I am your AI receptionist and can help you with operating hours, membership plans, class schedules, trainer profiles, and gym policies. What would you like to know today?',
+      intent: 'GREETING',
+      confidence: 0.94,
+      requiresClarification: false,
+      suggestedNextStep: 'Ask a question about memberships, hours, or classes.',
+      citations: [
+        {
+          sourceType: 'ORGANISATION_PROFILE',
+          title: 'FitCore Overview',
+          snippet: 'Authoritative organisation directory.',
+        },
+      ],
+      handoffRecommended: false,
     };
   }
 }

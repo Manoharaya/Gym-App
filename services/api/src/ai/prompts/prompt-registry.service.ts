@@ -7,6 +7,7 @@ import { ENGAGEMENT_INTELLIGENCE_PROMPT_DEFINITION } from '../features/engagemen
 import { RETENTION_INTELLIGENCE_PROMPT_DEFINITION } from '../features/retention-intelligence/prompts/retention_intelligence.v1';
 import { REACTIVATION_PROMPT_DEFINITION } from '../features/reactivation/prompts/reactivation.v1';
 import { RETENTION_AGENT_PROMPT_DEFINITION } from '../features/retention-agent/prompts/retention_agent.v1';
+import { RECEPTIONIST_PROMPT_DEFINITION } from '../features/receptionist/prompts/receptionist.v1';
 
 @Injectable()
 export class PromptRegistryService implements OnModuleInit {
@@ -330,6 +331,7 @@ export class PromptRegistryService implements OnModuleInit {
       RETENTION_INTELLIGENCE_PROMPT_DEFINITION,
       REACTIVATION_PROMPT_DEFINITION,
       RETENTION_AGENT_PROMPT_DEFINITION,
+      RECEPTIONIST_PROMPT_DEFINITION,
     ];
 
     for (const p of defaultPrompts) {
@@ -384,6 +386,8 @@ export class PromptRegistryService implements OnModuleInit {
         ? 'reactivation.v1'
         : key === 'default' && feature === 'RETENTION_AGENT'
         ? 'retention_agent.v1'
+        : key === 'default' && feature === 'RECEPTIONIST'
+        ? 'receptionist.v1'
         : key;
 
     if (version) {

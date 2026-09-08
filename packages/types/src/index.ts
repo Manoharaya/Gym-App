@@ -17,3 +17,4 @@ export * from './communications';
 export * from './retention-agent';
 export * from './retention-data-definitions';
 export * from './automation';
+export * from './receptionist';

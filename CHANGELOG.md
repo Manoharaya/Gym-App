@@ -5,6 +5,35 @@ All notable changes to the FitCore platform will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-09-08
+
+### Added - Day 31 AI Receptionist Foundation
+
+- **AI Receptionist Core Platform (`services/api/src/ai/features/receptionist/`)**:
+  - Grounded conversational intelligence operating across web chat and mobile with authoritative gym knowledge grounding.
+  - Multi-turn conversation management with `ReceptionistConversation` sessions, sequential `ReceptionistMessage` transcripts, and automatic rolling summaries via `ConversationSummaryJob`.
+  - Authoritative dual knowledge layer querying structured live gym entities (hours, membership pricing, class schedules, trainer rosters) and versioned knowledge base articles (`ReceptionistKnowledgeSource` & `ReceptionistKnowledgeVersion`).
+  - Multi-outlet ambiguity resolution: automatically sets `requiresClarification: true` when a customer asks a location-sensitive question without specifying the gym branch.
+  - Strict read-only tool guardrails (`ToolPermissionService`, `ReceptionistToolRegistry`) forbidding autonomous bookings, plan changes, cancellations, or payment charges.
+  - Comprehensive safety defense in depth (`PromptInjectionService`, `SensitiveDataFilterService`, `ResponseValidatorService`) blocking jailbreak attempts, sanitizing credit card numbers/PII, and injecting medical safety disclaimers for injury questions.
+  - Human handoff escalation queue (`ReceptionistHandoffService`) creating triaged tickets in status `PENDING` for customer complaints and complex inquiries.
+  - Knowledge gap tracking (`ReceptionistKnowledgeGap`) capturing ungrounded questions (e.g., non-existent amenities) for gym owner review.
+  - Multilingual conversational capabilities with native English and Nepali (`नमस्ते! FitCore मा स्वागत छ`) dialogue support.
+- **Database Schema & Prisma (`services/api/prisma/schema.prisma`)**:
+  - 8 new models: `AIReceptionist`, `ReceptionistKnowledgeSource`, `ReceptionistKnowledgeVersion`, `ReceptionistConversation`, `ReceptionistMessage`, `ReceptionistHandoff`, `ReceptionistKnowledgeGap`, `ReceptionistFeedback`.
+  - Associated relationships across `Organisation`, `Outlet`, and `MemberProfile`.
+- **Shared Contracts (`packages/types/src/receptionist.ts`)**:
+  - Full TypeScript definitions for receptionist configuration, channels, conversation states, handoff queues, knowledge articles, metrics, and chat DTOs.
+- **Mobile Staff Console (`apps/mobile/src/features/ai-receptionist/`)**:
+  - `ReceptionistAdminScreen`: live telemetry cards, active conversation list, interactive chat simulation sandbox, and human handoff triage queue.
+  - `receptionistService.ts` client and navigation wiring for Organization Owner and Outlet Manager roles.
+- **Testing & Quality Assurance**:
+  - 8/8 end-to-end integration tests passing (`test/receptionist.e2e-spec.ts`) validating Scenarios 98 through 105.
+  - 5/5 mobile unit tests passing (`apps/mobile/src/__tests__/receptionist.test.tsx`).
+- **Canonical Architecture Documentation & ADR**:
+  - 7 comprehensive guides in `docs/ai/receptionist/` (`architecture.md`, `knowledge.md`, `tools.md`, `security.md`, `conversations.md`, `testing.md`, `examples.md`).
+  - Architecture Decision Record `docs/decisions/ADR-023-ai-receptionist-grounded-tool-controlled-architecture.md`.
+
 ## [0.30.0] - 2026-09-08
 
 ### Added - Day 30 Automated Engagement Workflows

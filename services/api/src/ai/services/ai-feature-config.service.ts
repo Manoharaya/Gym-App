@@ -42,7 +42,8 @@ export class AIFeatureConfigService {
       feature === 'RETENTION_INTELLIGENCE' ||
       feature === 'AI_REACTIVATION' ||
       feature === 'RETENTION_AGENT' ||
-      feature === 'AUTOMATION_ASSISTANT';
+      feature === 'AUTOMATION_ASSISTANT' ||
+      feature === 'RECEPTIONIST';
 
     const isStaffOnlyFeature =
       feature === 'RETENTION_INTELLIGENCE' ||

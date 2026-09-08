@@ -13,6 +13,7 @@ import { RetentionQueueScreen, RetentionDetailScreen, RetentionAgentDashboardScr
 import { ReactivationQueueScreen, RecoveryPlanDetailScreen } from '../features/reactivation';
 import { CommunicationCenterScreen } from '../features/communication';
 import { AutomationCenterScreen } from '../features/automation';
+import { ReceptionistAdminScreen } from '../features/ai-receptionist';
 
 const Stack = createNativeStackNavigator<OrganisationOwnerStackParamList>();
 
@@ -41,6 +42,8 @@ export const OrganisationOwnerNavigator: React.FC = () => {
       <Stack.Screen name="RetentionAgentDashboard" component={RetentionAgentDashboardScreen} />
       {/* Day 30: Automated Engagement Workflows */}
       <Stack.Screen name="AutomationCenter" component={AutomationCenterScreen} />
+      {/* Day 31: AI Receptionist */}
+      <Stack.Screen name="AIReceptionist" component={ReceptionistAdminScreen} />
     </Stack.Navigator>
   );
 };

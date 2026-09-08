@@ -37,6 +37,7 @@ import { EngagementIntelligenceModule } from './ai/features/engagement-intellige
 import { RetentionIntelligenceModule } from './ai/features/retention-intelligence/retention-intelligence.module';
 import { ReactivationModule } from './ai/features/reactivation/reactivation.module';
 import { RetentionAgentModule } from './ai/features/retention-agent/retention-agent.module';
+import { ReceptionistModule } from './ai/features/receptionist/receptionist.module';
 import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
@@ -89,6 +90,7 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     RetentionIntelligenceModule,
     ReactivationModule,
     RetentionAgentModule,
+    ReceptionistModule,
     AutomationModule,
     HealthModule,
     WearablesModule,

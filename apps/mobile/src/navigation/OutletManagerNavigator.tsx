@@ -12,6 +12,7 @@ import {
 import { RetentionQueueScreen, RetentionDetailScreen, RetentionAgentDashboardScreen } from '../features/retention';
 import { ReactivationQueueScreen, RecoveryPlanDetailScreen } from '../features/reactivation';
 import { AutomationCenterScreen } from '../features/automation';
+import { ReceptionistAdminScreen } from '../features/ai-receptionist';
 
 const Stack = createNativeStackNavigator<OutletManagerStackParamList>();
 
@@ -38,6 +39,8 @@ export const OutletManagerNavigator: React.FC = () => {
       <Stack.Screen name="RetentionAgentDashboard" component={RetentionAgentDashboardScreen} />
       {/* Day 30: Automated Engagement Workflows */}
       <Stack.Screen name="AutomationCenter" component={AutomationCenterScreen} />
+      {/* Day 31: AI Receptionist */}
+      <Stack.Screen name="AIReceptionist" component={ReceptionistAdminScreen} />
     </Stack.Navigator>
   );
 };
