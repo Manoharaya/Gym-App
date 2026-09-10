@@ -43,6 +43,7 @@ import { SalesAgentModule } from './ai/features/sales-agent/sales-agent.module';
 import { LeadsModule } from './leads/leads.module';
 import { SalesPipelineModule } from './sales-pipeline/sales-pipeline.module';
 import { LeadQualificationModule } from './ai/features/lead-qualification/lead-qualification.module';
+import { FollowUpModule } from './ai/features/follow-up/follow-up.module';
 import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
@@ -102,6 +103,7 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     LeadQualificationModule,
     LeadsModule,
     SalesPipelineModule,
+    FollowUpModule,
     AutomationModule,
     HealthModule,
     WearablesModule,

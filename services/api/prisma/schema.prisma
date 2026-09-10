@@ -153,6 +153,12 @@ model Organisation {
   salesTasks                   SalesTask[]
   leadQualificationObjections  LeadQualificationObjection[]
   leadQualificationHistories   LeadQualificationHistory[]
+  followUpSequences            FollowUpSequence[]
+  followUpEnrollments          FollowUpEnrollment[]
+  followUpSuppressions         FollowUpSuppression[]
+  followUpResponses            FollowUpResponse[]
+  followUpOutcomes             FollowUpOutcome[]
+  followUpAssignments          FollowUpAssignment[]
 
   @@index([slug])
   @@index([status])
@@ -251,6 +257,8 @@ model Outlet {
   salesOpportunities           SalesOpportunity[]
   salesActivities              SalesActivity[]
   salesTasks                   SalesTask[]
+  followUpSequences            FollowUpSequence[]
+  followUpEnrollments          FollowUpEnrollment[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -4429,6 +4437,7 @@ model Communication {
   templateVersion    CommunicationTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull)
   deliveryEvents     CommunicationDeliveryEvent[]
   retentionOutreaches RetentionOutreach[]
+  followUpExecutions  FollowUpStepExecution[]
 
   @@index([organisationId, createdAt])
   @@index([recipientUserId])
@@ -5052,6 +5061,9 @@ model Lead {
   salesTasks                SalesTask[]
   qualificationObjections   LeadQualificationObjection[]
   qualificationHistories    LeadQualificationHistory[]
+  followUpEnrollments       FollowUpEnrollment[]
+  followUpResponses         FollowUpResponse[]
+  followUpSuppressions      FollowUpSuppression[]
 
   @@index([organisationId, status])
   @@index([organisationId, outletId])
@@ -5724,6 +5736,7 @@ model SalesOpportunity {
   stageHistories        SalesStageHistory[]
   activities            SalesActivity[]
   tasks                 SalesTask[]
+  followUpEnrollments   FollowUpEnrollment[]
 
   @@index([organisationId, currentStage])
   @@index([organisationId, outletId])
@@ -5819,6 +5832,228 @@ model SalesTask {
   @@index([assignedStaffId, status])
   @@map("sales_tasks")
 }
+
+// ============================================================================
+// DAY 39 — AUTOMATED FOLLOW-UP & MULTI-CHANNEL SALES SEQUENCES
+// ============================================================================
+
+model FollowUpSequence {
+  id              String                    @id @default(cuid())
+  organisationId  String
+  outletId        String?
+  name            String
+  description     String?                   @db.Text
+  sequenceType    String                    // LEAD_FOLLOW_UP, MISSED_CALL, WEB_ENQUIRY, TRIAL_FOLLOW_UP, TOUR_FOLLOW_UP, QUALIFIED_LEAD, OFFER_FOLLOW_UP, NO_RESPONSE, CALLBACK, REENGAGEMENT, STAFF_HANDOFF, POST_CONVERSATION, CUSTOM
+  status          String                    @default("DRAFT") // DRAFT, ACTIVE, PAUSED, ARCHIVED
+  triggerType     String                    @default("EVENT_DRIVEN") // EVENT_DRIVEN, MANUAL, STAGE_CHANGE, INQUIRY
+  activeVersionId String?
+  createdBy       String?
+  updatedBy       String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  organisation    Organisation              @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?                   @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  versions        FollowUpSequenceVersion[]
+  enrollments     FollowUpEnrollment[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, sequenceType])
+  @@map("follow_up_sequences")
+}
+
+model FollowUpSequenceVersion {
+  id            String               @id @default(cuid())
+  sequenceId    String
+  version       Int                  @default(1)
+  status        String               @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
+  configuration Json                 // { cooldownHours, maxFollowUpsPerWeek, quietHoursStart, quietHoursEnd, timezone, stopConditions: [] }
+  createdBy     String?
+  createdAt     DateTime             @default(now())
+  publishedAt   DateTime?
+
+  sequence      FollowUpSequence     @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  steps         FollowUpStep[]
+  enrollments   FollowUpEnrollment[]
+
+  @@unique([sequenceId, version])
+  @@index([sequenceId, status])
+  @@map("follow_up_sequence_versions")
+}
+
+model FollowUpStep {
+  id                 String                  @id @default(cuid())
+  sequenceVersionId  String
+  stepOrder          Int                     // 1, 2, 3, ...
+  name               String
+  delayMinutes       Int                     @default(0) // 0 (Day 0), 1440 (Day 1), 4320 (Day 3), 10080 (Day 7), custom
+  channel            String                  // EMAIL, SMS, WHATSAPP, PUSH, IN_APP, VOICE
+  messageMode        String                  @default("STATIC_TEMPLATE") // STATIC_TEMPLATE, PERSONALIZED_TEMPLATE, AI_ASSISTED
+  templateId         String?
+  promptId           String?
+  requiresApproval   Boolean                 @default(false)
+  stopOnReply        Boolean                 @default(true)
+  stopOnBooking      Boolean                 @default(true)
+  stopOnConversion   Boolean                 @default(true)
+  stopOnStaffHandoff Boolean                 @default(true)
+  status             String                  @default("ACTIVE") // ACTIVE, INACTIVE
+  configuration      Json?                   // fallbackChannel, allowedVariables, aiContextRules
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  sequenceVersion    FollowUpSequenceVersion @relation(fields: [sequenceVersionId], references: [id], onDelete: Cascade)
+  executions         FollowUpStepExecution[]
+
+  @@unique([sequenceVersionId, stepOrder])
+  @@index([sequenceVersionId, status])
+  @@map("follow_up_steps")
+}
+
+model FollowUpEnrollment {
+  id                String                  @id @default(cuid())
+  organisationId    String
+  outletId          String?
+  leadId            String?
+  opportunityId     String?
+  memberId          String?
+  sequenceId        String
+  sequenceVersionId String
+  status            String                  @default("ACTIVE") // PENDING, ACTIVE, PAUSED, COMPLETED, STOPPED, CANCELLED, EXPIRED, FAILED
+  currentStep       Int                     @default(1)
+  enrolledAt        DateTime                @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  pausedAt          DateTime?
+  nextExecutionAt   DateTime?
+  lastExecutionAt   DateTime?
+  stopReason        String?                 // CUSTOMER_REPLIED, CUSTOMER_BOOKED, CUSTOMER_CONVERTED, STAFF_HANDOFF, OPTED_OUT, CONSENT_WITHDRAWN, SEQUENCE_COMPLETED, MANUAL_STOP
+  createdBy         String?
+  metadata          Json?
+
+  organisation      Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet            Outlet?                 @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  lead              Lead?                   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  opportunity       SalesOpportunity?       @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  sequence          FollowUpSequence        @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  sequenceVersion   FollowUpSequenceVersion @relation(fields: [sequenceVersionId], references: [id], onDelete: Cascade)
+  executions        FollowUpStepExecution[]
+  responses         FollowUpResponse[]
+  outcomes          FollowUpOutcome[]
+  assignments       FollowUpAssignment[]
+
+  @@index([organisationId, status, nextExecutionAt])
+  @@index([leadId, status])
+  @@index([opportunityId, status])
+  @@index([sequenceId, status])
+  @@map("follow_up_enrollments")
+}
+
+model FollowUpStepExecution {
+  id              String             @id @default(cuid())
+  enrollmentId    String
+  stepId          String
+  organisationId  String
+  status          String             @default("PENDING") // PENDING, PENDING_APPROVAL, APPROVED, EXECUTING, SUCCESS, TRANSIENT_FAILURE, PERMANENT_FAILURE, SUPPRESSED, CANCELLED, SKIPPED
+  executionKey    String             @unique // Deterministic: ${organisationId}_${enrollmentId}_${stepId}
+  channel         String
+  communicationId String?
+  scheduledAt     DateTime
+  executedAt      DateTime?
+  attemptCount    Int                @default(0)
+  maxAttempts     Int                @default(3)
+  errorDetails    String?            @db.Text
+  metadata        Json?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  enrollment      FollowUpEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  step            FollowUpStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  communication   Communication?     @relation(fields: [communicationId], references: [id], onDelete: SetNull)
+
+  @@index([enrollmentId, status])
+  @@index([organisationId, status, scheduledAt])
+  @@map("follow_up_step_executions")
+}
+
+model FollowUpSuppression {
+  id             String       @id @default(cuid())
+  organisationId String
+  leadId         String?
+  memberId       String?
+  channel        String?
+  reason         String       // OPTOUT, CONSENT_WITHDRAWN, INVALID_CHANNEL, CUSTOMER_REQUESTED, STAFF_SUPPRESSED, COOLDOWN, FREQUENCY_EXCEEDED, QUIET_HOURS, CONVERTED, BOOKED, HANDOFF
+  activeUntil    DateTime?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, leadId])
+  @@index([organisationId, reason])
+  @@map("follow_up_suppressions")
+}
+
+model FollowUpResponse {
+  id             String             @id @default(cuid())
+  organisationId String
+  enrollmentId   String
+  leadId         String?
+  responseType   String             // REPLIED, NO_RESPONSE, BOOKED, CANCELLED, TOUR_BOOKED, TRIAL_BOOKED, CONVERTED, REQUESTED_HUMAN, OPTED_OUT, INVALID, OTHER
+  channel        String
+  rawContent     String?            @db.Text
+  referenceId    String?
+  source         String             @default("INBOUND_COMMUNICATION") // INBOUND_COMMUNICATION, WEBHOOK, STAFF_LOGGED, SYSTEM_EVENT
+  classification String?
+  confidence     Float?
+  receivedAt     DateTime           @default(now())
+
+  organisation   Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  enrollment     FollowUpEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lead           Lead?              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId, receivedAt])
+  @@index([organisationId, responseType])
+  @@map("follow_up_responses")
+}
+
+model FollowUpOutcome {
+  id             String             @id @default(cuid())
+  organisationId String
+  enrollmentId   String
+  outcomeType    String             // NO_RESPONSE, ENGAGED, BOOKING_CREATED, TRIAL_BOOKED, TOUR_BOOKED, HUMAN_HANDOFF, QUALIFIED, CONVERTED, LOST, OPTED_OUT, SEQUENCE_COMPLETED, STOPPED
+  attribution    String             // conversion_following_follow_up, booking_following_follow_up
+  metadata       Json?
+  recordedAt     DateTime           @default(now())
+
+  organisation   Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  enrollment     FollowUpEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, outcomeType])
+  @@index([enrollmentId])
+  @@map("follow_up_outcomes")
+}
+
+model FollowUpAssignment {
+  id              String             @id @default(cuid())
+  organisationId  String
+  enrollmentId    String
+  stepExecutionId String?
+  staffId         String?
+  assignmentType  String             @default("LEAD_OWNER") // UNASSIGNED, LEAD_OWNER, OPPORTUNITY_OWNER, TRAINER, RECEPTION, OUTLET_MANAGER, SALES_ROLE, SPECIFIC_STAFF
+  status          String             @default("PENDING") // PENDING, ACCEPTED, COMPLETED
+  assignedAt      DateTime           @default(now())
+  completedAt     DateTime?
+
+  organisation    Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  enrollment      FollowUpEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([staffId, status])
+  @@map("follow_up_assignments")
+}
+
 
 
 
