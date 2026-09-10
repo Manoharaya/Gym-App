@@ -1,0 +1,42 @@
+/**
+ * FitCore — Day 43: Accounting Constants & Defaults
+ */
+
+export const ACCOUNTING_DEFAULTS = {
+  OAUTH_STATE_TTL_SECONDS: 600, // 10 minutes
+  TOKEN_REFRESH_WINDOW_SECONDS: 300, // 5 minutes before expiry
+  SYNC_LOCK_TTL_SECONDS: 300, // 5 minutes
+  BATCH_SIZE: 50,
+  MAX_RETRY_ATTEMPTS: 3,
+  RETRY_BACKOFF_BASE_MS: 2000,
+} as const;
+
+export const ACCOUNTING_AUDIT_ACTIONS = {
+  CONNECTION_CREATED: 'ACCOUNTING_CONNECTION_CREATED',
+  CONNECTION_DISCONNECTED: 'ACCOUNTING_CONNECTION_DISCONNECTED',
+  MAPPING_CREATED: 'ACCOUNTING_MAPPING_CREATED',
+  MAPPING_UPDATED: 'ACCOUNTING_MAPPING_UPDATED',
+  MAPPING_DELETED: 'ACCOUNTING_MAPPING_DELETED',
+  SYNC_TRIGGERED: 'ACCOUNTING_SYNC_TRIGGERED',
+  RECORD_SYNCED: 'ACCOUNTING_RECORD_SYNCED',
+  RECORD_FAILED: 'ACCOUNTING_RECORD_FAILED',
+  RECONCILIATION_RUN: 'ACCOUNTING_RECONCILIATION_RUN',
+  CONFLICT_DETECTED: 'ACCOUNTING_CONFLICT_DETECTED',
+  CONFLICT_RESOLVED: 'ACCOUNTING_CONFLICT_RESOLVED',
+  EXPORT_REQUESTED: 'ACCOUNTING_EXPORT_REQUESTED',
+} as const;
+
+export const ACCOUNTING_EVENTS = {
+  CONNECTION_CREATED: 'accounting.connection.created',
+  CONNECTION_UPDATED: 'accounting.connection.updated',
+  CONNECTION_DISCONNECTED: 'accounting.connection.disconnected',
+  SYNC_STARTED: 'accounting.sync.started',
+  SYNC_COMPLETED: 'accounting.sync.completed',
+  SYNC_FAILED: 'accounting.sync.failed',
+  RECORD_SYNCED: 'accounting.record.synced',
+  RECORD_FAILED: 'accounting.record.failed',
+  RECONCILIATION_STARTED: 'accounting.reconciliation.started',
+  RECONCILIATION_COMPLETED: 'accounting.reconciliation.completed',
+  CONFLICT_DETECTED: 'accounting.conflict.detected',
+  CONFLICT_RESOLVED: 'accounting.conflict.resolved',
+} as const;
