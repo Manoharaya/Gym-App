@@ -78,13 +78,19 @@ export interface CurrencyFinancialSummaryDto {
   grossRevenue: number;
   refundsMinor: number;
   refunds: number;
+  totalRefundsMinor?: number;
+  totalRefunds?: number;
+  refundRate?: number;
   netRevenueMinor: number;
   netRevenue: number;
   successfulPayments: number;
   failedPayments: number;
   paymentSuccessRate: number | null;
+  successRate?: number | null;
   outstandingInvoicesMinor: number;
   outstandingInvoices: number;
+  outstandingBalanceMinor?: number;
+  outstandingBalance?: number;
   overdueInvoicesCount: number;
   overdueInvoicesMinor: number;
   overdueInvoices: number;
@@ -145,6 +151,8 @@ export interface OutletFinancialPerformanceDto {
   grossRevenue: number;
   refundsMinor: number;
   refunds: number;
+  totalRefundsMinor?: number;
+  totalRefunds?: number;
   netRevenueMinor: number;
   netRevenue: number;
   membershipRevenueMinor: number;
@@ -183,6 +191,7 @@ export interface FinancialTransactionDrillDownDto {
   type: FinancialTransactionType;
   paymentMethodType: string;
   memberId?: string;
+  memberProfileId?: string;
   memberName?: string;
   memberEmail?: string;
   invoiceId?: string;

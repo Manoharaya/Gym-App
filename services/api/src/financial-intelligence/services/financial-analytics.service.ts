@@ -828,6 +828,7 @@ export class FinancialAnalyticsService {
         type,
         paymentMethodType: r.paymentMethodType,
         memberId: r.memberProfileId,
+        memberProfileId: r.memberProfileId,
         memberName: user ? `${user.firstName} ${user.lastName}` : undefined,
         memberEmail: user?.email,
         invoiceId: r.invoiceId || undefined,

@@ -23,6 +23,15 @@ export class FinancialMetricService {
   }
 
   /**
+   * Calculates refund rate percentage with zero-division safety.
+   */
+  calculateRefundRate(grossMinor: number, refundMinor: number): number {
+    if (!grossMinor || grossMinor <= 0) return 0;
+    const rate = (refundMinor / grossMinor) * 100;
+    return Math.round(rate * 100) / 100;
+  }
+
+  /**
    * Safe percentage change calculation avoiding Infinity% and NaN%.
    * Returns null if previous period has zero base without meaningful movement.
    */
