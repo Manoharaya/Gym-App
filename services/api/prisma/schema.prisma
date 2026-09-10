@@ -159,6 +159,8 @@ model Organisation {
   followUpResponses            FollowUpResponse[]
   followUpOutcomes             FollowUpOutcome[]
   followUpAssignments          FollowUpAssignment[]
+  financialTransactionReferences FinancialTransactionReference[]
+  financialDailySummaries      FinancialDailySummary[]
 
   @@index([slug])
   @@index([status])
@@ -259,6 +261,8 @@ model Outlet {
   salesTasks                   SalesTask[]
   followUpSequences            FollowUpSequence[]
   followUpEnrollments          FollowUpEnrollment[]
+  financialTransactionReferences FinancialTransactionReference[]
+  financialDailySummaries      FinancialDailySummary[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -6052,6 +6056,70 @@ model FollowUpAssignment {
   @@index([organisationId, status])
   @@index([staffId, status])
   @@map("follow_up_assignments")
+}
+
+// ==========================================
+// DAY 41: FINANCIAL INTELLIGENCE FOUNDATION
+// ==========================================
+
+model FinancialTransactionReference {
+  id                    String        @id @default(cuid())
+  organisationId        String
+  outletId              String?
+  memberProfileId       String?
+  invoiceId             String?
+  paymentTransactionId  String?       @unique
+  paymentRefundId       String?       @unique
+  memberMembershipId    String?
+  transactionType       String        // MEMBERSHIP_PAYMENT, MEMBERSHIP_RENEWAL, MEMBERSHIP_UPGRADE, MEMBERSHIP_DOWNGRADE, PERSONAL_TRAINING, CLASS, RETAIL, OTHER_SERVICE, MANUAL_PAYMENT, REFUND, ADJUSTMENT, OTHER
+  status                String        // PENDING, PROCESSING, REQUIRES_ACTION, AUTHORIZED, SUCCEEDED, FAILED, CANCELLED, REFUNDED, PARTIALLY_REFUNDED, DISPUTED
+  amountMinor           Int
+  currency              String        @default("AUD")
+  transactionDate       DateTime
+  source                String        // PAYMENT_TRANSACTION, PAYMENT_REFUND, INVOICE, MANUAL
+  sourceReferenceId     String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  organisation          Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, transactionDate])
+  @@index([organisationId, currency])
+  @@index([outletId, transactionDate])
+  @@index([status])
+  @@index([transactionType])
+  @@map("financial_transaction_references")
+}
+
+model FinancialDailySummary {
+  id                     String        @id @default(cuid())
+  organisationId         String
+  outletId               String?
+  date                   DateTime
+  currency               String        @default("AUD")
+  grossRevenueMinor      Int           @default(0)
+  refundAmountMinor      Int           @default(0)
+  netRevenueMinor        Int           @default(0)
+  paymentCount           Int           @default(0)
+  successfulPaymentCount Int           @default(0)
+  failedPaymentCount     Int           @default(0)
+  invoiceCount           Int           @default(0)
+  paidInvoiceCount       Int           @default(0)
+  overdueInvoiceCount    Int           @default(0)
+  outstandingAmountMinor Int           @default(0)
+  membershipRevenueMinor Int           @default(0)
+  dataVersion            Int           @default(1)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  organisation           Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                 Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+
+  @@unique([organisationId, outletId, date, currency])
+  @@index([organisationId, date])
+  @@index([outletId, date])
+  @@map("financial_daily_summaries")
 }
 
 

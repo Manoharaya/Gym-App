@@ -29,9 +29,7 @@ interface CategoryToggle {
 
 export const CommunicationPreferencesScreen: React.FC = () => {
   const navigation = useNavigation();
-  const [loading, setLoading] = useState<boolean>(false);
-  const [saving, setSaving] = useState<boolean>(false);
-  const [marketingConsentActive, setMarketingConsentActive] = useState<boolean>(true);
+  const [loading] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Category preferences mapped to channels
@@ -71,13 +69,16 @@ export const CommunicationPreferencesScreen: React.FC = () => {
   });
 
   const toggleChannel = (cat: string, chan: CommunicationChannel) => {
-    setCategories((prev) => ({
-      ...prev,
-      [cat]: {
-        ...prev[cat],
-        [chan]: !prev[cat]?.[chan],
-      },
-    }));
+    setCategories((prev) => {
+      const currentCat = prev[cat] || ({} as Record<CommunicationChannel, boolean>);
+      return {
+        ...prev,
+        [cat]: {
+          ...currentCat,
+          [chan]: !currentCat[chan],
+        } as Record<CommunicationChannel, boolean>,
+      };
+    });
     setSuccessMsg('Preferences updated');
     setTimeout(() => setSuccessMsg(null), 2500);
   };
@@ -99,7 +100,7 @@ export const CommunicationPreferencesScreen: React.FC = () => {
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Icon name="arrow-left" size={24} color={themeColors.textPrimary} />
+          <Icon name="chevron-left" size={24} color={themeColors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Communication Preferences</Text>
         <View style={{ width: 24 }} />
@@ -187,7 +188,7 @@ export const CommunicationPreferencesScreen: React.FC = () => {
         <Card style={styles.categoryCard}>
           <View style={styles.categoryHeader}>
             <View style={styles.categoryIconWrap}>
-              <Icon name="rotate-ccw" size={20} color="#10B981" />
+              <Icon name="refresh" size={20} color="#10B981" />
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <Text style={styles.categoryTitle}>Routine Re-engagement</Text>
@@ -215,7 +216,7 @@ export const CommunicationPreferencesScreen: React.FC = () => {
         <Card style={styles.categoryCard}>
           <View style={styles.categoryHeader}>
             <View style={styles.categoryIconWrap}>
-              <Icon name="tag" size={20} color="#F59E0B" />
+              <Icon name="card" size={20} color="#F59E0B" />
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <Text style={styles.categoryTitle}>Promotions & Events</Text>

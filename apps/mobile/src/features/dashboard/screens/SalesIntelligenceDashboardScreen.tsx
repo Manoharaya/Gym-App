@@ -206,15 +206,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerCategory: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.weights.bold,
-    color: themeColors.muted,
+    ...typography.caption,
+    color: themeColors.textMuted,
     letterSpacing: 1,
+    fontWeight: '700',
   },
   headerTitle: {
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.weights.bold,
+    ...typography.h3,
     color: themeColors.text,
+    fontWeight: '800',
     marginTop: 2,
   },
   rangeSelector: {
@@ -234,13 +234,13 @@ const styles = StyleSheet.create({
     backgroundColor: themeColors.primary,
   },
   rangeTabText: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.weights.medium,
-    color: themeColors.muted,
+    ...typography.caption,
+    color: themeColors.textMuted,
+    fontWeight: '500',
   },
   rangeTabTextActive: {
     color: themeColors.text,
-    fontFamily: typography.weights.bold,
+    fontWeight: '700',
   },
   container: {
     padding: spacing.md,
@@ -265,14 +265,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   sectionHeading: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.weights.bold,
+    ...typography.bodyBold,
     color: themeColors.text,
     letterSpacing: 0.5,
   },
   sectionSubheading: {
-    fontSize: typography.sizes.xs,
-    color: themeColors.muted,
+    ...typography.caption,
+    color: themeColors.textMuted,
     marginTop: 2,
   },
   divider: {
@@ -290,14 +289,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   funnelStageName: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.weights.medium,
+    ...typography.caption,
     color: themeColors.text,
+    fontWeight: '500',
   },
   funnelStageCount: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.weights.bold,
+    ...typography.caption,
     color: themeColors.primary,
+    fontWeight: '700',
   },
   funnelBarBackground: {
     height: 8,
@@ -312,7 +311,7 @@ const styles = StyleSheet.create({
   },
   stageConvRate: {
     fontSize: 10,
-    color: themeColors.muted,
+    color: themeColors.textMuted,
     marginTop: 2,
     textAlign: 'right',
   },
@@ -330,13 +329,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.weights.bold,
+    ...typography.h2,
     color: themeColors.text,
+    fontWeight: '700',
   },
   statLabel: {
-    fontSize: typography.sizes.xs,
-    color: themeColors.muted,
+    ...typography.caption,
+    color: themeColors.textMuted,
     marginTop: 2,
   },
   lossList: {
@@ -350,7 +349,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   lossReason: {
-    fontSize: typography.sizes.sm,
+    ...typography.bodySmall,
     color: themeColors.text,
   },
 });
