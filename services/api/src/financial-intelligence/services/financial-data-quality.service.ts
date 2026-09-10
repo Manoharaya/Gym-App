@@ -104,6 +104,10 @@ export class FinancialDataQualityService {
     return {
       rating,
       overallScore,
+      score: overallScore,
+      unattributedTransactions: missingOutletCount,
+      negativeAmountsDetected: 0,
+      overRefundsDetected: 0,
       metrics: {
         missingOutletCount,
         missingOutletPercentage,

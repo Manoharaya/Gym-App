@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  Post,
+  HttpCode,
   Query,
   Headers,
   UseGuards,
@@ -181,7 +183,7 @@ export class FinancialIntelligenceController {
     return this.service.getRevenueTrends(user, filters);
   }
 
-  @Get('transactions')
+  @Get(['transactions', 'drill-down'])
   async getTransactions(
     @Headers('x-organisation-id') orgHeader: string,
     @Headers('x-user-id') userHeader: string,
@@ -193,7 +195,7 @@ export class FinancialIntelligenceController {
     return this.service.getTransactionsDrillDown(user, filters);
   }
 
-  @Get('metric-definitions')
+  @Get(['metric-definitions', 'definitions'])
   getMetricDefinitions() {
     return this.service.getMetricDefinitions();
   }
@@ -219,6 +221,18 @@ export class FinancialIntelligenceController {
   ) {
     const user = this.resolveUser(orgHeader, userHeader, roleHeader, outletHeader);
     return this.service.runReconciliation(user, currency);
+  }
+
+  @Post('reconciliation/sync')
+  @HttpCode(200)
+  async syncReconciliation(
+    @Headers('x-organisation-id') orgHeader: string,
+    @Headers('x-user-id') userHeader: string,
+    @Headers('x-role') roleHeader: string,
+    @Headers('x-outlet-id') outletHeader: string,
+  ) {
+    const user = this.resolveUser(orgHeader, userHeader, roleHeader, outletHeader);
+    return this.service.syncProjections(user);
   }
 
   @Get('context')
@@ -250,7 +264,7 @@ export class FinancialIntelligenceController {
     return res.status(200).send(csv);
   }
 
-  @Get('me')
+  @Get(['me', 'member/my-finances'])
   async getMemberSelfHistory(
     @Headers('x-organisation-id') orgHeader: string,
     @Headers('x-user-id') userHeader: string,

@@ -146,9 +146,18 @@ export class FinancialIntelligenceService {
     currency?: string,
   ): Promise<FinancialReconciliationReportDto> {
     const scope = FinancialIntelligencePermissions.resolveScope(user);
-    // Ensure sync before checking
-    await this.reconciliationService.syncTransactionProjections(scope.organisationId);
     return this.reconciliationService.runReconciliation(scope, currency || 'AUD');
+  }
+
+  /**
+   * 8b. Trigger Projection Synchronization
+   */
+  async syncProjections(
+    user: FinancialRequestUser,
+  ): Promise<{ success: boolean; syncedCount: number }> {
+    const scope = FinancialIntelligencePermissions.resolveScope(user);
+    const result = await this.reconciliationService.syncTransactionProjections(scope.organisationId);
+    return { success: true, ...result };
   }
 
   /**

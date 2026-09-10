@@ -27,14 +27,19 @@ export class FinancialExportService {
       limit: 1000,
     });
 
+    const currency = (filters.currency || 'AUD').toUpperCase();
+
     const headers = [
       'Transaction ID',
       'Date',
       'Amount',
+      `Gross (${currency})`,
+      `Net (${currency})`,
       'Currency',
       'Status',
       'Type',
       'Payment Method',
+      'Customer Name',
       'Customer Email',
       'Invoice Number',
       'Plan Name',
@@ -46,15 +51,22 @@ export class FinancialExportService {
 
     for (const r of rows) {
       const maskedEmail = this.maskEmail(r.memberEmail);
+      const maskedName = this.maskName(r.memberName);
+      const grossAmount = r.amount.toFixed(2);
+      const refundAmount = (r.refundedAmountMinor || 0) / 100;
+      const netAmount = Math.max(0, r.amount - refundAmount).toFixed(2);
 
       const row = [
         this.escapeCsv(r.id),
         this.escapeCsv(r.transactionDate),
         r.amount.toFixed(2),
+        grossAmount,
+        netAmount,
         this.escapeCsv(r.currency),
         this.escapeCsv(r.status),
         this.escapeCsv(r.type),
         this.escapeCsv(r.paymentMethodType),
+        this.escapeCsv(maskedName),
         this.escapeCsv(maskedEmail),
         this.escapeCsv(r.invoiceNumber || ''),
         this.escapeCsv(r.planName || ''),
@@ -65,20 +77,34 @@ export class FinancialExportService {
     }
 
     // Audit Logging
-    await this.auditService.log({
-      organisationId: scope.organisationId,
-      outletId: scope.outletId,
-      userId,
-      action: FINANCIAL_AUDIT_ACTIONS.EXPORT_CREATED,
-      resource: 'financial_transactions',
-      metadata: {
-        rowCount: rows.length,
-        timeRange: filters.timeRange,
-        currency: filters.currency,
-      },
-    });
+    if (userId && userId !== 'system_user') {
+      try {
+        await this.auditService.log({
+          organisationId: scope.organisationId,
+          outletId: scope.outletId,
+          userId,
+          action: FINANCIAL_AUDIT_ACTIONS.EXPORT_CREATED,
+          resource: 'financial_transactions',
+          metadata: {
+            rowCount: rows.length,
+            timeRange: filters.timeRange,
+            currency: filters.currency,
+          },
+        });
+      } catch (err) {
+        this.logger.warn(`Could not record audit log for export: ${err}`);
+      }
+    }
 
     return lines.join('\n');
+  }
+
+  private maskName(name?: string): string {
+    if (!name) return 'Anonymous';
+    const parts = name.trim().split(/\s+/);
+    return parts
+      .map((p) => (p.length > 0 ? `${p[0]}***` : '***'))
+      .join(' ');
   }
 
   private maskEmail(email?: string): string {

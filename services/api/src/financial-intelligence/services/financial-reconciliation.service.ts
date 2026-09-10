@@ -127,6 +127,7 @@ export class FinancialReconciliationService {
       authoritativeGrossAmountMinor: authGross,
       projectedTransactionCount: projCount,
       projectedGrossAmountMinor: projGross,
+      unprojectedTransactions: Math.max(0, authCount - projCount),
       discrepancyCount: discrepancies.length,
       discrepancies,
       status: discrepancies.length === 0 ? 'IN_SYNC' : 'DISCREPANCIES_DETECTED',

@@ -84,15 +84,15 @@ export class FinancialMetricService {
     const { missingOutletPercentage, failedPaymentRate, unprojectedCount } = params;
 
     if (unprojectedCount > 10 || missingOutletPercentage > 40 || failedPaymentRate > 25) {
-      return 'NEEDS_ATTENTION';
+      return 'DEGRADED';
     }
-    if (unprojectedCount > 0 || missingOutletPercentage > 15 || failedPaymentRate > 10) {
-      return 'LOW';
+    if (unprojectedCount > 0 || missingOutletPercentage > 25 || failedPaymentRate > 15) {
+      return 'ACCEPTABLE';
     }
     if (missingOutletPercentage > 5) {
-      return 'MEDIUM';
+      return 'GOOD';
     }
-    return 'HIGH';
+    return 'EXCELLENT';
   }
 
   /**

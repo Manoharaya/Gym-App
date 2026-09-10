@@ -376,13 +376,19 @@ export class FinancialAnalyticsService {
       grossRevenue: this.metricService.minorToMajor(grossMinor),
       refundsMinor,
       refunds: this.metricService.minorToMajor(refundsMinor),
+      totalRefundsMinor: refundsMinor,
+      totalRefunds: this.metricService.minorToMajor(refundsMinor),
+      refundRate: this.metricService.calculateRefundRate(grossMinor, refundsMinor) || 0,
       netRevenueMinor: netMinor,
       netRevenue: this.metricService.minorToMajor(netMinor),
       successfulPayments: succeededTxCount,
       failedPayments: failedTxCount,
       paymentSuccessRate: this.metricService.calculateSuccessRate(succeededTxCount, failedTxCount),
+      successRate: this.metricService.calculateSuccessRate(succeededTxCount, failedTxCount) || 100,
       outstandingInvoicesMinor: outstandingMinor,
       outstandingInvoices: this.metricService.minorToMajor(outstandingMinor),
+      outstandingBalanceMinor: outstandingMinor,
+      outstandingBalance: this.metricService.minorToMajor(outstandingMinor),
       overdueInvoicesCount,
       overdueInvoicesMinor: overdueMinor,
       overdueInvoices: this.metricService.minorToMajor(overdueMinor),
@@ -535,6 +541,7 @@ export class FinancialAnalyticsService {
       },
       include: {
         memberMembership: { select: { originOutletId: true } },
+        refunds: { select: { amountMinor: true, status: true } },
       },
     });
 
@@ -565,7 +572,7 @@ export class FinancialAnalyticsService {
     // Unattributed bucket for transactions not linked to an outlet
     const UNATTRIBUTED_KEY = 'UNATTRIBUTED';
     outletStats.set(UNATTRIBUTED_KEY, {
-      outletName: 'Unattributed',
+      outletName: 'Unattributed / Cross-Outlet',
       grossMinor: 0,
       refundMinor: 0,
       membershipMinor: 0,
@@ -586,6 +593,13 @@ export class FinancialAnalyticsService {
         if (tx.memberMembershipId) {
           stats.membershipMinor += tx.amountMinor;
         }
+        if (tx.refunds) {
+          for (const ref of tx.refunds) {
+            if (ref.status === 'SUCCEEDED') {
+              stats.refundMinor += ref.amountMinor;
+            }
+          }
+        }
       } else if (tx.status === 'FAILED') {
         stats.failed++;
       }
@@ -605,6 +619,8 @@ export class FinancialAnalyticsService {
         grossRevenue: this.metricService.minorToMajor(stats.grossMinor),
         refundsMinor: stats.refundMinor,
         refunds: this.metricService.minorToMajor(stats.refundMinor),
+        totalRefundsMinor: stats.refundMinor,
+        totalRefunds: this.metricService.minorToMajor(stats.refundMinor),
         netRevenueMinor: netMinor,
         netRevenue: this.metricService.minorToMajor(netMinor),
         membershipRevenueMinor: stats.membershipMinor,
@@ -746,9 +762,15 @@ export class FinancialAnalyticsService {
       };
     }
     if (scope.roleScope === 'SELF' && scope.memberProfileId) {
-      where.memberProfileId = scope.memberProfileId;
+      where.OR = [
+        { memberProfileId: scope.memberProfileId },
+        { memberProfile: { userId: scope.memberProfileId } },
+      ];
     } else if (filters.memberId) {
-      where.memberProfileId = filters.memberId;
+      where.OR = [
+        { memberProfileId: filters.memberId },
+        { memberProfile: { userId: filters.memberId } },
+      ];
     }
 
     if (filters.search) {
@@ -819,7 +841,7 @@ export class FinancialAnalyticsService {
       };
     });
 
-    return { data, total };
+    return { transactions: data, data, total } as any;
   }
 
   /**
@@ -844,12 +866,18 @@ export class FinancialAnalyticsService {
       where.status = filters.invoiceStatus;
     }
     if (scope.roleScope === 'SELF' && scope.memberProfileId) {
-      where.memberProfileId = scope.memberProfileId;
+      where.OR = [
+        { memberProfileId: scope.memberProfileId },
+        { memberProfile: { userId: scope.memberProfileId } },
+      ];
     } else if (filters.memberId) {
-      where.memberProfileId = filters.memberId;
+      where.OR = [
+        { memberProfileId: filters.memberId },
+        { memberProfile: { userId: filters.memberId } },
+      ];
     }
 
-    const [total, rows] = await Promise.all([
+    const [total, rows, paidCount, openCount, debtAgg] = await Promise.all([
       this.prisma.invoice.count({ where }),
       this.prisma.invoice.findMany({
         where,
@@ -864,6 +892,12 @@ export class FinancialAnalyticsService {
         skip: filters.offset || 0,
         take: filters.limit || 50,
         orderBy: { dueDate: 'desc' },
+      }),
+      this.prisma.invoice.count({ where: { ...where, status: 'PAID' } }),
+      this.prisma.invoice.count({ where: { ...where, status: 'OPEN' } }),
+      this.prisma.invoice.aggregate({
+        where: { ...where, status: { in: ['OPEN', 'PAST_DUE', 'PARTIALLY_PAID'] } },
+        _sum: { amountDueMinor: true },
       }),
     ]);
 
@@ -892,7 +926,18 @@ export class FinancialAnalyticsService {
       };
     });
 
-    return { data, total };
+    const totalOutstandingMinor = debtAgg._sum.amountDueMinor || 0;
+
+    return {
+      totalInvoices: total,
+      paidInvoices: paidCount,
+      openInvoices: openCount,
+      totalOutstandingMinor,
+      totalOutstanding: this.metricService.minorToMajor(totalOutstandingMinor),
+      invoices: data,
+      data,
+      total,
+    } as any;
   }
 
   /**

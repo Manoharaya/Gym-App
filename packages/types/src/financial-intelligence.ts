@@ -54,6 +54,10 @@ export type FinancialInvoiceStatus =
   | 'UNCOLLECTIBLE';
 
 export type FinancialDataQualityRating =
+  | 'EXCELLENT'
+  | 'GOOD'
+  | 'ACCEPTABLE'
+  | 'DEGRADED'
   | 'HIGH'
   | 'MEDIUM'
   | 'LOW'
@@ -230,6 +234,7 @@ export interface FinancialReconciliationReportDto {
   authoritativeGrossAmountMinor: number;
   projectedTransactionCount: number;
   projectedGrossAmountMinor: number;
+  unprojectedTransactions: number;
   discrepancyCount: number;
   discrepancies: Array<{
     type: string;
@@ -244,6 +249,10 @@ export interface FinancialReconciliationReportDto {
 export interface FinancialDataQualityDto {
   rating: FinancialDataQualityRating;
   overallScore: number;
+  score?: number;
+  unattributedTransactions?: number;
+  negativeAmountsDetected?: number;
+  overRefundsDetected?: number;
   metrics: {
     missingOutletCount: number;
     missingOutletPercentage: number;
@@ -258,7 +267,9 @@ export interface FinancialMetricDefinitionDto {
   id: string;
   name: string;
   label: string;
+  code?: string;
   formula: string;
+  canonicalFormula?: string;
   description: string;
   limitations: string;
   sourceEntities: string[];
@@ -268,6 +279,14 @@ export interface FinancialContextDto {
   organisationId: string;
   period: string;
   currency: string;
+  metrics?: {
+    grossRevenue: number;
+    netRevenue: number;
+    totalRefunds: number;
+    outstandingBalance: number;
+  };
+  integrityRating?: string;
+  outlets?: Array<{ outletId: string; name: string; gross: number; net: number }>;
   revenueSummary: {
     gross: number;
     refunds: number;

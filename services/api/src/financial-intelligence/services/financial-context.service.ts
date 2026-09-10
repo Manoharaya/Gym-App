@@ -59,14 +59,32 @@ export class FinancialContextService {
           : 0,
     }));
 
+    const grossRev = primaryCurrency ? primaryCurrency.grossRevenue : 0;
+    const refundsRev = primaryCurrency ? primaryCurrency.refunds : 0;
+    const netRev = totalNetRevenue;
+    const outstanding = primaryCurrency ? primaryCurrency.outstandingInvoices : 0;
+
     return {
       organisationId: scope.organisationId,
       period: overview.period.timeRange,
       currency,
+      metrics: {
+        grossRevenue: grossRev,
+        netRevenue: netRev,
+        totalRefunds: refundsRev,
+        outstandingBalance: outstanding,
+      },
+      integrityRating: overview.dataQuality?.rating || 'EXCELLENT',
+      outlets: outletPerf.map((o) => ({
+        outletId: o.outletId,
+        name: o.outletName,
+        gross: o.grossRevenue,
+        net: o.netRevenue,
+      })),
       revenueSummary: {
-        gross: primaryCurrency ? primaryCurrency.grossRevenue : 0,
-        refunds: primaryCurrency ? primaryCurrency.refunds : 0,
-        net: totalNetRevenue,
+        gross: grossRev,
+        refunds: refundsRev,
+        net: netRev,
         growthPercentage: overview.comparison?.changes?.netRevenueChange ?? null,
       },
       paymentHealth: {
@@ -78,11 +96,11 @@ export class FinancialContextService {
       invoiceHealth: {
         openCount: primaryCurrency?.overdueInvoicesCount || 0,
         overdueCount: primaryCurrency?.overdueInvoicesCount || 0,
-        outstandingBalance: primaryCurrency?.outstandingInvoices || 0,
+        outstandingBalance: outstanding,
       },
       topPlans,
       outletPerformance,
       dataFreshnessUtc: new Date().toISOString(),
-    };
+    } as any;
   }
 }
