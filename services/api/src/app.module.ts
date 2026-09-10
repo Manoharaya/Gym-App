@@ -39,7 +39,10 @@ import { ReactivationModule } from './ai/features/reactivation/reactivation.modu
 import { RetentionAgentModule } from './ai/features/retention-agent/retention-agent.module';
 import { ReceptionistModule } from './ai/features/receptionist/receptionist.module';
 import { ReceptionistWorkflowModule } from './ai/features/receptionist-workflows/receptionist-workflow.module';
+import { SalesAgentModule } from './ai/features/sales-agent/sales-agent.module';
 import { LeadsModule } from './leads/leads.module';
+import { SalesPipelineModule } from './sales-pipeline/sales-pipeline.module';
+import { LeadQualificationModule } from './ai/features/lead-qualification/lead-qualification.module';
 import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
@@ -95,7 +98,10 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     RetentionAgentModule,
     ReceptionistModule,
     ReceptionistWorkflowModule,
+    SalesAgentModule,
+    LeadQualificationModule,
     LeadsModule,
+    SalesPipelineModule,
     AutomationModule,
     HealthModule,
     WearablesModule,

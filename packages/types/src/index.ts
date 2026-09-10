@@ -21,3 +21,7 @@ export * from './receptionist';
 export * from './lead';
 export * from './voice';
 export * from './receptionist-workflow';
+export * from './sales-agent';
+export * from './sales-pipeline';
+export * from './lead-qualification';
+export * from './follow-up';

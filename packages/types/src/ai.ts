@@ -29,7 +29,8 @@ export type AIFeature =
   | 'SALES_AGENT'
   | 'MARKETING_ASSISTANT'
   | 'CHURN_INTELLIGENCE'
-  | 'AUTOMATION_ASSISTANT';
+  | 'AUTOMATION_ASSISTANT'
+  | 'FOLLOW_UP_MESSAGE';
 
 export type AIModelCapability =
   | 'TEXT_GENERATION'

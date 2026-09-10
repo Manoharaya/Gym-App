@@ -142,6 +142,17 @@ model Organisation {
   receptionistFollowUpTasks    ReceptionistFollowUpTask[]
   callbackRequests             CallbackRequest[]
   receptionistWorkflowConfigs  ReceptionistWorkflowConfig[]
+  salesAgentProfiles           SalesAgentProfile[]
+  salesConversations           SalesConversation[]
+  salesRecommendations         SalesRecommendation[]
+  salesNextActions             SalesNextAction[]
+  salesHandoffs                SalesHandoff[]
+  salesPipelines               SalesPipeline[]
+  salesOpportunities           SalesOpportunity[]
+  salesActivities              SalesActivity[]
+  salesTasks                   SalesTask[]
+  leadQualificationObjections  LeadQualificationObjection[]
+  leadQualificationHistories   LeadQualificationHistory[]
 
   @@index([slug])
   @@index([status])
@@ -231,6 +242,15 @@ model Outlet {
   receptionistFollowUpTasks    ReceptionistFollowUpTask[]
   callbackRequests             CallbackRequest[]
   receptionistWorkflowConfigs  ReceptionistWorkflowConfig[]
+  salesAgentProfiles           SalesAgentProfile[]
+  salesConversations           SalesConversation[]
+  salesRecommendations         SalesRecommendation[]
+  salesNextActions             SalesNextAction[]
+  salesHandoffs                SalesHandoff[]
+  salesPipelines               SalesPipeline[]
+  salesOpportunities           SalesOpportunity[]
+  salesActivities              SalesActivity[]
+  salesTasks                   SalesTask[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -897,6 +917,7 @@ model MembershipPlan {
   entitlements       MembershipEntitlement[]
   memberMemberships  MemberMembership[]
   invoiceLineItems   InvoiceLineItem[]
+  salesRecommendations SalesRecommendation[]
 
   @@unique([organisationId, code])
   @@index([organisationId])
@@ -1859,6 +1880,9 @@ model StaffProfile {
   trainerProfile      TrainerProfile?
   workoutTemplatesCreated WorkoutTemplate[]
   assignedLeads       Lead[]
+  assignedSalesHandoffs SalesHandoff[]
+  ownedOpportunities    SalesOpportunity[]
+  assignedSalesTasks    SalesTask[]
 
   @@unique([organisationId, employeeReference])
   @@index([organisationId])
@@ -5019,6 +5043,15 @@ model Lead {
   receptionistInteractions  ReceptionistInteraction[]
   receptionistFollowUpTasks ReceptionistFollowUpTask[]
   callbackRequests          CallbackRequest[]
+  salesConversations        SalesConversation[]
+  salesRecommendations      SalesRecommendation[]
+  salesNextActions          SalesNextAction[]
+  salesHandoffs             SalesHandoff[]
+  salesOpportunities        SalesOpportunity[]
+  salesActivities           SalesActivity[]
+  salesTasks                SalesTask[]
+  qualificationObjections   LeadQualificationObjection[]
+  qualificationHistories    LeadQualificationHistory[]
 
   @@index([organisationId, status])
   @@index([organisationId, outletId])
@@ -5030,35 +5063,105 @@ model Lead {
 }
 
 model LeadQualificationProfile {
-  id                     String                     @id @default(cuid())
-  leadId                 String                     @unique
-  goals                  Json?                      // string[]
-  serviceInterests       Json?                      // string[]
-  preferredOutletId      String?
-  preferredSchedule      String?                    // EARLY_MORNING, MORNING, AFTERNOON, EVENING, WEEKEND, FLEXIBLE, UNKNOWN
-  experienceLevel        String?                    // BEGINNER, INTERMEDIATE, ADVANCED, UNKNOWN
-  readiness              String?                    // EXPLORING, INTERESTED, READY_TO_VISIT, READY_TO_TRY, READY_TO_JOIN, UNKNOWN
-  priceSensitivity       String?                    // PRICE_SENSITIVE, VALUE_FOCUSED, FLEXIBLE, UNKNOWN
-  objections             Json?                      // array of { type: string, customerStatementSummary: string, timestamp: string, resolved: boolean }
-  preferredContactChannel String?
-  preferredLanguage      String?
-  qualificationStatus    String                     @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, PARTIALLY_QUALIFIED, QUALIFIED, UNQUALIFIED, NEEDS_HUMAN_REVIEW
-  qualificationVersion   Int                        @default(1)
-  missingInformation     Json?                      // string[]
-  recommendedNextAction  String?                    // SHOW_MEMBERSHIP_OPTIONS, OFFER_TRIAL, OFFER_TOUR, SHOW_CLASS_OPTIONS, OFFER_TRAINER_INFORMATION, COLLECT_CONTACT_DETAILS, ASK_QUALIFICATION_QUESTION, HANDOFF_TO_STAFF, NO_ACTION
-  nextActionReason       String?
-  aiConfidence           Float?
-  aiEvidence             Json?                      // array of { observation: string, inferred: boolean, source: string }
-  aiSummary              String?                    @db.Text
-  lastEvaluatedAt        DateTime?
-  createdAt              DateTime                   @default(now())
-  updatedAt              DateTime                   @updatedAt
+  id                        String                        @id @default(cuid())
+  leadId                    String                        @unique
+  goals                     Json?                         // string[]
+  serviceInterests          Json?                         // string[]
+  preferredOutletId         String?
+  preferredSchedule         String?                       // EARLY_MORNING, MORNING, AFTERNOON, EVENING, WEEKEND, FLEXIBLE, UNKNOWN
+  preferredDays             Json?                         // string[]
+  preferredTimes            Json?                         // string[]
+  frequencyPreference       String?                       // e.g., 3_TIMES_PER_WEEK
+  scheduleFlexibility       String?                       // VERY_FLEXIBLE, MODERATELY_FLEXIBLE, RIGID, UNKNOWN
+  experienceLevel           String?                       // BEGINNER, INTERMEDIATE, ADVANCED, UNKNOWN
+  readiness                 String?                       // EXPLORING, INTERESTED, READY_TO_VISIT, READY_TO_TRY, READY_TO_JOIN, UNKNOWN
+  priceSensitivity          String?                       // PRICE_SENSITIVE, VALUE_FOCUSED, FLEXIBLE, UNKNOWN
+  budgetSensitivity         String?                       // HIGH, MODERATE, LOW, UNKNOWN
+  budgetRange               String?
+  objections                Json?                         // array of { type: string, customerStatementSummary: string, timestamp: string, resolved: boolean }
+  decisionFactors           Json?                         // string[]
+  timeline                  String?                       // IMMEDIATE, THIS_WEEK, WITHIN_A_MONTH, EXPLORING, UNKNOWN
+  questions                 Json?                         // array of { question: string, category: string, answered: boolean, answer?: string }
+  constraints               Json?                         // string[]
+  preferredContactChannel   String?
+  preferredLanguage         String?
+  qualificationStatus       String                        @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, PARTIALLY_QUALIFIED, QUALIFIED, UNQUALIFIED, NEEDS_HUMAN_REVIEW
+  qualificationVersion      Int                           @default(1)
+  missingInformation        Json?                         // string[]
+  isHighIntent              Boolean                       @default(false)
+  qualificationCompleteness Int                           @default(0) // 0-100 percentage
+  recommendedNextAction     String?                       // SHOW_MEMBERSHIP_OPTIONS, OFFER_TRIAL, OFFER_TOUR, SHOW_CLASS_OPTIONS, OFFER_TRAINER_INFORMATION, COLLECT_CONTACT_DETAILS, ASK_QUALIFICATION_QUESTION, HANDOFF_TO_STAFF, NO_ACTION
+  nextActionReason          String?
+  aiConfidence              Float?
+  aiEvidence                Json?                         // array of { observation: string, inferred: boolean, source: string }
+  aiSummary                 String?                       @db.Text
+  lastEvaluatedAt           DateTime?
+  lastStaffOverrideAt       DateTime?
+  lastStaffOverrideById     String?
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
 
-  lead                   Lead                       @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  preferredOutlet        Outlet?                    @relation(fields: [preferredOutletId], references: [id], onDelete: SetNull)
+  lead                      Lead                          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  preferredOutlet           Outlet?                       @relation(fields: [preferredOutletId], references: [id], onDelete: SetNull)
+  qualificationObjections   LeadQualificationObjection[]
+  qualificationHistories    LeadQualificationHistory[]
 
   @@index([qualificationStatus])
+  @@index([isHighIntent])
   @@map("lead_qualification_profiles")
+}
+
+model LeadQualificationObjection {
+  id                        String                        @id @default(cuid())
+  leadId                    String
+  profileId                 String?
+  organisationId            String
+  objectionType             String                        // PRICE_OR_MEMBERSHIP_COST, SCHEDULE_OR_TIME_COMMITMENT, LOCATION_OR_DISTANCE, COMMUTE, CONTRACT_OR_COMMITMENT_TERMS, CHILDCARE, INTIMIDATION_OR_CONFIDENCE, OVERCROWDING, PARKING, FACILITY_FEATURES, SPOUSAL_OR_PARTNER_CONSULTATION, OTHER
+  status                    String                        @default("OPEN") // OPEN, PARTIALLY_ADDRESSED, RESOLVED, DISMISSED
+  severity                  String                        @default("MEDIUM") // LOW, MEDIUM, HIGH, BLOCKER
+  rawCustomerStatement      String                        @db.Text
+  normalizedSummary         String
+  resolutionNotes           String?                       @db.Text
+  addressedAt               DateTime?
+  addressedByActorType      String?                       // AI_SALES_AGENT, STAFF, SYSTEM
+  addressedByActorId        String?
+  resolvedAt                DateTime?
+  source                    String                        @default("AI_EXTRACTION") // DIRECT_CUSTOMER_STATEMENT, VERIFIED_BUSINESS_EVENT, STAFF_ENTERED, AI_EXTRACTION, AI_INFERENCE
+  evidence                  Json?
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+
+  lead                      Lead                          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  profile                   LeadQualificationProfile?     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  organisation              Organisation                  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, status])
+  @@index([organisationId, objectionType])
+  @@map("lead_qualification_objections")
+}
+
+model LeadQualificationHistory {
+  id                        String                        @id @default(cuid())
+  leadId                    String
+  profileId                 String?
+  organisationId            String
+  fieldChanged              String
+  previousValue             Json?
+  newValue                  Json?
+  actorType                 String                        // AI_SALES_AGENT, STAFF, SYSTEM, CUSTOMER
+  actorId                   String?
+  source                    String                        // DIRECT_CUSTOMER_STATEMENT, VERIFIED_BUSINESS_EVENT, STAFF_ENTERED, AI_EXTRACTION, AI_INFERENCE
+  evidence                  String?                       @db.Text
+  reason                    String?
+  createdAt                 DateTime                      @default(now())
+
+  lead                      Lead                          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  profile                   LeadQualificationProfile?     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  organisation              Organisation                  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([organisationId, fieldChanged])
+  @@map("lead_qualification_histories")
 }
 
 model LeadActivity {
@@ -5350,6 +5453,374 @@ model ReceptionistWorkflowConfig {
   @@index([organisationId, outletId])
   @@map("receptionist_workflow_configs")
 }
+
+// ============================================================================
+// DAY 36 — AI SALES AGENT FOUNDATION
+// ============================================================================
+
+model SalesAgentProfile {
+  id                    String              @id @default(cuid())
+  organisationId        String
+  outletId              String?
+  name                  String
+  displayName           String
+  enabled               Boolean             @default(true)
+  language              String              @default("en")
+  tone                  String              @default("FRIENDLY")
+  salesStyle            String              @default("CONSULTATIVE") // PROFESSIONAL, FRIENDLY, CONSULTATIVE, PREMIUM, ENERGETIC, CONCISE
+  businessDescription   String?             @db.Text
+  targetAudience        String?             @db.Text
+  defaultGreeting       String?             @db.Text
+  qualificationEnabled  Boolean             @default(true)
+  recommendationEnabled Boolean             @default(true)
+  humanHandoffEnabled   Boolean             @default(true)
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  organisation          Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                Outlet?             @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  conversations         SalesConversation[]
+
+  @@index([organisationId, enabled])
+  @@index([organisationId, outletId])
+  @@map("sales_agent_profiles")
+}
+
+model SalesConversation {
+  id                        String                     @id @default(cuid())
+  organisationId            String
+  outletId                  String?
+  salesAgentProfileId       String?
+  leadId                    String
+  channel                   String                     @default("WEB") // WEB, WHATSAPP, SMS, EMAIL, VOICE
+  status                    String                     @default("ACTIVE") // ACTIVE, QUALIFYING, RECOMMENDING, AWAITING_CUSTOMER, HANDED_OFF, CONVERTED, LOST, ABANDONED, FAILED, COMPLETED
+  currentIntent             String?
+  conversationSummary       String?                    @db.Text
+  discoveredGoals           Json?                      // string[]
+  discoveredExperience      String?                    // BEGINNER, INTERMEDIATE, ADVANCED, UNKNOWN
+  discoveredSchedule        Json?                      // { preferredDays?: string[], preferredTime?: string, frequency?: string, scheduleFlexibility?: string }
+  discoveredBudget          String?
+  discoveredReadiness       String?                    // EXPLORING, INTERESTED, READY_FOR_TRIAL, READY_FOR_TOUR, READY_TO_JOIN, UNDECIDED
+  discoveredServiceInterest Json?                      // string[]
+  lastActivityAt            DateTime                   @default(now())
+  startedAt                 DateTime                   @default(now())
+  completedAt               DateTime?
+  metadata                  Json?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+
+  organisation              Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                    Outlet?                    @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  salesAgentProfile         SalesAgentProfile?         @relation(fields: [salesAgentProfileId], references: [id], onDelete: SetNull)
+  lead                      Lead                       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messages                  SalesConversationMessage[]
+  recommendations           SalesRecommendation[]
+  nextActions               SalesNextAction[]
+  handoffs                  SalesHandoff[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, leadId])
+  @@index([organisationId, channel])
+  @@index([lastActivityAt])
+  @@map("sales_conversations")
+}
+
+model SalesConversationMessage {
+  id             String            @id @default(cuid())
+  conversationId String
+  direction      String            @default("INBOUND") // INBOUND, OUTBOUND
+  role           String            // CUSTOMER, AI, SYSTEM, STAFF
+  content        String            @db.Text
+  language       String            @default("en")
+  intent         String?
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+
+  conversation   SalesConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("sales_conversation_messages")
+}
+
+model SalesRecommendation {
+  id                  String            @id @default(cuid())
+  conversationId      String
+  organisationId      String
+  outletId            String?
+  leadId              String?
+  recommendationType  String            // MEMBERSHIP_PLAN, PERSONAL_TRAINING, CLASS, TRIAL, TOUR, CALLBACK, HUMAN_CONSULTATION, NO_RECOMMENDATION
+  recommendedPlanId   String?
+  recommendedService  String?
+  reason              String            @db.Text
+  supportingFactors   Json?             // string[]
+  limitations         Json?             // string[]
+  confidence          Float             @default(1.0)
+  nextBestAction      String            // BOOK_TRIAL, BOOK_TOUR, BOOK_CLASS, REQUEST_CALLBACK, CONNECT_WITH_STAFF, VIEW_MEMBERSHIP_OPTIONS, CONTINUE_QUALIFICATION, NO_ACTION
+  requiresHumanReview Boolean           @default(false)
+  metadata            Json?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  conversation        SalesConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  organisation        Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet              Outlet?           @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  lead                Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  recommendedPlan     MembershipPlan?   @relation(fields: [recommendedPlanId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
+  @@index([organisationId, recommendationType])
+  @@index([leadId])
+  @@map("sales_recommendations")
+}
+
+model SalesNextAction {
+  id             String            @id @default(cuid())
+  conversationId String
+  organisationId String
+  outletId       String?
+  leadId         String?
+  actionType     String            // BOOK_TRIAL, BOOK_TOUR, BOOK_CLASS, REQUEST_CALLBACK, CONNECT_WITH_STAFF, VIEW_MEMBERSHIP_OPTIONS, CONTINUE_QUALIFICATION, NO_ACTION
+  status         String            @default("RECOMMENDED") // RECOMMENDED, PRESENTED, ACCEPTED, DECLINED, EXECUTED, FAILED
+  reason         String?           @db.Text
+  payload        Json?
+  executedAt     DateTime?
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  conversation   SalesConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  organisation   Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet         Outlet?           @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  lead           Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, status])
+  @@index([organisationId, actionType])
+  @@index([leadId])
+  @@map("sales_next_actions")
+}
+
+model SalesHandoff {
+  id              String            @id @default(cuid())
+  conversationId  String
+  organisationId  String
+  outletId        String?
+  leadId          String
+  reason          String            // CUSTOMER_REQUESTED_HUMAN, COMPLEX_PRICING, CUSTOM_REQUEST, COMPLAINT, UNAVAILABLE_INFORMATION, HIGH_VALUE_PROSPECT, MEDICAL_CONCERN, POLICY_EXCEPTION, FAILED_AI_INTERACTION, NEGOTIATION_REQUEST, OTHER
+  priority        String            @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status          String            @default("PENDING") // PENDING, ASSIGNED, IN_PROGRESS, RESOLVED, REJECTED
+  assignedStaffId String?
+  notes           String?           @db.Text
+  customerSummary String?           @db.Text
+  resolvedAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  conversation    SalesConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  organisation    Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?           @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  lead            Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedStaff   StaffProfile?     @relation(fields: [assignedStaffId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId, status])
+  @@index([conversationId])
+  @@index([leadId])
+  @@map("sales_handoffs")
+}
+
+// ============================================================================
+// Day 37: Sales Pipeline & Opportunity Management
+// ============================================================================
+
+model SalesPipeline {
+  id             String               @id @default(cuid())
+  organisationId String
+  outletId       String?
+  name           String               @default("Default Sales Pipeline")
+  description    String?              @db.Text
+  isDefault      Boolean              @default(false)
+  isActive       Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  organisation   Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet         Outlet?              @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  stages         SalesPipelineStage[]
+  opportunities  SalesOpportunity[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId, isDefault])
+  @@index([organisationId, outletId])
+  @@map("sales_pipelines")
+}
+
+model SalesPipelineStage {
+  id                 String               @id @default(cuid())
+  pipelineId         String
+  type               String               // NEW, CONTACTED, QUALIFIED, TRIAL, TOUR_BOOKED, OFFERED, CONVERTED, LOST
+  name               String
+  description        String?              @db.Text
+  position           Int                  @default(0)
+  color              String?
+  isActive           Boolean              @default(true)
+  isTerminal         Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  pipeline           SalesPipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  opportunities      SalesOpportunity[]
+  stageHistoriesFrom SalesStageHistory[]  @relation("StageHistoryFrom")
+  stageHistoriesTo   SalesStageHistory[]  @relation("StageHistoryTo")
+
+  @@unique([pipelineId, type])
+  @@index([pipelineId, position])
+  @@map("sales_pipeline_stages")
+}
+
+model SalesOpportunity {
+  id                    String              @id @default(cuid())
+  organisationId        String
+  outletId              String?
+  leadId                String
+  pipelineId            String
+  stageId               String
+  stageEnteredAt        DateTime            @default(now())
+  currentStage          String              @default("NEW") // NEW, CONTACTED, QUALIFIED, TRIAL, TOUR_BOOKED, OFFERED, CONVERTED, LOST
+  title                 String              @default("Sales Opportunity")
+  ownerStaffId          String?
+  source                String?             // WEBSITE, AI_RECEPTIONIST, PHONE, WHATSAPP, SMS, WALK_IN, etc.
+  sourceReferenceId     String?             // e.g. salesConversationId
+  serviceInterest       Json?               // string[]
+  membershipInterest    String?
+  interestedPlanId      String?
+  estimatedValue        Decimal?            @db.Decimal(10, 2)
+  currency              String              @default("AUD")
+  probability           Float               @default(0.1) // 0.0 - 1.0
+  expectedCloseDate     DateTime?
+  lastActivityAt        DateTime            @default(now())
+  nextActionAt          DateTime?
+  nextActionType        String?             // BOOK_TRIAL, BOOK_TOUR, CALL_PROSPECT, FOLLOW_UP, etc.
+  nextActionNotes       String?             @db.Text
+  convertedAt           DateTime?
+  conversionReferenceId String?             // e.g. memberMembershipId or paymentId
+  lostAt                DateTime?
+  lossReason            String?             // PRICE, NO_RESPONSE, NOT_INTERESTED, CHOSE_COMPETITOR, LOCATION, SCHEDULE, SERVICE_MISMATCH, TIMING, FAILED_TRIAL, FAILED_TOUR, COULD_NOT_CONTACT, DUPLICATE, INVALID_LEAD, OTHER
+  lossNotes             String?             @db.Text
+  staleSince            DateTime?
+  isStale               Boolean             @default(false)
+  version               Int                 @default(1) // Optimistic locking
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  organisation          Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                Outlet?             @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  lead                  Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  pipeline              SalesPipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  stage                 SalesPipelineStage  @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  ownerStaff            StaffProfile?       @relation(fields: [ownerStaffId], references: [id], onDelete: SetNull)
+  stageHistories        SalesStageHistory[]
+  activities            SalesActivity[]
+  tasks                 SalesTask[]
+
+  @@index([organisationId, currentStage])
+  @@index([organisationId, outletId])
+  @@index([organisationId, ownerStaffId])
+  @@index([organisationId, leadId])
+  @@index([organisationId, lastActivityAt])
+  @@index([organisationId, nextActionAt])
+  @@index([organisationId, isStale])
+  @@index([organisationId, createdAt])
+  @@map("sales_opportunities")
+}
+
+model SalesStageHistory {
+  id              String              @id @default(cuid())
+  opportunityId   String
+  fromStageId     String?
+  toStageId       String
+  fromStageType   String?
+  toStageType     String
+  reason          String?             @db.Text
+  actorType       String              // SYSTEM, AI_RECOMMENDATION, STAFF, CUSTOMER, BOOKING_SYSTEM, MEMBERSHIP_SYSTEM, WORKFLOW
+  actorId         String?
+  source          String?             // AI_SALES_AGENT, RECEPTIONIST_BOOKING, STAFF_PORTAL, WEBHOOK, etc.
+  durationSeconds Int?
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  opportunity     SalesOpportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  fromStage       SalesPipelineStage? @relation("StageHistoryFrom", fields: [fromStageId], references: [id], onDelete: SetNull)
+  toStage         SalesPipelineStage  @relation("StageHistoryTo", fields: [toStageId], references: [id], onDelete: Restrict)
+
+  @@index([opportunityId, createdAt])
+  @@map("sales_stage_histories")
+}
+
+model SalesActivity {
+  id                String           @id @default(cuid())
+  organisationId    String
+  outletId          String?
+  opportunityId     String
+  leadId            String
+  type              String           // AI_CONVERSATION, STAFF_CONVERSATION, PHONE_CALL, MISSED_CALL, EMAIL, SMS, WHATSAPP, WEB_CHAT, TRIAL_BOOKED, TRIAL_COMPLETED, TOUR_BOOKED, TOUR_COMPLETED, OFFER_CREATED, OFFER_PRESENTED, FOLLOW_UP, HANDOFF, NOTE, STAGE_CHANGE, OTHER
+  actorType         String           // STAFF, AI, CUSTOMER, SYSTEM
+  actorId           String?
+  channel           String?          // WEB, WHATSAPP, SMS, EMAIL, VOICE, IN_PERSON
+  title             String
+  summary           String?          @db.Text
+  sourceReferenceId String?
+  occurredAt        DateTime         @default(now())
+  metadata          Json?
+  createdAt         DateTime         @default(now())
+
+  organisation      Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet            Outlet?          @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  opportunity       SalesOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  lead              Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, occurredAt])
+  @@index([organisationId, leadId])
+  @@index([organisationId, type])
+  @@map("sales_activities")
+}
+
+model SalesTask {
+  id              String           @id @default(cuid())
+  organisationId  String
+  outletId        String?
+  opportunityId   String
+  leadId          String
+  assignedStaffId String?
+  type            String           // CALL_PROSPECT, FOLLOW_UP_TRIAL, FOLLOW_UP_TOUR, REVIEW_OFFER, CONTACT_HIGH_INTENT, RESOLVE_INQUIRY, GENERAL
+  priority        String           @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status          String           @default("OPEN") // OPEN, ASSIGNED, IN_PROGRESS, COMPLETED, DISMISSED, EXPIRED
+  title           String
+  description     String?          @db.Text
+  dueAt           DateTime
+  completedAt     DateTime?
+  completedById   String?
+  completionNotes String?          @db.Text
+  createdBy       String?
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organisation    Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?          @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  opportunity     SalesOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedStaff   StaffProfile?    @relation(fields: [assignedStaffId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status, dueAt])
+  @@index([opportunityId])
+  @@index([assignedStaffId, status])
+  @@map("sales_tasks")
+}
+
+
 
 
 

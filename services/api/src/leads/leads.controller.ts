@@ -91,26 +91,6 @@ export class LeadsController {
     return this.leadsService.updateLead(organisationId, id, dto);
   }
 
-  @Get(':id/qualification')
-  async getLeadQualification(
-    @Headers('x-organisation-id') orgHeader: string,
-    @Param('id') id: string,
-  ) {
-    const organisationId = this.resolveOrganisationId(orgHeader);
-    const lead = await this.leadsService.getLead(organisationId, id);
-    return lead.qualification;
-  }
-
-  @Patch(':id/qualification')
-  async updateLeadQualification(
-    @Headers('x-organisation-id') orgHeader: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateLeadQualificationDto,
-  ) {
-    const organisationId = this.resolveOrganisationId(orgHeader);
-    return this.leadsService.updateQualification(organisationId, id, dto);
-  }
-
   @Post(':id/qualify')
   async qualifyLead(
     @Headers('x-organisation-id') orgHeader: string,

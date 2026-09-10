@@ -9,7 +9,8 @@ import { REACTIVATION_PROMPT_DEFINITION } from '../features/reactivation/prompts
 import { RETENTION_AGENT_PROMPT_DEFINITION } from '../features/retention-agent/prompts/retention_agent.v1';
 import { RECEPTIONIST_PROMPT_DEFINITION } from '../features/receptionist/prompts/receptionist.v1';
 import { RECEPTIONIST_BOOKING_PROMPT_DEFINITION } from '../features/receptionist/prompts/receptionist-booking.v1';
-import { LEAD_QUALIFICATION_PROMPT_DEFINITION } from '../features/receptionist/prompts/lead-qualification.v1';
+import { LEAD_QUALIFICATION_PROMPT_DEFINITION } from '../features/lead-qualification/prompts/lead_qualification.v1';
+import { SALES_AGENT_PROMPT_DEFINITION } from '../features/sales-agent/prompts/sales_agent.v1';
 
 @Injectable()
 export class PromptRegistryService implements OnModuleInit {
@@ -336,6 +337,7 @@ export class PromptRegistryService implements OnModuleInit {
       RECEPTIONIST_PROMPT_DEFINITION,
       RECEPTIONIST_BOOKING_PROMPT_DEFINITION,
       LEAD_QUALIFICATION_PROMPT_DEFINITION,
+      SALES_AGENT_PROMPT_DEFINITION,
     ];
 
     for (const p of defaultPrompts) {

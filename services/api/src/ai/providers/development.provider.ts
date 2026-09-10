@@ -111,6 +111,11 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       return this.generateLeadQualificationJson(contextText, userPrompt);
     }
 
+    // Check if this is the SalesAgent schema
+    if (schema.properties?.intent && schema.properties?.discoveredContext && schema.properties?.recommendations && schema.properties?.reply) {
+      return this.generateSalesAgentJson(contextText, userPrompt);
+    }
+
     const result: Record<string, any> = {};
     const properties = schema.properties || {};
 
@@ -1366,6 +1371,264 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       aiSummary: `Prospect interested in ${serviceInterests.join(', ')} with primary goal of ${detectedGoals.join(', ')}. Readiness: ${readiness}.`,
     };
   }
+
+  private generateSalesAgentJson(contextText: string, userPrompt: string): Record<string, any> {
+    const userText = (userPrompt || '').toLowerCase();
+    const isNepali =
+      userText.includes('नमस्ते') ||
+      userText.includes('जिम') ||
+      userText.includes('कति हो') ||
+      userText.includes('मूल्य') ||
+      userText.includes('शक्ति') ||
+      userText.includes('कक्षा') ||
+      userText.includes('टुर') ||
+      userText.includes('नेपाली');
+
+    // 1. Medical Concern Guardrail
+    if (
+      userText.includes('chest pain') ||
+      userText.includes('injured') ||
+      userText.includes('injury') ||
+      userText.includes('hernia') ||
+      userText.includes('heart condition') ||
+      userText.includes('severe pain') ||
+      userText.includes('doctor')
+    ) {
+      return {
+        intent: 'HUMAN_REQUEST',
+        reply: isNepali
+          ? 'तपाईंको स्वास्थ्य र सुरक्षा हाम्रो मुख्य प्राथमिकता हो। कुनै पनि नयाँ व्यायाम सुरु गर्नु अघि कृपया चिकित्सकसँग परामर्श लिनुहोस्। म तपाईंलाई हाम्रा स्टाफसँग जोड्न सक्छु।'
+          : 'Your health and safety are our top priority. We strongly advise consulting with a qualified healthcare professional before beginning any new exercise routine. I can also connect you directly with our facility staff.',
+        confidence: 0.98,
+        language: isNepali ? 'ne' : 'en',
+        discoveredContext: {
+          goals: ['SAFETY_EVALUATION'],
+          readiness: 'EXPLORING',
+        },
+        recommendations: [],
+        suggestedNextActions: [
+          {
+            actionType: 'CONNECT_WITH_STAFF',
+            reason: 'Medical inquiry requires staff consultation and safe referral',
+          },
+        ],
+        handoffRequired: true,
+        handoffReason: 'MEDICAL_CONCERN',
+        handoffPriority: 'HIGH',
+      };
+    }
+
+    // 2. Unauthorized Discount Rejection Guardrail
+    if (
+      userText.includes('50% off') ||
+      userText.includes('discount') ||
+      userText.includes('cheaper') ||
+      userText.includes('deal') ||
+      userText.includes('bargain') ||
+      userText.includes('negotiate') ||
+      userText.includes('छुट')
+    ) {
+      return {
+        intent: 'PRICING_INQUIRY',
+        reply: isNepali
+          ? 'हाम्रो सदस्यता शुल्क आधिकारिक व्यापार नीति अनुसार तय गरिएको छ र हामी अनाधिकृत छुट प्रदान गर्दैनौं। यद्यपि, हामीसँग परीक्षण पास र विभिन्न योजनाहरू छन्।'
+          : 'Our membership pricing is standardized according to official facility policies and we do not offer unauthorized custom discounts. However, we have flexible membership plans and trial options. I would be happy to connect you with our team if you have questions about special packages.',
+        confidence: 0.95,
+        language: isNepali ? 'ne' : 'en',
+        discoveredContext: {
+          budget: 'SENSITIVE_TO_PRICE',
+          readiness: 'INTERESTED',
+        },
+        recommendations: [],
+        suggestedNextActions: [
+          {
+            actionType: 'VIEW_MEMBERSHIP_OPTIONS',
+            reason: 'Review approved standard pricing and options',
+          },
+          {
+            actionType: 'CONNECT_WITH_STAFF',
+            reason: 'Inquire about corporate or seasonal promotions with staff',
+          },
+        ],
+        handoffRequired: false,
+      };
+    }
+
+    // 3. Human Handoff Request
+    if (
+      userText.includes('human') ||
+      userText.includes('person') ||
+      userText.includes('speak to someone') ||
+      userText.includes('talk to someone') ||
+      userText.includes('call me') ||
+      userText.includes('staff') ||
+      userText.includes('मान्छे') ||
+      userText.includes('स्टाफ')
+    ) {
+      return {
+        intent: 'HUMAN_REQUEST',
+        reply: isNepali
+          ? 'म तपाईंलाई हाम्रा स्टाफ सदस्यसँग तुरुन्तै जोड्दै छु। हाम्रो टोलीले तपाईंलाई मद्दत गर्नेछ।'
+          : "I'd be glad to connect you with one of our staff members right away. I'm initiating a handoff now so our team can assist you with your questions.",
+        confidence: 0.99,
+        language: isNepali ? 'ne' : 'en',
+        discoveredContext: {
+          readiness: 'INTERESTED',
+        },
+        recommendations: [],
+        suggestedNextActions: [
+          {
+            actionType: 'CONNECT_WITH_STAFF',
+            reason: 'Customer explicitly requested staff assistance',
+          },
+        ],
+        handoffRequired: true,
+        handoffReason: 'CUSTOMER_REQUESTED_HUMAN',
+        handoffPriority: 'MEDIUM',
+      };
+    }
+
+    // 4. Booking Request (Handoff / Routing to Receptionist Booking)
+    if (
+      userText.includes('book tomorrow') ||
+      userText.includes('reserve a slot') ||
+      userText.includes('book a class') ||
+      userText.includes('book session')
+    ) {
+      return {
+        intent: 'BOOKING_INTEREST',
+        reply: isNepali
+          ? 'म तपाईंलाई कक्षा वा सत्र बुक गर्नको लागि हाम्रो बुकिङ सेवामा जोड्दै छु।'
+          : "I can help connect you with our booking service to reserve your session. Let me transfer you to our booking workflow.",
+        confidence: 0.96,
+        language: isNepali ? 'ne' : 'en',
+        discoveredContext: {
+          serviceInterest: ['BOOKING'],
+          readiness: 'READY_TO_JOIN',
+        },
+        recommendations: [],
+        suggestedNextActions: [
+          {
+            actionType: 'BOOK_CLASS',
+            reason: 'Customer has clear booking intent',
+          },
+        ],
+        handoffRequired: false,
+      };
+    }
+
+    // 5. Try / Tour Request
+    if (userText.includes('trial') || userText.includes('tour') || userText.includes('visit') || userText.includes('भ्रमण') || userText.includes('परीक्षण')) {
+      const isTrial = userText.includes('trial') || userText.includes('परीक्षण');
+      return {
+        intent: isTrial ? 'TRIAL_INQUIRY' : 'TOUR_REQUEST',
+        reply: isNepali
+          ? `हामी तपाईंलाई ${isTrial ? '१ दिने निःशुल्क परीक्षण पास' : 'सुविधा भ्रमण'} व्यवस्था गर्न सक्छौं। के तपाईं विवरणहरू पुष्टि गर्न चाहनुहुन्छ?`
+          : `We would love to arrange a ${isTrial ? 'complimentary trial pass' : 'guided facility tour'} for you. Would you like to confirm the details?`,
+        confidence: 0.96,
+        language: isNepali ? 'ne' : 'en',
+        discoveredContext: {
+          serviceInterest: [isTrial ? 'TRIAL' : 'TOUR'],
+          readiness: isTrial ? 'READY_FOR_TRIAL' : 'READY_FOR_TOUR',
+        },
+        recommendations: [],
+        suggestedNextActions: [
+          {
+            actionType: isTrial ? 'BOOK_TRIAL' : 'BOOK_TOUR',
+            reason: isTrial ? 'Prospect requested a trial experience' : 'Prospect requested a guided facility tour',
+          },
+        ],
+        handoffRequired: false,
+      };
+    }
+
+    // 6. Needs Discovery & Recommendation Scenario (Strength, Evenings, etc.)
+    const hasStrength = userText.includes('strength') || userText.includes('muscle') || userText.includes('lifting') || userText.includes('weights') || userText.includes('शक्ति');
+    const hasEvenings = userText.includes('evening') || userText.includes('three evenings') || userText.includes('3 evenings') || userText.includes('बेलुका');
+    const hasClasses = userText.includes('class') || userText.includes('group') || userText.includes('hiit') || userText.includes('yoga') || userText.includes('कक्षा');
+
+    // Extract real plan info from contextText if available
+    let planId = 'plan_strength_standard';
+    let planName = 'Gold Strength & Class Access';
+    let planPrice = 69;
+    let planBilling = 'MONTH';
+
+    // Check if contextText has verified plans
+    try {
+      const plansSectionMatch = contextText.match(/"verifiedPlans"\s*:\s*\[([\s\S]*?)\]\s*,\s*"verifiedClasses"/);
+      const targetText = plansSectionMatch ? plansSectionMatch[1] : contextText;
+
+      const strengthMatch = targetText.match(
+        /\{[^{}]*?"id"\s*:\s*"([^"]+)"[^{}]*?"name"\s*:\s*"([^"]*(?:Strength|Gold)[^"]*)"[^{}]*?"price"\s*:\s*([0-9.]+)[^{}]*?\}/i,
+      ) || targetText.match(
+        /\{[^{}]*?"id"\s*:\s*"([^"]+)"[^{}]*?"name"\s*:\s*"([^"]+)"[^{}]*?"price"\s*:\s*([0-9.]+)[^{}]*?\}/,
+      );
+
+      if (strengthMatch) {
+        planId = strengthMatch[1];
+        planName = strengthMatch[2];
+        planPrice = parseFloat(strengthMatch[3]);
+      }
+    } catch {
+      // fallback
+    }
+
+    const discoveredGoals: string[] = [];
+    if (hasStrength) discoveredGoals.push('STRENGTH');
+    if (hasClasses) discoveredGoals.push('GROUP_FITNESS');
+    if (discoveredGoals.length === 0) discoveredGoals.push('GENERAL_FITNESS');
+
+    return {
+      intent: 'MEMBERSHIP_RECOMMENDATION',
+      reply: isNepali
+        ? `नमस्ते! तपाईंको शक्ति निर्माण गर्ने लक्ष्य र हप्ताको ३ दिन साँझको समय तालिका अनुसार, हाम्रो ${planName} सदस्यता ($${planPrice}/${planBilling.toLowerCase()}) सबैभन्दा उपयुक्त देखिन्छ किनभने यसमा शक्ति प्रशिक्षण क्षेत्र र साँझका कक्षाहरू दुवै समावेश छन्। के तपाईं परीक्षण पास वा क्लब टुर बुक गर्न चाहनुहुन्छ?`
+        : `Based on your goal to build strength and your evening availability 3 days a week, our ${planName} ($${planPrice}/${planBilling.toLowerCase()}) is the closest fit because it includes full strength floor access and evening group classes. Would you like me to help arrange a trial pass or a guided club tour?`,
+      confidence: 0.94,
+      language: isNepali ? 'ne' : 'en',
+      discoveredContext: {
+        goals: discoveredGoals,
+        experience: 'INTERMEDIATE',
+        schedule: {
+          frequency: '3 times/week',
+          preferredTime: hasEvenings ? 'EVENING' : 'FLEXIBLE',
+          preferredDays: ['Monday', 'Wednesday', 'Friday'],
+        },
+        readiness: 'INTERESTED',
+        serviceInterest: ['MEMBERSHIP', 'STRENGTH_TRAINING'],
+      },
+      recommendations: [
+        {
+          recommendationType: 'MEMBERSHIP_PLAN',
+          recommendedPlanId: planId,
+          recommendedPlanName: planName,
+          reason: `Matches strength goal with evening facility and class access.`,
+          supportingFactors: [
+            'Includes full strength floor access during peak evening hours',
+            'Includes evening functional and group strength classes',
+            'Flexible monthly renewal with zero lock-in fee',
+          ],
+          limitations: [
+            'Does not include 1-on-1 personal training sessions',
+          ],
+          confidence: 0.95,
+          nextBestAction: 'BOOK_TRIAL',
+          requiresHumanReview: false,
+        },
+      ],
+      suggestedNextActions: [
+        {
+          actionType: 'BOOK_TRIAL',
+          reason: 'Invite prospect to experience the facility and evening equipment',
+        },
+        {
+          actionType: 'BOOK_TOUR',
+          reason: 'Schedule a facility walkthrough with staff',
+        },
+      ],
+      handoffRequired: false,
+    };
+  }
 }
+
 
 
