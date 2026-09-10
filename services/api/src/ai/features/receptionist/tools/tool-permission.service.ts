@@ -23,6 +23,20 @@ export const ALLOWED_MEMBER_READ_TOOLS = [
   'get_booking_details',
 ] as const;
 
+export const ALLOWED_LEAD_READ_TOOLS = [
+  'get_lead',
+  'get_lead_qualification',
+  'get_lead_history',
+  'get_outlet_lead_information',
+] as const;
+
+export const ALLOWED_LEAD_MUTATION_TOOLS = [
+  'create_lead',
+  'update_lead_contact',
+  'update_lead_qualification',
+  'request_lead_handoff',
+] as const;
+
 export const ALLOWED_MUTATION_TOOLS = [
   'create_booking',
   'cancel_booking',
@@ -33,6 +47,8 @@ export const ALLOWED_MUTATION_TOOLS = [
 export const ALLOWED_RECEPTIONIST_TOOLS = [
   ...ALLOWED_READ_TOOLS,
   ...ALLOWED_MEMBER_READ_TOOLS,
+  ...ALLOWED_LEAD_READ_TOOLS,
+  ...ALLOWED_LEAD_MUTATION_TOOLS,
   ...ALLOWED_MUTATION_TOOLS,
 ] as const;
 
@@ -51,7 +67,10 @@ export class ToolPermissionService {
     if (ALLOWED_MUTATION_TOOLS.includes(toolName as any)) {
       return 'HIGH';
     }
-    if (ALLOWED_MEMBER_READ_TOOLS.includes(toolName as any)) {
+    if (
+      ALLOWED_MEMBER_READ_TOOLS.includes(toolName as any) ||
+      ALLOWED_LEAD_MUTATION_TOOLS.includes(toolName as any)
+    ) {
       return 'MEDIUM';
     }
     return 'LOW';
@@ -93,7 +112,7 @@ export class ToolPermissionService {
     const riskTier = this.getRiskTier(toolName);
 
     // 4. Medium Risk: Member-scoped reads require an authenticated member
-    if (riskTier === 'MEDIUM') {
+    if (ALLOWED_MEMBER_READ_TOOLS.includes(toolName as any)) {
       if (!memberId) {
         throw new ForbiddenException(
           `Tool '${toolName}' requires an authenticated member account. Prospects cannot view private member bookings.`,

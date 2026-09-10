@@ -13,6 +13,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { ReceptionistService } from './receptionistService';
 import type {
@@ -27,7 +28,7 @@ interface Props {
 
 export const ReceptionistAdminScreen: React.FC<Props> = () => {
   const [activeTab, setActiveTab] = useState<
-    'OVERVIEW' | 'BOOKINGS' | 'CONVERSATIONS' | 'HANDOFFS' | 'TEST_CHAT'
+    'OVERVIEW' | 'LEADS' | 'BOOKINGS' | 'CONVERSATIONS' | 'HANDOFFS' | 'TEST_CHAT'
   >('OVERVIEW');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -54,19 +55,36 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
   const [dryRunning, setDryRunning] = useState(false);
   const [dryRunResult, setDryRunResult] = useState<any | null>(null);
 
+  // Day 33: Lead Management State
+  const [leads, setLeads] = useState<any[]>([]);
+  const [leadMetrics, setLeadMetrics] = useState<any | null>(null);
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [leadModalVisible, setLeadModalVisible] = useState(false);
+  const [leadFilterStatus, setLeadFilterStatus] = useState<string>('ALL');
+  const [leadSearchQuery, setLeadSearchQuery] = useState('');
+
+  // Lead Qualification Simulator State
+  const [leadSimQuery, setLeadSimQuery] = useState('');
+  const [leadSimulating, setLeadSimulating] = useState(false);
+  const [leadSimResult, setLeadSimResult] = useState<any | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
-      const [m, c, h, bm] = await Promise.all([
+      const [m, c, h, bm, lm, l] = await Promise.all([
         ReceptionistService.getMetrics().catch(() => null),
         ReceptionistService.listConversations({ limit: 10 }).catch(() => ({ total: 0, items: [] })),
         ReceptionistService.listHandoffs({ status: 'PENDING', limit: 10 }).catch(() => ({ total: 0, items: [] })),
         ReceptionistService.getBookingMetrics().catch(() => null),
+        ReceptionistService.getLeadMetrics().catch(() => null),
+        ReceptionistService.listLeads({ limit: 20 }).catch(() => ({ total: 0, items: [] })),
       ]);
 
       if (m) setMetrics(m);
       setConversations(c.items || []);
       setHandoffs(h.items || []);
       if (bm) setBookingMetrics(bm);
+      if (lm) setLeadMetrics(lm);
+      setLeads(l.items || []);
     } catch (err) {
       console.error('Failed to load receptionist data:', err);
     } finally {
@@ -131,6 +149,51 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
     }
   };
 
+  const handleSelectLead = async (leadId: string) => {
+    try {
+      const lead = await ReceptionistService.getLead(leadId);
+      setSelectedLead(lead);
+      setLeadModalVisible(true);
+    } catch (err: any) {
+      console.error('Failed to load lead details:', err.message);
+    }
+  };
+
+  const handleUpdateLeadStatus = async (leadId: string, status: string) => {
+    try {
+      await ReceptionistService.updateLead(leadId, { status });
+      fetchData();
+      if (selectedLead?.id === leadId) {
+        setSelectedLead((prev: any) => (prev ? { ...prev, status } : null));
+      }
+    } catch (err: any) {
+      console.error('Failed to update lead status:', err.message);
+    }
+  };
+
+  const handleSimulateLeadCapture = async (presetText?: string) => {
+    const text = presetText || leadSimQuery;
+    if (!text.trim()) return;
+
+    setLeadSimulating(true);
+    setLeadSimResult(null);
+    try {
+      const chatRes = await ReceptionistService.chat({
+        message: text,
+        channel: 'WEB_CHAT',
+      });
+      setLeadSimResult({
+        chatResponse: chatRes.response,
+        message: text,
+      });
+      fetchData();
+    } catch (err: any) {
+      setLeadSimResult({ error: err.message || 'Simulation failed' });
+    } finally {
+      setLeadSimulating(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -150,7 +213,7 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
 
       {/* Navigation Tabs */}
       <View style={styles.tabBar}>
-        {(['OVERVIEW', 'BOOKINGS', 'CONVERSATIONS', 'HANDOFFS', 'TEST_CHAT'] as const).map((tab) => (
+        {(['OVERVIEW', 'LEADS', 'BOOKINGS', 'CONVERSATIONS', 'HANDOFFS', 'TEST_CHAT'] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
@@ -220,6 +283,37 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
               </View>
             </View>
 
+            {/* Lead Pipeline Activity */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Lead Acquisition & Qualification</Text>
+              <View style={styles.metricsGrid}>
+                <View style={styles.metricCard}>
+                  <Text style={[styles.metricValue, { color: '#2196F3' }]}>
+                    {leadMetrics?.totalLeads ?? leads.length}
+                  </Text>
+                  <Text style={styles.metricLabel}>Captured</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={[styles.metricValue, { color: '#4CAF50' }]}>
+                    {leadMetrics?.qualifiedLeads ?? leads.filter((l) => l.status === 'QUALIFIED').length}
+                  </Text>
+                  <Text style={styles.metricLabel}>Qualified</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={[styles.metricValue, { color: '#FFD700' }]}>
+                    {leadMetrics?.convertedLeads ?? leads.filter((l) => l.status === 'CONVERTED').length}
+                  </Text>
+                  <Text style={styles.metricLabel}>Converted</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={[styles.metricValue, { color: '#AB47BC' }]}>
+                    {Math.round(leadMetrics?.averageScore ?? 68)}
+                  </Text>
+                  <Text style={styles.metricLabel}>Avg Score</Text>
+                </View>
+              </View>
+            </View>
+
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>Receptionist Health & Guardrails</Text>
               <View style={styles.statusRow}>
@@ -242,6 +336,258 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
                 <Text style={styles.statusLabel}>Operational Mode:</Text>
                 <Text style={styles.statusBadge}>Platform Grounded</Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* LEADS TAB */}
+        {activeTab === 'LEADS' && (
+          <View>
+            <Text style={styles.sectionTitle}>Prospect Pipeline & AI Qualification</Text>
+            <Text style={styles.helperText}>
+              Review captured leads, inspect deterministic scoring factors, and simulate omnichannel qualification.
+            </Text>
+
+            {/* Funnel Metrics */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Lead Conversion Funnel</Text>
+              <View style={styles.funnelRow}>
+                <View style={styles.funnelStep}>
+                  <Text style={styles.funnelCount}>{leadMetrics?.totalLeads ?? leads.length}</Text>
+                  <Text style={styles.funnelLabel}>Captured</Text>
+                </View>
+                <Text style={styles.funnelArrow}>→</Text>
+                <View style={styles.funnelStep}>
+                  <Text style={[styles.funnelCount, { color: '#2196F3' }]}>
+                    {leads.filter((l) => l.status === 'CONTACTED').length}
+                  </Text>
+                  <Text style={styles.funnelLabel}>Contacted</Text>
+                </View>
+                <Text style={styles.funnelArrow}>→</Text>
+                <View style={styles.funnelStep}>
+                  <Text style={[styles.funnelCount, { color: '#4CAF50' }]}>
+                    {leadMetrics?.qualifiedLeads ?? leads.filter((l) => l.status === 'QUALIFIED').length}
+                  </Text>
+                  <Text style={styles.funnelLabel}>Qualified</Text>
+                </View>
+                <Text style={styles.funnelArrow}>→</Text>
+                <View style={styles.funnelStep}>
+                  <Text style={[styles.funnelCount, { color: '#FFD700' }]}>
+                    {leadMetrics?.convertedLeads ?? leads.filter((l) => l.status === 'CONVERTED').length}
+                  </Text>
+                  <Text style={styles.funnelLabel}>Converted</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Status Filter Pills */}
+            <View style={styles.filterTabBar}>
+              {(['ALL', 'NEW', 'QUALIFIED', 'CONTACTED', 'CONVERTED', 'DISQUALIFIED'] as const).map((st) => (
+                <TouchableOpacity
+                  key={st}
+                  style={[styles.filterChip, leadFilterStatus === st && styles.filterChipActive]}
+                  onPress={() => setLeadFilterStatus(st)}
+                >
+                  <Text style={[styles.filterChipText, leadFilterStatus === st && styles.filterChipTextActive]}>
+                    {st}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Search Input */}
+            <View style={styles.searchBarContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search leads by name, email, phone..."
+                placeholderTextColor="#757575"
+                value={leadSearchQuery}
+                onChangeText={setLeadSearchQuery}
+              />
+            </View>
+
+            {/* Leads List */}
+            <View style={styles.leadsListContainer}>
+              {leads
+                .filter((l) => {
+                  if (leadFilterStatus !== 'ALL' && l.status !== leadFilterStatus) return false;
+                  if (leadSearchQuery.trim()) {
+                    const q = leadSearchQuery.toLowerCase();
+                    const matchName = `${l.firstName || ''} ${l.lastName || ''}`.toLowerCase().includes(q);
+                    const matchEmail = (l.email || '').toLowerCase().includes(q);
+                    const matchPhone = (l.phone || '').includes(q);
+                    return matchName || matchEmail || matchPhone;
+                  }
+                  return true;
+                })
+                .map((lead) => {
+                  const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Prospective Guest';
+                  const scoreColor =
+                    lead.score >= 70 ? '#4CAF50' : lead.score >= 40 ? '#FF9800' : '#9E9E9E';
+
+                  return (
+                    <TouchableOpacity
+                      key={lead.id}
+                      style={styles.leadCard}
+                      onPress={() => handleSelectLead(lead.id)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.leadCardHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.leadName}>{fullName}</Text>
+                          <Text style={styles.leadSource}>
+                            {lead.source} • {lead.preferredContactChannel || 'WEB_CHAT'}
+                          </Text>
+                        </View>
+                        <View style={styles.leadBadgesRight}>
+                          <View style={[styles.leadScoreBadge, { borderColor: scoreColor }]}>
+                            <Text style={[styles.leadScoreText, { color: scoreColor }]}>
+                              {lead.score}
+                            </Text>
+                            <Text style={styles.leadScoreSub}>pts</Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.leadStatusChip,
+                              lead.status === 'QUALIFIED'
+                                ? styles.statusQualified
+                                : lead.status === 'CONVERTED'
+                                ? styles.statusConverted
+                                : lead.status === 'CONTACTED'
+                                ? styles.statusContacted
+                                : styles.statusNew,
+                            ]}
+                          >
+                            <Text style={styles.leadStatusChipText}>{lead.status}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Contact & Consent */}
+                      <View style={styles.leadContactRow}>
+                        {lead.email && <Text style={styles.leadContactText}>✉ {lead.email}</Text>}
+                        {lead.phone && <Text style={styles.leadContactText}>📞 {lead.phone}</Text>}
+                        <Text style={styles.leadConsentBadge}>
+                          {lead.consentStatus === 'GRANTED' ? '✓ Consent' : 'Pending Consent'}
+                        </Text>
+                      </View>
+
+                      {/* Goals and Services */}
+                      {lead.qualificationProfile?.goals && lead.qualificationProfile.goals.length > 0 && (
+                        <View style={styles.leadTagsRow}>
+                          {lead.qualificationProfile.goals.map((g: string, idx: number) => (
+                            <View key={idx} style={styles.leadTag}>
+                              <Text style={styles.leadTagText}>#{g}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Next Best Action */}
+                      <View style={styles.leadNextActionBox}>
+                        <Text style={styles.leadNextActionLabel}>Next Best Action:</Text>
+                        <Text style={styles.leadNextActionValue}>
+                          {lead.qualificationProfile?.recommendedNextAction || 'SHOW_MEMBERSHIP_OPTIONS'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+
+              {leads.length === 0 && (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No leads captured yet. Use the simulator below to test!</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Interactive Lead Qualification Simulator */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Lead Qualification Simulator</Text>
+              <Text style={styles.helperText}>
+                Test real-time conversational extraction of goals, readiness, and deterministic scoring.
+              </Text>
+
+              {/* Presets */}
+              <View style={styles.presetContainer}>
+                <TouchableOpacity
+                  style={styles.presetChip}
+                  onPress={() => {
+                    const txt = 'Hi, I want a personal trainer for muscle gain and evening sessions. My name is Alex, email alex@example.com.';
+                    setLeadSimQuery(txt);
+                    handleSimulateLeadCapture(txt);
+                  }}
+                >
+                  <Text style={styles.presetText}>PT + Muscle Gain</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.presetChip}
+                  onPress={() => {
+                    const txt = 'नमस्ते! म बिहानको योगा क्लास र मूल्य बारे बुझ्न चाहन्छु, फोन: ९८४१२३४५६७';
+                    setLeadSimQuery(txt);
+                    handleSimulateLeadCapture(txt);
+                  }}
+                >
+                  <Text style={styles.presetText}>Nepali: योगा + फोन</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.presetChip}
+                  onPress={() => {
+                    const txt = 'Can I get a free trial pass for tomorrow evening HIIT class? I am ready to start today.';
+                    setLeadSimQuery(txt);
+                    handleSimulateLeadCapture(txt);
+                  }}
+                >
+                  <Text style={styles.presetText}>Trial Pass + Ready</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Input */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter prospect message..."
+                  placeholderTextColor="#9E9E9E"
+                  value={leadSimQuery}
+                  onChangeText={setLeadSimQuery}
+                />
+                <TouchableOpacity
+                  style={[styles.sendButton, leadSimulating && styles.sendButtonDisabled]}
+                  onPress={() => handleSimulateLeadCapture()}
+                  disabled={leadSimulating}
+                >
+                  {leadSimulating ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text style={styles.sendButtonText}>Simulate</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Simulation Result */}
+              {leadSimResult && (
+                <View style={styles.responseCard}>
+                  <View style={styles.responseHeader}>
+                    <Text style={styles.intentBadge}>
+                      Intent: {leadSimResult.chatResponse?.intent || 'LEAD_INTEREST'}
+                    </Text>
+                    <Text style={styles.confidenceBadge}>
+                      {Math.round((leadSimResult.chatResponse?.confidence || 0.95) * 100)}% Conf
+                    </Text>
+                  </View>
+                  <Text style={styles.aiMessageText}>
+                    {leadSimResult.chatResponse?.message || 'Prospect interaction evaluated.'}
+                  </Text>
+                  {leadSimResult.chatResponse?.suggestedNextStep && (
+                    <View style={styles.snapshotBox}>
+                      <Text style={styles.snapshotTitle}>Recommended Step:</Text>
+                      <Text style={styles.snapshotDetails}>
+                        {leadSimResult.chatResponse.suggestedNextStep}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -577,6 +923,186 @@ export const ReceptionistAdminScreen: React.FC<Props> = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Lead Detail Modal */}
+      <Modal
+        visible={leadModalVisible && !!selectedLead}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLeadModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>
+                  {[selectedLead?.firstName, selectedLead?.lastName].filter(Boolean).join(' ') || 'Prospect Details'}
+                </Text>
+                <Text style={styles.modalSubTitle}>
+                  ID: {selectedLead?.id?.substring(0, 12)} • {selectedLead?.source}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setLeadModalVisible(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll}>
+              {/* Score & Tier Card */}
+              <View style={styles.modalScoreCard}>
+                <View style={styles.modalScoreHeader}>
+                  <Text style={styles.modalScoreLabel}>Deterministic Lead Score</Text>
+                  <Text style={styles.modalScoreValue}>{selectedLead?.score ?? 0}/100</Text>
+                </View>
+                <Text style={styles.modalScoreSub}>
+                  Calculated deterministically based on verified contact signals, stated readiness, and engagement factors.
+                </Text>
+
+                {/* Factors List */}
+                {selectedLead?.scoreFactors && selectedLead.scoreFactors.length > 0 && (
+                  <View style={styles.factorsList}>
+                    {selectedLead.scoreFactors.map((f: any, idx: number) => (
+                      <View key={idx} style={styles.factorItem}>
+                        <Text style={f.weight >= 0 ? styles.factorPositive : styles.factorNegative}>
+                          {f.weight >= 0 ? `+${f.weight}` : `${f.weight}`}
+                        </Text>
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={styles.factorName}>{f.factor}</Text>
+                          <Text style={styles.factorDesc}>{f.description}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Contact Information */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Contact & Preferences</Text>
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Email:</Text>
+                  <Text style={styles.statusValue}>{selectedLead?.email || 'Not provided'}</Text>
+                </View>
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Phone:</Text>
+                  <Text style={styles.statusValue}>{selectedLead?.phone || 'Not provided'}</Text>
+                </View>
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Preferred Channel:</Text>
+                  <Text style={styles.statusValue}>{selectedLead?.preferredContactChannel || 'WEB_CHAT'}</Text>
+                </View>
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Marketing Consent:</Text>
+                  <Text
+                    style={[
+                      styles.statusBadge,
+                      selectedLead?.consentStatus === 'GRANTED'
+                        ? { color: '#4CAF50' }
+                        : { color: '#FF9800' },
+                    ]}
+                  >
+                    {selectedLead?.consentStatus || 'NOT_REQUESTED'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Qualification Profile */}
+              {selectedLead?.qualificationProfile && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Structured Qualification Profile</Text>
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>Qualification Status:</Text>
+                    <Text style={styles.statusBadge}>
+                      {selectedLead.qualificationProfile.qualificationStatus}
+                    </Text>
+                  </View>
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>Readiness:</Text>
+                    <Text style={styles.statusValue}>
+                      {selectedLead.qualificationProfile.readiness}
+                    </Text>
+                  </View>
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>Price Sensitivity:</Text>
+                    <Text style={styles.statusValue}>
+                      {selectedLead.qualificationProfile.priceSensitivity || 'STANDARD'}
+                    </Text>
+                  </View>
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>Preferred Schedule:</Text>
+                    <Text style={styles.statusValue}>
+                      {selectedLead.qualificationProfile.preferredSchedule || 'FLEXIBLE'}
+                    </Text>
+                  </View>
+
+                  {selectedLead.qualificationProfile.goals?.length > 0 && (
+                    <View style={{ marginTop: 8 }}>
+                      <Text style={styles.statusLabel}>Identified Goals:</Text>
+                      <View style={styles.leadTagsRow}>
+                        {selectedLead.qualificationProfile.goals.map((g: string, i: number) => (
+                          <View key={i} style={styles.leadTag}>
+                            <Text style={styles.leadTagText}>#{g}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {selectedLead.qualificationProfile.aiSummary && (
+                    <View style={styles.reasonsBox}>
+                      <Text style={styles.reasonsTitle}>AI Qualification Summary:</Text>
+                      <Text style={styles.reasonText}>
+                        {selectedLead.qualificationProfile.aiSummary}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Next Best Action */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Recommended Next Action</Text>
+                <View style={styles.snapshotBox}>
+                  <Text style={styles.snapshotTitle}>
+                    {selectedLead?.qualificationProfile?.recommendedNextAction || 'SHOW_MEMBERSHIP_OPTIONS'}
+                  </Text>
+                  <Text style={styles.snapshotDetails}>
+                    Rule-first automated recommendation engine guided by qualification profile and prospect readiness.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Staff Actions */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Staff Triage Actions</Text>
+                <View style={styles.actionButtonGroup}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: '#2196F3' }]}
+                    onPress={() => handleUpdateLeadStatus(selectedLead.id, 'CONTACTED')}
+                  >
+                    <Text style={styles.actionBtnText}>Mark Contacted</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: '#4CAF50' }]}
+                    onPress={() => handleUpdateLeadStatus(selectedLead.id, 'QUALIFIED')}
+                  >
+                    <Text style={styles.actionBtnText}>Mark Qualified</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: '#FFD700' }]}
+                    onPress={() => handleUpdateLeadStatus(selectedLead.id, 'CONVERTED')}
+                  >
+                    <Text style={[styles.actionBtnText, { color: '#000000' }]}>Mark Converted</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1026,5 +1552,309 @@ const styles = StyleSheet.create({
   snapshotDetails: {
     fontSize: 11,
     color: '#94A3B8',
+  },
+  // Day 33 — Lead Management Styles
+  filterTabBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 12,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#1E1E1E',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  filterChipActive: {
+    backgroundColor: '#FF572222',
+    borderColor: '#FF5722',
+  },
+  filterChipText: {
+    color: '#9E9E9E',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: '#FF5722',
+    fontWeight: '700',
+  },
+  searchBarContainer: {
+    marginBottom: 12,
+  },
+  searchInput: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#FFFFFF',
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  leadsListContainer: {
+    marginBottom: 16,
+  },
+  leadCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+  },
+  leadCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  leadName: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  leadSource: {
+    color: '#757575',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  leadBadgesRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  leadScoreBadge: {
+    borderWidth: 1.5,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
+  },
+  leadScoreText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  leadScoreSub: {
+    fontSize: 9,
+    color: '#9E9E9E',
+  },
+  leadStatusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  leadStatusChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  statusQualified: {
+    backgroundColor: '#4CAF5022',
+    borderColor: '#4CAF50',
+    borderWidth: 1,
+  },
+  statusConverted: {
+    backgroundColor: '#FFD70022',
+    borderColor: '#FFD700',
+    borderWidth: 1,
+  },
+  statusContacted: {
+    backgroundColor: '#2196F322',
+    borderColor: '#2196F3',
+    borderWidth: 1,
+  },
+  statusNew: {
+    backgroundColor: '#9E9E9E22',
+    borderColor: '#9E9E9E',
+    borderWidth: 1,
+  },
+  leadContactRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginVertical: 6,
+  },
+  leadContactText: {
+    color: '#B0B0B0',
+    fontSize: 12,
+  },
+  leadConsentBadge: {
+    color: '#4CAF50',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  leadTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginVertical: 4,
+  },
+  leadTag: {
+    backgroundColor: '#252525',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  leadTagText: {
+    color: '#E0E0E0',
+    fontSize: 11,
+  },
+  leadNextActionBox: {
+    backgroundColor: '#151C24',
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196F3',
+    borderRadius: 4,
+    padding: 8,
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  leadNextActionLabel: {
+    color: '#90CAF9',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  leadNextActionValue: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '88%',
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+    paddingBottom: 12,
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalSubTitle: {
+    color: '#757575',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  modalCloseButton: {
+    padding: 6,
+  },
+  modalCloseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalScroll: {
+    marginTop: 12,
+  },
+  modalScoreCard: {
+    backgroundColor: '#222222',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  modalScoreHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalScoreLabel: {
+    color: '#B0B0B0',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalScoreValue: {
+    color: '#4CAF50',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  modalScoreSub: {
+    color: '#757575',
+    fontSize: 11,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  factorsList: {
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+    paddingTop: 8,
+    gap: 6,
+  },
+  factorItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  factorPositive: {
+    color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: '700',
+    width: 32,
+  },
+  factorNegative: {
+    color: '#EF5350',
+    fontSize: 12,
+    fontWeight: '700',
+    width: 32,
+  },
+  factorName: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  factorDesc: {
+    color: '#9E9E9E',
+    fontSize: 10,
+  },
+  modalSection: {
+    marginBottom: 14,
+    backgroundColor: '#202020',
+    borderRadius: 8,
+    padding: 12,
+  },
+  modalSectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  statusValue: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  actionButtonGroup: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  actionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

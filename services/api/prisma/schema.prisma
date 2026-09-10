@@ -132,6 +132,16 @@ model Organisation {
   receptionistFeedbacks        ReceptionistFeedback[]
   bookingConfirmations         BookingConfirmationState[]
   receptionistBookingInteractions ReceptionistBookingInteraction[]
+  leads                        Lead[]
+  leadActivities               LeadActivity[]
+  voicePhoneNumbers            VoicePhoneNumber[]
+  voiceProfiles                VoiceProfile[]
+  voiceSessions                VoiceSession[]
+  voiceTranscripts             VoiceTranscript[]
+  receptionistInteractions     ReceptionistInteraction[]
+  receptionistFollowUpTasks    ReceptionistFollowUpTask[]
+  callbackRequests             CallbackRequest[]
+  receptionistWorkflowConfigs  ReceptionistWorkflowConfig[]
 
   @@index([slug])
   @@index([status])
@@ -213,6 +223,14 @@ model Outlet {
   receptionistKnowledgeGaps    ReceptionistKnowledgeGap[]
   bookingConfirmations         BookingConfirmationState[]
   receptionistBookingInteractions ReceptionistBookingInteraction[]
+  leads                        Lead[]
+  preferredLeadProfiles        LeadQualificationProfile[]
+  voicePhoneNumbers            VoicePhoneNumber[]
+  voiceSessions                VoiceSession[]
+  receptionistInteractions     ReceptionistInteraction[]
+  receptionistFollowUpTasks    ReceptionistFollowUpTask[]
+  callbackRequests             CallbackRequest[]
+  receptionistWorkflowConfigs  ReceptionistWorkflowConfig[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -557,6 +575,10 @@ model MemberProfile {
   receptionistHandoffs         ReceptionistHandoff[]
   bookingConfirmations         BookingConfirmationState[]
   receptionistBookingInteractions ReceptionistBookingInteraction[]
+  verifiedVoiceSessions        VoiceSession[]
+  receptionistInteractions     ReceptionistInteraction[]
+  receptionistFollowUpTasks    ReceptionistFollowUpTask[]
+  callbackRequests             CallbackRequest[]
 
   @@index([userId])
   @@index([organisationId])
@@ -1836,6 +1858,7 @@ model StaffProfile {
   outletAssignments   StaffOutletAssignment[]
   trainerProfile      TrainerProfile?
   workoutTemplatesCreated WorkoutTemplate[]
+  assignedLeads       Lead[]
 
   @@unique([organisationId, employeeReference])
   @@index([organisationId])
@@ -4793,6 +4816,9 @@ model ReceptionistConversation {
   feedbacks          ReceptionistFeedback[]
   bookingConfirmations BookingConfirmationState[]
   bookingInteractions ReceptionistBookingInteraction[]
+  leads               Lead[]
+  voiceSessions       VoiceSession[]
+  interactions        ReceptionistInteraction[]
 
   @@index([organisationId, status])
   @@index([organisationId, receptionistId, status])
@@ -4829,13 +4855,17 @@ model ReceptionistHandoff {
   outletId           String?
   conversationId     String
   receptionistId     String
+  interactionId      String?
   memberProfileId    String?
-  reason             String                     // LOW_CONFIDENCE, UNKNOWN_INFORMATION, CUSTOMER_REQUESTED, COMPLEX_REQUEST, COMPLAINT, SENSITIVE_REQUEST, POLICY_EXCEPTION, TOOL_FAILURE, REPEATED_MISUNDERSTANDING
-  status             String                     @default("PENDING") // PENDING, ASSIGNED, IN_PROGRESS, RESOLVED, REJECTED
+  reason             String                     // LOW_CONFIDENCE, UNKNOWN_INFORMATION, CUSTOMER_REQUESTED, COMPLEX_REQUEST, COMPLAINT, SENSITIVE_REQUEST, POLICY_EXCEPTION, TOOL_FAILURE, REPEATED_MISUNDERSTANDING, PRICING_EXCEPTION, SPECIAL_REQUEST, IDENTITY_VERIFICATION, TECHNICAL_FAILURE, BOOKING_FAILURE, PAYMENT_QUESTION, MEMBERSHIP_EXCEPTION, OTHER
+  priority           String                     @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  status             String                     @default("PENDING") // PENDING, ASSIGNED, IN_PROGRESS, RESOLVED, REJECTED, OPEN, ACCEPTED, COMPLETED, CANCELLED, EXPIRED
   customerSummary    String                     @db.Text
   suggestedAction    String?                    @db.Text
   assignedStaffId    String?
+  acceptedAt         DateTime?
   resolvedAt         DateTime?
+  completedAt        DateTime?
   resolvedBy         String?
   notes              String?                    @db.Text
   createdAt          DateTime                   @default(now())
@@ -4846,10 +4876,12 @@ model ReceptionistHandoff {
   conversation       ReceptionistConversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   receptionist       AIReceptionist             @relation(fields: [receptionistId], references: [id], onDelete: Cascade)
   memberProfile      MemberProfile?             @relation(fields: [memberProfileId], references: [id], onDelete: SetNull)
+  interaction        ReceptionistInteraction?   @relation(fields: [interactionId], references: [id], onDelete: SetNull)
 
   @@index([organisationId, status])
   @@index([organisationId, outletId, status])
   @@index([conversationId])
+  @@index([interactionId])
   @@map("receptionist_handoffs")
 }
 
@@ -4947,6 +4979,378 @@ model ReceptionistBookingInteraction {
   @@index([conversationId])
   @@map("receptionist_booking_interactions")
 }
+
+model Lead {
+  id                        String                     @id @default(cuid())
+  organisationId            String
+  outletId                  String?
+  source                    String                     @default("AI_RECEPTIONIST") // WEBSITE, AI_RECEPTIONIST, PHONE, WHATSAPP, SMS, EMAIL, REFERRAL, WALK_IN, SOCIAL, AD, CAMPAIGN, STAFF, IMPORT, OTHER
+  sourceMetadata            Json?
+  status                    String                     @default("NEW") // NEW, CONTACTED, QUALIFYING, QUALIFIED, UNQUALIFIED, TRIAL_INTEREST, TOUR_INTEREST, MEMBERSHIP_INTEREST, CONVERTED, LOST, DO_NOT_CONTACT
+  firstName                 String?
+  lastName                  String?
+  email                     String?
+  phone                     String?
+  preferredContactChannel   String?                    // EMAIL, SMS, WHATSAPP, PHONE
+  preferredLanguage         String?                    @default("en")
+  consentStatus             String                     @default("NOT_REQUESTED") // NOT_REQUESTED, GRANTED, DENIED, WITHDRAWN, UNKNOWN
+  consentSource             String?
+  consentedAt               DateTime?
+  originatingConversationId String?
+  assignedStaffId           String?
+  assignedOutletId          String?
+  assignedAt                DateTime?
+  assignedById              String?
+  score                     Int                        @default(0)
+  scoreVersion              Int                        @default(1)
+  scoreFactors              Json?
+  scoreCalculatedAt         DateTime?
+  lastInteractionAt         DateTime?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+
+  organisation              Organisation               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                    Outlet?                    @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  originatingConversation   ReceptionistConversation?  @relation(fields: [originatingConversationId], references: [id], onDelete: SetNull)
+  assignedStaff             StaffProfile?              @relation(fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  qualificationProfile      LeadQualificationProfile?
+  activities                LeadActivity[]
+  verifiedVoiceSessions     VoiceSession[]
+  receptionistInteractions  ReceptionistInteraction[]
+  receptionistFollowUpTasks ReceptionistFollowUpTask[]
+  callbackRequests          CallbackRequest[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@index([organisationId, email])
+  @@index([organisationId, phone])
+  @@index([organisationId, score])
+  @@index([organisationId, createdAt])
+  @@map("leads")
+}
+
+model LeadQualificationProfile {
+  id                     String                     @id @default(cuid())
+  leadId                 String                     @unique
+  goals                  Json?                      // string[]
+  serviceInterests       Json?                      // string[]
+  preferredOutletId      String?
+  preferredSchedule      String?                    // EARLY_MORNING, MORNING, AFTERNOON, EVENING, WEEKEND, FLEXIBLE, UNKNOWN
+  experienceLevel        String?                    // BEGINNER, INTERMEDIATE, ADVANCED, UNKNOWN
+  readiness              String?                    // EXPLORING, INTERESTED, READY_TO_VISIT, READY_TO_TRY, READY_TO_JOIN, UNKNOWN
+  priceSensitivity       String?                    // PRICE_SENSITIVE, VALUE_FOCUSED, FLEXIBLE, UNKNOWN
+  objections             Json?                      // array of { type: string, customerStatementSummary: string, timestamp: string, resolved: boolean }
+  preferredContactChannel String?
+  preferredLanguage      String?
+  qualificationStatus    String                     @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, PARTIALLY_QUALIFIED, QUALIFIED, UNQUALIFIED, NEEDS_HUMAN_REVIEW
+  qualificationVersion   Int                        @default(1)
+  missingInformation     Json?                      // string[]
+  recommendedNextAction  String?                    // SHOW_MEMBERSHIP_OPTIONS, OFFER_TRIAL, OFFER_TOUR, SHOW_CLASS_OPTIONS, OFFER_TRAINER_INFORMATION, COLLECT_CONTACT_DETAILS, ASK_QUALIFICATION_QUESTION, HANDOFF_TO_STAFF, NO_ACTION
+  nextActionReason       String?
+  aiConfidence           Float?
+  aiEvidence             Json?                      // array of { observation: string, inferred: boolean, source: string }
+  aiSummary              String?                    @db.Text
+  lastEvaluatedAt        DateTime?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+
+  lead                   Lead                       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  preferredOutlet        Outlet?                    @relation(fields: [preferredOutletId], references: [id], onDelete: SetNull)
+
+  @@index([qualificationStatus])
+  @@map("lead_qualification_profiles")
+}
+
+model LeadActivity {
+  id             String       @id @default(cuid())
+  leadId         String
+  organisationId String
+  activityType   String       // LEAD_CREATED, CONTACT_UPDATED, QUALIFICATION_STARTED, QUALIFICATION_UPDATED, LEAD_QUALIFIED, LEAD_UNQUALIFIED, LEAD_SCORE_UPDATED, STAFF_ASSIGNED, HANDOFF_CREATED, TRIAL_REQUESTED, TOUR_REQUESTED, BOOKING_CREATED, COMMUNICATION_SENT, COMMUNICATION_RECEIVED, LEAD_REENGAGED, LEAD_CONVERTED, NOTE_ADDED
+  actorType      String       // AI_RECEPTIONIST, STAFF, SYSTEM, CUSTOMER
+  actorId        String?
+  title          String
+  description    String?      @db.Text
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([organisationId, activityType])
+  @@map("lead_activities")
+}
+
+// ============================================================================
+// DAY 34 — AI RECEPTIONIST VOICE DOMAIN
+// ============================================================================
+
+model VoicePhoneNumber {
+  id                  String         @id @default(cuid())
+  organisationId      String
+  outletId            String?
+  phoneNumber         String         @unique // E.164 format (+1..., +977...)
+  provider            String         @default("DEVELOPMENT") // DEVELOPMENT, TWILIO
+  providerReference   String?        // Provider Phone SID
+  status              String         @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  businessHoursConfig Json?          // Custom hours override or references outlet hours
+  afterHoursMode      String         @default("PLAY_MESSAGE") // PLAY_MESSAGE, TAKE_LEAD, OFFER_CALLBACK, TRANSFER_TO_EXTERNAL_NUMBER, END_CALL
+  greetingMessage     String?        @db.Text
+  voiceProfileId      String?
+  recordingPolicy     String         @default("RECORDING_DISABLED") // RECORDING_DISABLED, RECORDING_ENABLED, REQUIRES_CONSENT
+  transcriptionPolicy String         @default("ENABLED") // ENABLED, DISABLED
+  humanHandoffNumber  String?
+  fallbackNumber      String?
+  metadata            Json?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  organisation        Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet              Outlet?        @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  voiceProfile        VoiceProfile?  @relation(fields: [voiceProfileId], references: [id], onDelete: SetNull)
+  voiceSessions       VoiceSession[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@index([phoneNumber])
+  @@map("voice_phone_numbers")
+}
+
+model VoiceProfile {
+  id                String             @id @default(cuid())
+  organisationId    String?            // Null for system-wide default voices
+  name              String
+  provider          String             @default("DEVELOPMENT") // DEVELOPMENT, ELEVENLABS, GOOGLE, AWS_POLLY, AZURE
+  providerVoiceId   String             // Provider voice identifier
+  language          String             @default("en") // 'en', 'ne', etc.
+  accent            String?            // 'US', 'UK', 'AU', 'NEPALI'
+  gender            String?            // 'MALE', 'FEMALE', 'NEUTRAL'
+  speakingRate      Float              @default(1.0)
+  pitch             Float              @default(1.0)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  organisation      Organisation?      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  voicePhoneNumbers VoicePhoneNumber[]
+  voiceSessions     VoiceSession[]
+
+  @@index([organisationId, active])
+  @@index([language])
+  @@map("voice_profiles")
+}
+
+model VoiceSession {
+  id                  String                   @id @default(cuid())
+  organisationId      String
+  outletId            String?
+  conversationId      String
+  voicePhoneNumberId  String?
+  callId              String                   @unique // Telephony external Call SID / ID
+  callerPhone         String?
+  callerIdentityState String                   @default("UNKNOWN_CALLER") // UNKNOWN_CALLER, KNOWN_CONTACT, VERIFIED_MEMBER, VERIFIED_LEAD
+  verifiedMemberId    String?
+  verifiedLeadId      String?
+  channel             String                   @default("VOICE")
+  status              String                   @default("RINGING") // RINGING, CONNECTED, ACTIVE, ON_HOLD, TRANSFERRING, TRANSFERRED, COMPLETED, FAILED, ABANDONED
+  turnState           String                   @default("WAITING") // LISTENING, THINKING, TOOL_EXECUTION, SPEAKING, INTERRUPTED, WAITING
+  language            String                   @default("en")
+  voiceProfileId      String?
+  recordingPolicy     String                   @default("RECORDING_DISABLED")
+  recordingConsent    Boolean                  @default(false)
+  recordingUrl        String?
+  startedAt           DateTime                 @default(now())
+  connectedAt         DateTime?
+  endedAt             DateTime?
+  durationSeconds     Int?
+  summary             String?                  @db.Text
+  outcome             String                   @default("NO_ACTION") // INFORMATION_PROVIDED, BOOKING_CREATED, BOOKING_CANCELLED, BOOKING_RESCHEDULED, WAITLIST_JOINED, LEAD_CREATED, LEAD_UPDATED, STAFF_HANDOFF, CALLBACK_REQUESTED, NO_ACTION, FAILED, ABANDONED
+  handoffReason       String?
+  handoffStaffNotes   String?                  @db.Text
+  metadata            Json?                    // turnCount, sttCost, ttsCost, llmCost, telephonyCost
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  organisation        Organisation             @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet              Outlet?                  @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  conversation        ReceptionistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  voicePhoneNumber    VoicePhoneNumber?        @relation(fields: [voicePhoneNumberId], references: [id], onDelete: SetNull)
+  voiceProfile        VoiceProfile?            @relation(fields: [voiceProfileId], references: [id], onDelete: SetNull)
+  verifiedMember      MemberProfile?           @relation(fields: [verifiedMemberId], references: [id], onDelete: SetNull)
+  verifiedLead        Lead?                    @relation(fields: [verifiedLeadId], references: [id], onDelete: SetNull)
+  transcripts         VoiceTranscript[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@index([organisationId, callerPhone])
+  @@index([callId])
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("voice_sessions")
+}
+
+model VoiceTranscript {
+  id             String       @id @default(cuid())
+  voiceSessionId String
+  organisationId String
+  speaker        String       // CALLER, AI, SYSTEM, STAFF
+  text           String       @db.Text
+  confidence     Float?
+  language       String       @default("en")
+  isFinal        Boolean      @default(true)
+  startTimeMs    Int?
+  durationMs     Int?
+  interrupted    Boolean      @default(false)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  voiceSession   VoiceSession @relation(fields: [voiceSessionId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([voiceSessionId, createdAt])
+  @@index([organisationId])
+  @@map("voice_transcripts")
+}
+
+// ============================================================================
+// DAY 35 — AI RECEPTIONIST PRODUCTION WORKFLOW DOMAIN
+// ============================================================================
+
+model ReceptionistInteraction {
+  id              String       @id @default(cuid())
+  organisationId  String
+  outletId        String?
+  channel         String       @default("WEB") // WEB, WHATSAPP, SMS, EMAIL, VOICE
+  sessionId       String?      // e.g. VoiceSession id
+  conversationId  String
+  memberId        String?
+  leadId          String?
+  status          String       @default("ACTIVE") // ACTIVE, COMPLETED, ABANDONED, FAILED, HANDED_OFF, FOLLOW_UP_REQUIRED
+  intent          String?
+  outcome         String?      // INFORMATION_PROVIDED, BOOKING_CREATED, BOOKING_CANCELLED, BOOKING_RESCHEDULED, WAITLIST_JOINED, LEAD_CREATED, LEAD_QUALIFIED, STAFF_HANDOFF, CALLBACK_REQUESTED, FOLLOW_UP_REQUIRED, UNRESOLVED, FAILED
+  outcomeSource   String?      @default("AI") // AI, CUSTOMER, STAFF, SYSTEM
+  startedAt       DateTime     @default(now())
+  endedAt         DateTime?
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?      @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  conversation    ReceptionistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  member          MemberProfile? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  lead            Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  handoffs        ReceptionistHandoff[]
+  followUpTasks   ReceptionistFollowUpTask[]
+  callbackRequests CallbackRequest[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@index([organisationId, channel])
+  @@index([conversationId])
+  @@index([sessionId])
+  @@index([startedAt])
+  @@map("receptionist_interactions")
+}
+
+model ReceptionistFollowUpTask {
+  id              String       @id @default(cuid())
+  organisationId  String
+  outletId        String?
+  interactionId   String?
+  leadId          String?
+  memberId        String?
+  assignedStaffId String?
+  priority        String       @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  reason          String       // CUSTOMER_REQUESTED, MISSED_CALL, FAILED_BOOKING, UNRESOLVED, COMPLAINT, LEAD_FOLLOW_UP, CALLBACK, OTHER
+  status          String       @default("OPEN") // OPEN, ASSIGNED, IN_PROGRESS, COMPLETED, DISMISSED, EXPIRED
+  dueAt           DateTime?
+  completedAt     DateTime?
+  outcome         String?      // CUSTOMER_CONTACTED, BOOKING_CREATED, LEAD_UPDATED, QUESTION_RESOLVED, CALLBACK_COMPLETED, TRANSFERRED, NO_RESPONSE, NOT_REQUIRED, OTHER
+  notes           String?      @db.Text
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?      @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  interaction     ReceptionistInteraction? @relation(fields: [interactionId], references: [id], onDelete: SetNull)
+  lead            Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  member          MemberProfile? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@index([organisationId, assignedStaffId])
+  @@index([interactionId])
+  @@index([createdAt])
+  @@map("receptionist_follow_up_tasks")
+}
+
+model CallbackRequest {
+  id                String       @id @default(cuid())
+  organisationId    String
+  outletId          String?
+  memberId          String?
+  leadId            String?
+  interactionId     String?
+  phoneNumber       String?
+  preferredTime     DateTime?
+  preferredTimeNote String?
+  preferredChannel  String       @default("PHONE") // PHONE, WHATSAPP, SMS, EMAIL
+  reason            String
+  status            String       @default("REQUESTED") // REQUESTED, ASSIGNED, SCHEDULED, COMPLETED, CANCELLED, EXPIRED
+  assignedStaffId   String?
+  notes             String?      @db.Text
+  completedAt       DateTime?
+  metadata          Json?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  organisation      Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet            Outlet?      @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  member            MemberProfile? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  lead              Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  interaction       ReceptionistInteraction? @relation(fields: [interactionId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([organisationId, outletId])
+  @@index([interactionId])
+  @@index([phoneNumber])
+  @@index([createdAt])
+  @@map("callback_requests")
+}
+
+model ReceptionistWorkflowConfig {
+  id                      String       @id @default(cuid())
+  organisationId          String
+  outletId                String?
+  receptionistEnabled     Boolean      @default(true)
+  greetingMessage         String?      @db.Text
+  businessHours           Json?
+  defaultOutletId         String?
+  supportedChannels       Json?        // string[]
+  handoffEnabled          Boolean      @default(true)
+  handoffRouting          String       @default("BY_ROLE") // BY_OUTLET, BY_ROLE, BY_BUSINESS_HOURS, BY_PRIORITY, ROUND_ROBIN, MANUAL
+  callbackEnabled         Boolean      @default(true)
+  afterHoursMode          String       @default("OFFER_CALLBACK") // PLAY_MESSAGE, TAKE_LEAD, OFFER_CALLBACK, TRANSFER_TO_EXTERNAL_NUMBER, END_CALL
+  recordingPolicy         String       @default("RECORDING_DISABLED")
+  transcriptionPolicy     String       @default("ENABLED")
+  notificationPreferences Json?
+  escalationRules         Json?
+  loopProtectionRules     Json?        // { maxToolCalls: 5, maxTurns: 20, maxFailures: 3 }
+  businessRules           Json?        // custom rules
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  organisation            Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                  Outlet?      @relation(fields: [outletId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([organisationId, outletId])
+  @@map("receptionist_workflow_configs")
+}
+
 
 
 

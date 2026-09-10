@@ -106,6 +106,8 @@ import { AIOrchestratorService } from './orchestrator/ai-orchestrator.service';
     AISafetyService,
     AIToolRegistryService,
     AIAuditService,
+    PromptRegistryService,
+    PromptTemplateService,
   ],
 })
 export class AIModule {}

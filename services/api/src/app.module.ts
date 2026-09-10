@@ -38,9 +38,12 @@ import { RetentionIntelligenceModule } from './ai/features/retention-intelligenc
 import { ReactivationModule } from './ai/features/reactivation/reactivation.module';
 import { RetentionAgentModule } from './ai/features/retention-agent/retention-agent.module';
 import { ReceptionistModule } from './ai/features/receptionist/receptionist.module';
+import { ReceptionistWorkflowModule } from './ai/features/receptionist-workflows/receptionist-workflow.module';
+import { LeadsModule } from './leads/leads.module';
 import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
+import { VoiceModule } from './voice/voice.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -91,9 +94,12 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     ReactivationModule,
     RetentionAgentModule,
     ReceptionistModule,
+    ReceptionistWorkflowModule,
+    LeadsModule,
     AutomationModule,
     HealthModule,
     WearablesModule,
+    VoiceModule,
   ],
   providers: [
     {

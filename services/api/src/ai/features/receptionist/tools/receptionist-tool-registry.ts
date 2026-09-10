@@ -17,6 +17,7 @@ import { BookingCreateTool } from './booking-create.tool';
 import { BookingCancelTool } from './booking-cancel.tool';
 import { BookingRescheduleTool } from './booking-reschedule.tool';
 import { BookingWaitlistTool } from './booking-waitlist.tool';
+import { LeadTools } from './lead-tools';
 
 export interface ReceptionistToolDefinition {
   name: string;
@@ -41,6 +42,7 @@ export class ReceptionistToolRegistry {
     private readonly bookingCancelTool: BookingCancelTool,
     private readonly bookingRescheduleTool: BookingRescheduleTool,
     private readonly bookingWaitlistTool: BookingWaitlistTool,
+    private readonly leadTools: LeadTools,
   ) {}
 
   getToolDefinitions(): ReceptionistToolDefinition[] {
@@ -221,6 +223,155 @@ export class ReceptionistToolRegistry {
           required: ['memberProfileId', 'confirmationToken'],
         },
       },
+      // Day 33 — Lead Capture & Qualification Tools
+      {
+        name: 'get_lead',
+        description: 'Retrieve lead contact and status details by lead identifier.',
+        parameters: {
+          type: 'object',
+          properties: {
+            leadId: { type: 'string', description: 'The unique lead identifier' },
+          },
+          required: ['leadId'],
+        },
+      },
+      {
+        name: 'get_lead_qualification',
+        description: 'Retrieve qualification profile, goals, readiness, and objections for a lead.',
+        parameters: {
+          type: 'object',
+          properties: {
+            leadId: { type: 'string', description: 'The unique lead identifier' },
+          },
+          required: ['leadId'],
+        },
+      },
+      {
+        name: 'get_lead_history',
+        description: 'Retrieve recent activity timeline and interactions for a lead.',
+        parameters: {
+          type: 'object',
+          properties: {
+            leadId: { type: 'string', description: 'The unique lead identifier' },
+          },
+          required: ['leadId'],
+        },
+      },
+      {
+        name: 'get_outlet_lead_information',
+        description: 'Retrieve available membership plans, trial options, and club info for prospects.',
+        parameters: {
+          type: 'object',
+          properties: {
+            outletId: { type: 'string', description: 'Optional specific outlet identifier' },
+          },
+        },
+      },
+      {
+        name: 'create_lead',
+        description: 'Capture a new prospective customer lead from a conversation.',
+        parameters: {
+          type: 'object',
+          properties: {
+            outletId: { type: 'string', description: 'Optional outlet identifier' },
+            firstName: { type: 'string', description: 'Optional first name' },
+            lastName: { type: 'string', description: 'Optional last name' },
+            email: { type: 'string', description: 'Optional email address' },
+            phone: { type: 'string', description: 'Optional phone number' },
+            preferredContactChannel: {
+              type: 'string',
+              enum: ['EMAIL', 'SMS', 'WHATSAPP', 'PHONE'],
+              description: 'Optional preferred contact channel',
+            },
+            preferredLanguage: { type: 'string', description: 'Optional preferred language' },
+            consentStatus: {
+              type: 'string',
+              enum: ['NOT_REQUESTED', 'GRANTED', 'DENIED', 'WITHDRAWN'],
+              description: 'Consent status explicitly confirmed by the user',
+            },
+            originatingConversationId: { type: 'string', description: 'Conversation ID' },
+            initialGoals: { type: 'array', items: { type: 'string' } },
+            initialServiceInterests: { type: 'array', items: { type: 'string' } },
+            initialReadiness: {
+              type: 'string',
+              enum: ['EXPLORING', 'INTERESTED', 'READY_TO_VISIT', 'READY_TO_TRY', 'READY_TO_JOIN'],
+            },
+          },
+        },
+      },
+      {
+        name: 'update_lead_contact',
+        description: 'Update contact details or preferences for an existing lead.',
+        parameters: {
+          type: 'object',
+          properties: {
+            leadId: { type: 'string', description: 'The unique lead identifier' },
+            firstName: { type: 'string', description: 'Updated first name' },
+            lastName: { type: 'string', description: 'Updated last name' },
+            email: { type: 'string', description: 'Updated email address' },
+            phone: { type: 'string', description: 'Updated phone number' },
+            preferredContactChannel: {
+              type: 'string',
+              enum: ['EMAIL', 'SMS', 'WHATSAPP', 'PHONE'],
+            },
+            consentStatus: {
+              type: 'string',
+              enum: ['NOT_REQUESTED', 'GRANTED', 'DENIED', 'WITHDRAWN'],
+            },
+          },
+          required: ['leadId'],
+        },
+      },
+      {
+        name: 'update_lead_qualification',
+        description: 'Update structured qualification signals (goals, interests, readiness, objections).',
+        parameters: {
+          type: 'object',
+          properties: {
+            leadId: { type: 'string', description: 'The unique lead identifier' },
+            goals: { type: 'array', items: { type: 'string' } },
+            serviceInterests: { type: 'array', items: { type: 'string' } },
+            preferredOutletId: { type: 'string' },
+            preferredSchedule: {
+              type: 'string',
+              enum: ['EARLY_MORNING', 'MORNING', 'AFTERNOON', 'EVENING', 'WEEKEND', 'FLEXIBLE', 'UNKNOWN'],
+            },
+            readiness: {
+              type: 'string',
+              enum: ['EXPLORING', 'INTERESTED', 'READY_TO_VISIT', 'READY_TO_TRY', 'READY_TO_JOIN', 'UNKNOWN'],
+            },
+            priceSensitivity: {
+              type: 'string',
+              enum: ['PRICE_SENSITIVE', 'VALUE_FOCUSED', 'FLEXIBLE', 'UNKNOWN'],
+            },
+            objections: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string' },
+                  customerStatementSummary: { type: 'string' },
+                },
+              },
+            },
+            aiSummary: { type: 'string' },
+          },
+          required: ['leadId'],
+        },
+      },
+      {
+        name: 'request_lead_handoff',
+        description: 'Escalate a lead inquiry to a human staff consultant or sales representative.',
+        parameters: {
+          type: 'object',
+          properties: {
+            leadId: { type: 'string', description: 'The unique lead identifier' },
+            reason: { type: 'string', description: 'Reason for requesting human handoff' },
+            notes: { type: 'string', description: 'Optional briefing notes for staff' },
+          },
+          required: ['leadId', 'reason'],
+        },
+      },
     ];
   }
 
@@ -306,6 +457,34 @@ export class ReceptionistToolRegistry {
           output = await this.bookingWaitlistTool.joinWaitlist(organisationId, {
             memberProfileId: input.memberProfileId || context?.memberProfileId,
             confirmationToken: input.confirmationToken,
+            notes: input.notes,
+          });
+          break;
+        // Day 33 Lead Tools
+        case 'get_lead':
+          output = await this.leadTools.getLead(organisationId, input.leadId);
+          break;
+        case 'get_lead_qualification':
+          output = await this.leadTools.getLeadQualification(organisationId, input.leadId);
+          break;
+        case 'get_lead_history':
+          output = await this.leadTools.getLeadHistory(organisationId, input.leadId);
+          break;
+        case 'get_outlet_lead_information':
+          output = await this.leadTools.getOutletLeadInformation(organisationId, input.outletId);
+          break;
+        case 'create_lead':
+          output = await this.leadTools.createLead(organisationId, input);
+          break;
+        case 'update_lead_contact':
+          output = await this.leadTools.updateLeadContact(organisationId, input.leadId, input);
+          break;
+        case 'update_lead_qualification':
+          output = await this.leadTools.updateLeadQualification(organisationId, input.leadId, input);
+          break;
+        case 'request_lead_handoff':
+          output = await this.leadTools.requestLeadHandoff(organisationId, input.leadId, {
+            reason: input.reason || 'Lead requested front-desk handoff',
             notes: input.notes,
           });
           break;

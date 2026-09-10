@@ -106,6 +106,11 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       return this.generateReceptionistJson(contextText, userPrompt);
     }
 
+    // Check if this is the LeadQualification schema
+    if (schema.properties?.qualificationStatus && schema.properties?.detectedGoals && schema.properties?.recommendedNextAction) {
+      return this.generateLeadQualificationJson(contextText, userPrompt);
+    }
+
     const result: Record<string, any> = {};
     const properties = schema.properties || {};
 
@@ -1294,6 +1299,71 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
         },
       ],
       handoffRecommended: false,
+    };
+  }
+
+  private generateLeadQualificationJson(contextText: string, userPrompt: string): Record<string, any> {
+    const text = (contextText + ' ' + userPrompt).toLowerCase();
+
+    const detectedGoals: string[] = [];
+    if (text.includes('strength') || text.includes('muscle') || text.includes('weights') || text.includes('बलियो')) {
+      detectedGoals.push('strength');
+    }
+    if (text.includes('cardio') || text.includes('fitness') || text.includes('endurance') || text.includes('फिटनेस')) {
+      detectedGoals.push('fitness');
+    }
+    if (text.includes('fat') || text.includes('lose') || text.includes('loss') || text.includes('तौल')) {
+      detectedGoals.push('weight_management');
+    }
+    if (detectedGoals.length === 0) {
+      detectedGoals.push('general_health');
+    }
+
+    const serviceInterests: string[] = [];
+    if (text.includes('personal train') || text.includes('trainer') || text.includes('coach') || text.includes('प्रशिक्षक')) {
+      serviceInterests.push('PERSONAL_TRAINING');
+    }
+    if (text.includes('class') || text.includes('hiit') || text.includes('yoga') || text.includes('कक्षा')) {
+      serviceInterests.push('GROUP_CLASSES');
+    }
+    if (text.includes('trial') || text.includes('pass') || text.includes('परीक्षण')) {
+      serviceInterests.push('TRIAL');
+    }
+    if (text.includes('tour') || text.includes('visit') || text.includes('भ्रमण')) {
+      serviceInterests.push('TOUR');
+    }
+    if (serviceInterests.length === 0) {
+      serviceInterests.push('MEMBERSHIP');
+    }
+
+    const readiness = text.includes('ready') || text.includes('start today') || text.includes('तयार')
+      ? 'READY_TO_JOIN'
+      : 'INTERESTED';
+
+    return {
+      qualificationStatus: 'QUALIFIED',
+      detectedGoals,
+      serviceInterests,
+      preferredOutlet: null,
+      preferredSchedule: text.includes('evening') || text.includes('बेलुका') ? 'EVENING' : text.includes('morning') || text.includes('बिहान') ? 'MORNING' : 'FLEXIBLE',
+      readiness,
+      priceSensitivity: text.includes('price') || text.includes('cost') || text.includes('मूल्य') ? 'PRICE_SENSITIVE' : 'VALUE_FOCUSED',
+      objections: [],
+      missingInformation: [],
+      recommendedNextAction: serviceInterests.includes('PERSONAL_TRAINING')
+        ? 'OFFER_TRAINER_INFORMATION'
+        : serviceInterests.includes('TRIAL')
+        ? 'OFFER_TRIAL'
+        : 'SHOW_MEMBERSHIP_OPTIONS',
+      confidence: 0.92,
+      evidence: [
+        {
+          observation: `Prospect expressed interest in ${serviceInterests.join(', ')} and ${detectedGoals.join(', ')}`,
+          inferred: false,
+          source: 'conversation_transcript',
+        },
+      ],
+      aiSummary: `Prospect interested in ${serviceInterests.join(', ')} with primary goal of ${detectedGoals.join(', ')}. Readiness: ${readiness}.`,
     };
   }
 }

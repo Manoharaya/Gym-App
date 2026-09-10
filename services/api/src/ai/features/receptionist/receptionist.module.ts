@@ -7,6 +7,7 @@ import { DatabaseModule } from '../../../database/database.module';
 import { AuditModule } from '../../../audit/audit.module';
 import { RedisModule } from '../../../redis/redis.module';
 import { BookingsModule } from '../../../bookings/bookings.module';
+import { LeadsModule } from '../../../leads/leads.module';
 import { AIModule } from '../../ai.module';
 
 // Conversation
@@ -42,6 +43,7 @@ import { BookingCreateTool } from './tools/booking-create.tool';
 import { BookingCancelTool } from './tools/booking-cancel.tool';
 import { BookingRescheduleTool } from './tools/booking-reschedule.tool';
 import { BookingWaitlistTool } from './tools/booking-waitlist.tool';
+import { LeadTools } from './tools/lead-tools';
 
 // Day 32 Booking Domain Services
 import { ReceptionistMemberIdentityService } from './identity/receptionist-member-identity.service';
@@ -77,6 +79,7 @@ import { ReceptionistBookingController } from './receptionist-booking.controller
     AuditModule,
     RedisModule,
     BookingsModule,
+    LeadsModule,
     forwardRef(() => AIModule),
   ],
   controllers: [ReceptionistController, ReceptionistBookingController],
@@ -114,6 +117,7 @@ import { ReceptionistBookingController } from './receptionist-booking.controller
     BookingCancelTool,
     BookingRescheduleTool,
     BookingWaitlistTool,
+    LeadTools,
 
     // Day 32 Booking Services
     ReceptionistMemberIdentityService,
@@ -153,6 +157,8 @@ import { ReceptionistBookingController } from './receptionist-booking.controller
     BookingSearchService,
     ReceptionistBookingEligibilityService,
     BookingVerificationService,
+    LeadTools,
+    ReceptionistSafetyService,
   ],
 })
 export class ReceptionistModule {}

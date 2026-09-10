@@ -9,6 +9,7 @@ import { REACTIVATION_PROMPT_DEFINITION } from '../features/reactivation/prompts
 import { RETENTION_AGENT_PROMPT_DEFINITION } from '../features/retention-agent/prompts/retention_agent.v1';
 import { RECEPTIONIST_PROMPT_DEFINITION } from '../features/receptionist/prompts/receptionist.v1';
 import { RECEPTIONIST_BOOKING_PROMPT_DEFINITION } from '../features/receptionist/prompts/receptionist-booking.v1';
+import { LEAD_QUALIFICATION_PROMPT_DEFINITION } from '../features/receptionist/prompts/lead-qualification.v1';
 
 @Injectable()
 export class PromptRegistryService implements OnModuleInit {
@@ -334,6 +335,7 @@ export class PromptRegistryService implements OnModuleInit {
       RETENTION_AGENT_PROMPT_DEFINITION,
       RECEPTIONIST_PROMPT_DEFINITION,
       RECEPTIONIST_BOOKING_PROMPT_DEFINITION,
+      LEAD_QUALIFICATION_PROMPT_DEFINITION,
     ];
 
     for (const p of defaultPrompts) {
@@ -390,6 +392,8 @@ export class PromptRegistryService implements OnModuleInit {
         ? 'retention_agent.v1'
         : key === 'default' && feature === 'RECEPTIONIST'
         ? 'receptionist.v1'
+        : key === 'default' && feature === 'AI_LEAD_QUALIFICATION'
+        ? 'lead_qualification.v1'
         : key;
 
     if (version) {

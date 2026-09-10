@@ -166,4 +166,52 @@ export class ReceptionistService {
     const res = await apiClient.get<any>(`/ai/receptionist/booking/metrics${query}`);
     return (res as any).data || res;
   }
+
+  // Day 33 — Lead Management Methods
+  static async listLeads(params?: any): Promise<{ total: number; items: any[] }> {
+    const query = params ? new URLSearchParams(params as any).toString() : '';
+    const res = await apiClient.get<{ total: number; items: any[] }>(`/leads${query ? `?${query}` : ''}`);
+    return (res as any).data || res;
+  }
+
+  static async getLead(id: string): Promise<any> {
+    const res = await apiClient.get<any>(`/leads/${id}`);
+    return (res as any).data || res;
+  }
+
+  static async getLeadMetrics(outletId?: string): Promise<any> {
+    const query = outletId ? `?outletId=${outletId}` : '';
+    const res = await apiClient.get<any>(`/leads/metrics${query}`);
+    return (res as any).data || res;
+  }
+
+  static async createLead(dto: any): Promise<any> {
+    const res = await apiClient.post<any>('/leads', dto);
+    return (res as any).data || res;
+  }
+
+  static async updateLead(id: string, dto: any): Promise<any> {
+    const res = await apiClient.patch<any>(`/leads/${id}`, dto);
+    return (res as any).data || res;
+  }
+
+  static async updateLeadQualification(id: string, dto: any): Promise<any> {
+    const res = await apiClient.patch<any>(`/leads/${id}/qualification`, dto);
+    return (res as any).data || res;
+  }
+
+  static async qualifyLead(id: string, dto?: any): Promise<any> {
+    const res = await apiClient.post<any>(`/leads/${id}/qualify`, dto || {});
+    return (res as any).data || res;
+  }
+
+  static async assignLeadStaff(id: string, dto: any): Promise<any> {
+    const res = await apiClient.post<any>(`/leads/${id}/assign`, dto);
+    return (res as any).data || res;
+  }
+
+  static async requestLeadHandoff(id: string, dto: any): Promise<any> {
+    const res = await apiClient.post<any>(`/leads/${id}/handoff`, dto);
+    return (res as any).data || res;
+  }
 }

@@ -18,3 +18,6 @@ export * from './retention-agent';
 export * from './retention-data-definitions';
 export * from './automation';
 export * from './receptionist';
+export * from './lead';
+export * from './voice';
+export * from './receptionist-workflow';
