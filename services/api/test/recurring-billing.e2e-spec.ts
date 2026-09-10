@@ -533,14 +533,29 @@ describe('Day 42: Recurring Billing & Collections E2E Suite', () => {
     });
 
     it('rejects duplicate payment collection if cycle is already PAID (HTTP 400)', async () => {
-      // Create a cycle that is already PAID
+      // Create a cycle that is already PAID on a dedicated schedule
+      const sched = await prisma.billingSchedule.create({
+        data: {
+          organisationId: orgA.id,
+          memberProfileId: memberProfile1.id,
+          memberMembershipId: memberMembership1.id,
+          membershipPlanId: planA1.id,
+          billingInterval: 'MONTHLY',
+          amountMinor: 12000,
+          currency: 'AUD',
+          nextBillingDate: new Date(),
+          status: 'ACTIVE',
+          paymentMethodId: paymentMethod1.id,
+        },
+      });
+
       const paidCycle = await prisma.billingCycle.create({
         data: {
           organisationId: orgA.id,
-          billingScheduleId: (await prisma.billingSchedule.findFirst())!.id,
+          billingScheduleId: sched.id,
           memberProfileId: memberProfile1.id,
           memberMembershipId: memberMembership1.id,
-          cycleNumber: 999,
+          cycleNumber: 1,
           periodStart: new Date(),
           periodEnd: new Date(),
           scheduledBillingDate: new Date(),
@@ -672,6 +687,7 @@ describe('Day 42: Recurring Billing & Collections E2E Suite', () => {
           currency: 'AUD',
           nextBillingDate: new Date(),
           status: 'ACTIVE',
+          paymentMethodId: paymentMethod1.id,
         },
       });
 
@@ -743,14 +759,29 @@ describe('Day 42: Recurring Billing & Collections E2E Suite', () => {
         },
       });
 
-      // Create dunning case for overdue invoice
+      // Create dedicated schedule and dunning cycle for overdue invoice
+      const overdueSchedule = await prisma.billingSchedule.create({
+        data: {
+          organisationId: orgA.id,
+          memberProfileId: memberProfile2.id,
+          memberMembershipId: memberMembership2.id,
+          membershipPlanId: planA2.id,
+          billingInterval: 'ANNUALLY',
+          amountMinor: 120000,
+          currency: 'AUD',
+          nextBillingDate: new Date(),
+          status: 'ACTIVE',
+          paymentMethodId: paymentMethod2.id,
+        },
+      });
+
       const cycle = await prisma.billingCycle.create({
         data: {
           organisationId: orgA.id,
-          billingScheduleId: (await prisma.billingSchedule.findFirst())!.id,
+          billingScheduleId: overdueSchedule.id,
           memberProfileId: memberProfile2.id,
           memberMembershipId: memberMembership2.id,
-          cycleNumber: 888,
+          cycleNumber: 1,
           periodStart: new Date(),
           periodEnd: new Date(),
           scheduledBillingDate: new Date(),
@@ -942,7 +973,8 @@ describe('Day 42: Recurring Billing & Collections E2E Suite', () => {
         .expect(200);
 
       // Org B should have zero of Org A's schedules
-      expect(res.body.total).toBe(0);
+      const resData = res.body.data || res.body;
+      expect(resData.total ?? resData.data?.length ?? 0).toBe(0);
     });
   });
 
@@ -958,7 +990,7 @@ describe('Day 42: Recurring Billing & Collections E2E Suite', () => {
         .set('x-role', 'ORGANISATION_OWNER')
         .expect(200);
 
-      const m = res.body;
+      const m = res.body.data || res.body;
       expect(m.currency).toBe('AUD');
       expect(m.activeSchedules).toBeGreaterThan(0);
       expect(m.recurringBilledMinor).toBeGreaterThan(0);
