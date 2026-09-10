@@ -27,3 +27,4 @@ export * from './lead-qualification';
 export * from './follow-up';
 export * from './sales-intelligence';
 export * from './financial-intelligence';
+export * from './recurring-billing';

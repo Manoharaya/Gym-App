@@ -161,6 +161,12 @@ model Organisation {
   followUpAssignments          FollowUpAssignment[]
   financialTransactionReferences FinancialTransactionReference[]
   financialDailySummaries      FinancialDailySummary[]
+  billingSchedules             BillingSchedule[]
+  billingCycles                BillingCycle[]
+  paymentAttempts              PaymentAttempt[]
+  dunningCases                 DunningCase[]
+  billingPolicy                BillingPolicy?
+  collectionTasks              CollectionTask[]
 
   @@index([slug])
   @@index([status])
@@ -263,6 +269,8 @@ model Outlet {
   followUpEnrollments          FollowUpEnrollment[]
   financialTransactionReferences FinancialTransactionReference[]
   financialDailySummaries      FinancialDailySummary[]
+  billingSchedules             BillingSchedule[]
+  collectionTasks              CollectionTask[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -611,6 +619,10 @@ model MemberProfile {
   receptionistInteractions     ReceptionistInteraction[]
   receptionistFollowUpTasks    ReceptionistFollowUpTask[]
   callbackRequests             CallbackRequest[]
+  billingSchedules             BillingSchedule[]
+  billingCycles                BillingCycle[]
+  dunningCases                 DunningCase[]
+  collectionTasks              CollectionTask[]
 
   @@index([userId])
   @@index([organisationId])
@@ -930,6 +942,7 @@ model MembershipPlan {
   memberMemberships  MemberMembership[]
   invoiceLineItems   InvoiceLineItem[]
   salesRecommendations SalesRecommendation[]
+  billingSchedules   BillingSchedule[]
 
   @@unique([organisationId, code])
   @@index([organisationId])
@@ -1011,6 +1024,8 @@ model MemberMembership {
   paymentTransactions     PaymentTransaction[]
   invoiceLineItems        InvoiceLineItem[]
   checkIns                CheckIn[]
+  billingSchedules        BillingSchedule[]
+  billingCycles           BillingCycle[]
 
   @@index([organisationId])
   @@index([memberProfileId])
@@ -1106,6 +1121,7 @@ model PaymentMethod {
   memberProfile           MemberProfile       @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
   paymentCustomer         PaymentCustomer?    @relation(fields: [paymentCustomerId], references: [id], onDelete: SetNull)
   transactions            PaymentTransaction[]
+  billingSchedules        BillingSchedule[]
 
   @@index([organisationId])
   @@index([memberProfileId])
@@ -1142,6 +1158,10 @@ model Invoice {
   memberMembership    MemberMembership?    @relation(fields: [memberMembershipId], references: [id], onDelete: SetNull)
   lineItems           InvoiceLineItem[]
   transactions        PaymentTransaction[]
+  billingCycles       BillingCycle[]
+  paymentAttempts     PaymentAttempt[]
+  dunningCases        DunningCase[]
+  collectionTasks     CollectionTask[]
 
   @@unique([organisationId, invoiceNumber])
   @@index([organisationId])
@@ -1204,6 +1224,7 @@ model PaymentTransaction {
   paymentCustomer         PaymentCustomer?  @relation(fields: [paymentCustomerId], references: [id], onDelete: SetNull)
   paymentMethod           PaymentMethod?    @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
   refunds                 PaymentRefund[]
+  paymentAttempts         PaymentAttempt[]
 
   @@unique([provider, providerTransactionId])
   @@index([organisationId])
@@ -6121,6 +6142,215 @@ model FinancialDailySummary {
   @@index([outletId, date])
   @@map("financial_daily_summaries")
 }
+
+// ==========================================
+// DAY 42: RECURRING BILLING & COLLECTIONS
+// ==========================================
+
+model BillingSchedule {
+  id                 String          @id @default(cuid())
+  organisationId     String
+  memberProfileId    String
+  memberMembershipId String
+  membershipPlanId   String
+  originOutletId     String?
+  currency           String          @default("AUD")
+  billingInterval    String          @default("MONTHLY") // WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, SEMI_ANNUALLY, ANNUALLY, CUSTOM
+  intervalCount      Int             @default(1)
+  amountMinor        Int
+  nextBillingDate    DateTime
+  status             String          @default("ACTIVE") // DRAFT, ACTIVE, PAUSED, PAST_DUE, SUSPENDED, CANCELLED, COMPLETED, EXPIRED
+  paymentMethodId    String?
+  startDate          DateTime        @default(now())
+  endDate            DateTime?
+  timezone           String          @default("UTC")
+  failureCount       Int             @default(0)
+  metadata           Json?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  organisation       Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile   @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  memberMembership   MemberMembership @relation(fields: [memberMembershipId], references: [id], onDelete: Cascade)
+  membershipPlan     MembershipPlan  @relation(fields: [membershipPlanId], references: [id], onDelete: Restrict)
+  originOutlet       Outlet?         @relation(fields: [originOutletId], references: [id], onDelete: SetNull)
+  paymentMethod      PaymentMethod?  @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  billingCycles      BillingCycle[]
+
+  @@index([organisationId, status])
+  @@index([nextBillingDate, status])
+  @@index([memberProfileId])
+  @@index([memberMembershipId])
+  @@map("billing_schedules")
+}
+
+model BillingCycle {
+  id                   String          @id @default(cuid())
+  organisationId       String
+  billingScheduleId    String
+  memberProfileId      String
+  memberMembershipId   String
+  cycleNumber          Int
+  periodStart          DateTime
+  periodEnd            DateTime
+  scheduledBillingDate DateTime
+  invoiceId            String?
+  status               String          @default("SCHEDULED") // SCHEDULED, PROCESSING, INVOICED, PAYMENT_PENDING, PAID, FAILED, PAST_DUE, CANCELLED, SKIPPED
+  amountMinor          Int
+  currency             String          @default("AUD")
+  processedAt          DateTime?
+  metadata             Json?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  organisation         Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  billingSchedule      BillingSchedule @relation(fields: [billingScheduleId], references: [id], onDelete: Cascade)
+  memberProfile        MemberProfile   @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  memberMembership     MemberMembership @relation(fields: [memberMembershipId], references: [id], onDelete: Cascade)
+  invoice              Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  paymentAttempts      PaymentAttempt[]
+  dunningCase          DunningCase?
+
+  @@unique([billingScheduleId, cycleNumber])
+  @@index([organisationId, status])
+  @@index([scheduledBillingDate])
+  @@index([memberProfileId])
+  @@index([invoiceId])
+  @@map("billing_cycles")
+}
+
+model PaymentAttempt {
+  id                   String          @id @default(cuid())
+  organisationId       String
+  billingCycleId       String
+  invoiceId            String
+  paymentTransactionId String?
+  attemptNumber        Int
+  attemptedAt          DateTime        @default(now())
+  status               String          @default("PENDING") // PENDING, PROCESSING, SUCCEEDED, FAILED, CANCELLED, REQUIRES_ACTION
+  failureCode          String?
+  failureCategory      String?
+  providerReference    String?
+  nextRetryAt          DateTime?
+  metadata             Json?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  organisation         Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  billingCycle         BillingCycle    @relation(fields: [billingCycleId], references: [id], onDelete: Cascade)
+  invoice              Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  paymentTransaction   PaymentTransaction? @relation(fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+
+  @@unique([billingCycleId, attemptNumber])
+  @@index([organisationId, status])
+  @@index([invoiceId])
+  @@index([paymentTransactionId])
+  @@index([nextRetryAt])
+  @@map("payment_attempts")
+}
+
+model DunningCase {
+  id                   String          @id @default(cuid())
+  organisationId       String
+  billingCycleId       String          @unique
+  invoiceId            String
+  memberProfileId      String
+  status               String          @default("OPEN") // OPEN, RETRYING, CUSTOMER_ACTION_REQUIRED, PAYMENT_RECOVERED, STAFF_REVIEW, ESCALATED, RESOLVED, CANCELLED, EXPIRED
+  totalAttempts        Int             @default(0)
+  nextActionAt         DateTime?
+  escalatedAt          DateTime?
+  resolvedAt           DateTime?
+  resolutionType       String?         // PAYMENT_RECOVERED, PAYMENT_METHOD_UPDATED, MANUAL_PAYMENT, INVOICE_VOIDED, INVOICE_ADJUSTED, MEMBERSHIP_CANCELLED, STAFF_RESOLVED, CUSTOMER_DISPUTE, OTHER
+  resolutionNotes      String?
+  metadata             Json?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  organisation         Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  billingCycle         BillingCycle    @relation(fields: [billingCycleId], references: [id], onDelete: Cascade)
+  invoice              Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  memberProfile        MemberProfile   @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  steps                DunningStep[]
+  collectionTasks      CollectionTask[]
+
+  @@index([organisationId, status])
+  @@index([memberProfileId])
+  @@index([invoiceId])
+  @@index([nextActionAt])
+  @@map("dunning_cases")
+}
+
+model DunningStep {
+  id             String       @id @default(cuid())
+  dunningCaseId  String
+  stepNumber     Int
+  actionType     String       // PAYMENT_RETRY, EMAIL_REMINDER, SMS_REMINDER, PUSH_REMINDER, IN_APP_REMINDER, WHATSAPP_REMINDER, STAFF_TASK, ESCALATE
+  scheduledAt    DateTime
+  executedAt     DateTime?
+  status         String       @default("PENDING") // PENDING, EXECUTED, FAILED, SKIPPED
+  result         Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  dunningCase    DunningCase  @relation(fields: [dunningCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([dunningCaseId, stepNumber])
+  @@index([scheduledAt, status])
+  @@map("dunning_steps")
+}
+
+model BillingPolicy {
+  id                       String       @id @default(cuid())
+  organisationId           String       @unique
+  retryMaxAttempts         Int          @default(4)
+  retryIntervalsDays       Int[]        @default([2, 3, 3])
+  gracePeriodDays          Int          @default(7)
+  gracePeriodAccessAllowed Boolean      @default(true)
+  dunningAutoEscalateDays  Int          @default(14)
+  dunningMaxPeriodDays     Int          @default(30)
+  communicationChannels    String[]     @default(["EMAIL", "IN_APP"])
+  metadata                 Json?
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+
+  organisation             Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@map("billing_policies")
+}
+
+model CollectionTask {
+  id              String       @id @default(cuid())
+  organisationId  String
+  outletId        String?
+  dunningCaseId   String?
+  memberProfileId String
+  invoiceId       String
+  title           String
+  description     String
+  priority        String       @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status          String       @default("OPEN") // OPEN, ASSIGNED, IN_PROGRESS, COMPLETED, DISMISSED, EXPIRED
+  assignedStaffId String?
+  dueDate         DateTime
+  completedAt     DateTime?
+  resolutionNotes String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?      @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  dunningCase     DunningCase? @relation(fields: [dunningCaseId], references: [id], onDelete: SetNull)
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  invoice         Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([outletId])
+  @@index([memberProfileId])
+  @@index([assignedStaffId])
+  @@index([dueDate])
+  @@map("collection_tasks")
+}
+
 
 
 
