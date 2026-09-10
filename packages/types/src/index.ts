@@ -29,3 +29,4 @@ export * from './sales-intelligence';
 export * from './financial-intelligence';
 export * from './recurring-billing';
 export * from './accounting-integration';
+export * from './finance-assistant';

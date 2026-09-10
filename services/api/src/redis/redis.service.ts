@@ -98,6 +98,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.memoryCache.delete(key);
   }
 
+  async delByPattern(pattern: string): Promise<void> {
+    if (this.isConnected && this.client) {
+      try {
+        const keys = await this.client.keys(pattern);
+        if (keys.length > 0) {
+          await this.client.del(...keys);
+        }
+        return;
+      } catch {
+        // Fallback to memory
+      }
+    }
+    const regex = new RegExp(`^${pattern.replace(/\*/g, '.*')}$`);
+    for (const key of this.memoryCache.keys()) {
+      if (regex.test(key)) {
+        this.memoryCache.delete(key);
+      }
+    }
+  }
+
   async ping(): Promise<string> {
     if (this.isConnected && this.client) {
       return this.client.ping();

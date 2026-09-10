@@ -167,6 +167,16 @@ model Organisation {
   dunningCases                 DunningCase[]
   billingPolicy                BillingPolicy?
   collectionTasks              CollectionTask[]
+  accountingConnections        AccountingConnection[]
+  accountingMappings           AccountingMapping[]
+  accountingTaxMappings        AccountingTaxMapping[]
+  accountingExternalReferences AccountingExternalReference[]
+  accountingSyncJobs           AccountingSyncJob[]
+  accountingSyncRecords        AccountingSyncRecord[]
+  accountingConflicts          AccountingConflict[]
+  accountingReconciliationReports AccountingReconciliationReport[]
+  financeAssistantConversations FinanceAssistantConversation[]
+  financeAssistantFeedbacks     FinanceAssistantFeedback[]
 
   @@index([slug])
   @@index([status])
@@ -271,6 +281,8 @@ model Outlet {
   financialDailySummaries      FinancialDailySummary[]
   billingSchedules             BillingSchedule[]
   collectionTasks              CollectionTask[]
+  accountingMappings           AccountingMapping[]
+  financeAssistantConversations FinanceAssistantConversation[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -6350,6 +6362,278 @@ model CollectionTask {
   @@index([dueDate])
   @@map("collection_tasks")
 }
+
+// ==========================================
+// DAY 43: ACCOUNTING INTEGRATION & RECONCILIATION
+// ==========================================
+
+model AccountingConnection {
+  id                       String       @id @default(cuid())
+  organisationId           String
+  provider                 String       // XERO, QUICKBOOKS, OTHER
+  status                   String       @default("PENDING") // PENDING, CONNECTED, AUTHENTICATION_REQUIRED, SYNCING, ERROR, DISCONNECTED, REVOKED
+  externalOrganisationId   String?      // Xero Tenant ID or QuickBooks Realm ID
+  externalOrganisationName String?
+  encryptedAccessToken     String?
+  encryptedRefreshToken    String?
+  tokenExpiresAt           DateTime?
+  scope                    String?
+  connectedAt              DateTime?
+  disconnectedAt           DateTime?
+  lastSuccessfulSyncAt     DateTime?
+  lastFailedSyncAt         DateTime?
+  syncVersion              Int          @default(1)
+  metadata                 Json?
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+
+  organisation             Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  mappings                 AccountingMapping[]
+  taxMappings              AccountingTaxMapping[]
+  externalReferences       AccountingExternalReference[]
+  syncJobs                 AccountingSyncJob[]
+  conflicts                AccountingConflict[]
+  reconciliationReports    AccountingReconciliationReport[]
+
+  @@unique([organisationId, provider])
+  @@index([organisationId, status])
+  @@map("accounting_connections")
+}
+
+model AccountingMapping {
+  id                String               @id @default(cuid())
+  organisationId    String
+  connectionId      String
+  mappingType       String               // REVENUE_ACCOUNT, RETAIL_REVENUE_ACCOUNT, MEMBERSHIP_REVENUE_ACCOUNT, PERSONAL_TRAINING_REVENUE_ACCOUNT, CLASS_REVENUE_ACCOUNT, OTHER_REVENUE_ACCOUNT, TAX_RATE, PAYMENT_ACCOUNT, REFUND_ACCOUNT
+  fitcoreReference  String               // e.g. MEMBERSHIP_PAYMENT, CLASS, RETAIL, or outletId
+  externalReference String               // e.g. Account Code/ID "200"
+  externalName      String?
+  outletId          String?
+  status            String               @default("ACTIVE")
+  metadata          Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  organisation      Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection        AccountingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  outlet            Outlet?              @relation(fields: [outletId], references: [id], onDelete: SetNull)
+
+  @@unique([connectionId, mappingType, fitcoreReference, outletId])
+  @@index([organisationId, mappingType])
+  @@index([connectionId])
+  @@map("accounting_mappings")
+}
+
+model AccountingTaxMapping {
+  id                   String               @id @default(cuid())
+  organisationId       String
+  connectionId         String
+  fitcoreTaxIdentifier String               // STANDARD_TAX, GST_10, ZERO_TAX, EXEMPT
+  externalTaxIdentifier String              // OUTPUT, EXEMPT, TAX001
+  externalTaxRate      Float?               // e.g. 10.0 for 10%
+  provider             String               // XERO, QUICKBOOKS
+  status               String               @default("ACTIVE")
+  metadata             Json?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  organisation         Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection           AccountingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, fitcoreTaxIdentifier])
+  @@index([organisationId])
+  @@map("accounting_tax_mappings")
+}
+
+model AccountingExternalReference {
+  id               String               @id @default(cuid())
+  organisationId   String
+  connectionId     String
+  entityType       String               // CONTACT, INVOICE, PAYMENT, REFUND, CREDIT_NOTE, ACCOUNT, TAX_RATE
+  fitcoreEntityId  String
+  externalEntityId String
+  externalVersion  String?
+  syncStatus       String               @default("SYNCED") // SYNCED, FAILED, PENDING, STALE
+  lastSyncedAt     DateTime             @default(now())
+  metadata         Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  organisation     Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection       AccountingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, entityType, fitcoreEntityId])
+  @@index([organisationId, entityType, externalEntityId])
+  @@index([fitcoreEntityId])
+  @@map("accounting_external_references")
+}
+
+model AccountingSyncJob {
+  id                String                 @id @default(cuid())
+  organisationId    String
+  connectionId      String
+  syncType          String                 // INITIAL_SYNC, INVOICE_SYNC, PAYMENT_SYNC, REFUND_SYNC, CONTACT_SYNC, FULL_SYNC, INCREMENTAL_SYNC, RECONCILIATION
+  status            String                 @default("PENDING") // PENDING, RUNNING, COMPLETED, PARTIAL, FAILED, CANCELLED
+  startedAt         DateTime?
+  completedAt       DateTime?
+  recordsProcessed  Int                    @default(0)
+  recordsSucceeded  Int                    @default(0)
+  recordsFailed     Int                    @default(0)
+  cursor            String?
+  errorCount        Int                    @default(0)
+  errorMessage      String?
+  triggeredBy       String?                // SYSTEM, CRON, STAFF_<userId>
+  metadata          Json?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  organisation      Organisation           @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection        AccountingConnection   @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  syncRecords       AccountingSyncRecord[]
+
+  @@index([organisationId, status])
+  @@index([connectionId, syncType])
+  @@map("accounting_sync_jobs")
+}
+
+model AccountingSyncRecord {
+  id               String            @id @default(cuid())
+  syncJobId        String
+  organisationId   String
+  entityType       String            // CONTACT, INVOICE, PAYMENT, REFUND, CREDIT_NOTE
+  fitcoreEntityId  String
+  externalEntityId String?
+  operation        String            // CREATE, UPDATE, SKIP, RETRY, FAILED
+  status           String            // PENDING, PROCESSING, SYNCED, FAILED, RETRYING, SKIPPED, CONFLICT
+  attemptCount     Int               @default(1)
+  errorCategory    String?
+  errorMessage     String?
+  lastAttemptedAt  DateTime          @default(now())
+  completedAt      DateTime?
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  syncJob          AccountingSyncJob @relation(fields: [syncJobId], references: [id], onDelete: Cascade)
+  organisation     Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([syncJobId, status])
+  @@index([organisationId, entityType, fitcoreEntityId])
+  @@map("accounting_sync_records")
+}
+
+model AccountingConflict {
+  id                String               @id @default(cuid())
+  organisationId    String
+  connectionId      String
+  entityType        String               // INVOICE, PAYMENT, REFUND, CONTACT
+  fitcoreEntityId   String
+  externalEntityId  String?
+  conflictType      String               // AMOUNT_MISMATCH, STATUS_MISMATCH, EXTERNAL_DELETION, EXTERNAL_MODIFICATION, TAX_MISMATCH, MAPPING_MISMATCH
+  fitcoreValue      String?
+  externalValue     String?
+  status            String               @default("UNRESOLVED") // UNRESOLVED, RESOLVED, IGNORED
+  resolutionNotes   String?
+  resolvedByUserId  String?
+  resolvedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  organisation      Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection        AccountingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([connectionId, entityType])
+  @@map("accounting_conflicts")
+}
+
+model AccountingReconciliationReport {
+  id                     String               @id @default(cuid())
+  organisationId         String
+  connectionId           String
+  status                 String               @default("COMPLETED") // COMPLETED, MISMATCH_DETECTED, FAILED
+  matchedCount           Int                  @default(0)
+  missingExternalCount   Int                  @default(0)
+  missingFitcoreCount    Int                  @default(0)
+  amountMismatchCount    Int                  @default(0)
+  statusMismatchCount    Int                  @default(0)
+  currencyMismatchCount  Int                  @default(0)
+  details                Json?
+  runAt                  DateTime             @default(now())
+  triggeredBy            String?
+
+  organisation           Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection             AccountingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, runAt])
+  @@index([connectionId])
+  @@map("accounting_reconciliation_reports")
+}
+
+model FinanceAssistantConversation {
+  id             String                    @id @default(cuid())
+  organisationId String
+  outletId       String?
+  userId         String
+  title          String                    @default("Financial Query")
+  status         String                    @default("ACTIVE") // ACTIVE, ARCHIVED
+  metadata       Json?
+  lastMessageAt  DateTime                  @default(now())
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  organisation   Organisation              @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet         Outlet?                   @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  messages       FinanceAssistantMessage[]
+  feedbacks      FinanceAssistantFeedback[]
+
+  @@index([organisationId, userId])
+  @@index([organisationId, status])
+  @@index([lastMessageAt])
+  @@map("finance_assistant_conversations")
+}
+
+model FinanceAssistantMessage {
+  id                 String                       @id @default(cuid())
+  conversationId     String
+  role               String                       // USER, ASSISTANT, SYSTEM
+  content            String                       @db.Text
+  structuredResponse Json?
+  sources            Json?
+  dataQuality        String?
+  tokens             Json?
+  createdAt          DateTime                     @default(now())
+
+  conversation       FinanceAssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  feedbacks          FinanceAssistantFeedback[]
+
+  @@index([conversationId, createdAt])
+  @@map("finance_assistant_messages")
+}
+
+model FinanceAssistantFeedback {
+  id             String                        @id @default(cuid())
+  organisationId String
+  userId         String
+  conversationId String?
+  messageId      String?
+  rating         String                        // HELPFUL, NOT_HELPFUL, INACCURATE, MISSING_INFO, WRONG_CALCULATION, WRONG_INTERPRETATION, PERMISSION_CONCERN
+  accuracyScore  Int?
+  comment        String?                       @db.Text
+  modelId        String?
+  promptVersion  String?
+  createdAt      DateTime                      @default(now())
+
+  organisation   Organisation                  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  conversation   FinanceAssistantConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  message        FinanceAssistantMessage?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, createdAt])
+  @@index([conversationId])
+  @@map("finance_assistant_feedbacks")
+}
+
 
 
 

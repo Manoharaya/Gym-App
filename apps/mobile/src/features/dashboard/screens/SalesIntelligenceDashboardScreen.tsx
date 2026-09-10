@@ -181,11 +181,11 @@ export const SalesIntelligenceDashboardScreen: React.FC = () => {
             </View>
             <View style={styles.lossItem}>
               <Text style={styles.lossReason}>No Response / Unreachable</Text>
-              <Badge label="24%" variant="outline" />
+              <Badge label="24%" variant="neutral" />
             </View>
             <View style={styles.lossItem}>
               <Text style={styles.lossReason}>Location / Distance</Text>
-              <Badge label="18%" variant="outline" />
+              <Badge label="18%" variant="neutral" />
             </View>
           </View>
         </Card>
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...typography.h3,
-    color: themeColors.text,
+    color: themeColors.textPrimary,
     fontWeight: '800',
     marginTop: 2,
   },
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   rangeTabTextActive: {
-    color: themeColors.text,
+    color: themeColors.textPrimary,
     fontWeight: '700',
   },
   container: {
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   sectionHeading: {
     ...typography.bodyBold,
-    color: themeColors.text,
+    color: themeColors.textPrimary,
     letterSpacing: 0.5,
   },
   sectionSubheading: {
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   },
   funnelStageName: {
     ...typography.caption,
-    color: themeColors.text,
+    color: themeColors.textPrimary,
     fontWeight: '500',
   },
   funnelStageCount: {
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     ...typography.h2,
-    color: themeColors.text,
+    color: themeColors.textPrimary,
     fontWeight: '700',
   },
   statLabel: {
@@ -350,6 +350,6 @@ const styles = StyleSheet.create({
   },
   lossReason: {
     ...typography.bodySmall,
-    color: themeColors.text,
+    color: themeColors.textPrimary,
   },
 });

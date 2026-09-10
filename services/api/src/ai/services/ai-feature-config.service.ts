@@ -21,6 +21,7 @@ export const ALL_AI_FEATURES: AIFeature[] = [
   'MARKETING_ASSISTANT',
   'CHURN_INTELLIGENCE',
   'AUTOMATION_ASSISTANT',
+  'FINANCE_ASSISTANT',
 ];
 
 @Injectable()
@@ -45,7 +46,8 @@ export class AIFeatureConfigService {
       feature === 'RETENTION_AGENT' ||
       feature === 'AUTOMATION_ASSISTANT' ||
       feature === 'RECEPTIONIST' ||
-      feature === 'RECEPTIONIST_BOOKING';
+      feature === 'RECEPTIONIST_BOOKING' ||
+      feature === 'FINANCE_ASSISTANT';
 
     const isStaffOnlyFeature =
       feature === 'RETENTION_INTELLIGENCE' ||
@@ -53,18 +55,23 @@ export class AIFeatureConfigService {
       feature === 'RETENTION_AGENT' ||
       feature === 'AUTOMATION_ASSISTANT';
 
+    const allowedRoles =
+      feature === 'FINANCE_ASSISTANT'
+        ? ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'FINANCE', 'RECEPTION', 'MEMBER']
+        : isStaffOnlyFeature
+        ? ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'TRAINER', 'RECEPTION']
+        : ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'TRAINER', 'MEMBER'];
+
     return {
       organisationId: 'PLATFORM_DEFAULT',
       feature,
       enabled: isSupportedFeature,
       dailyLimit: isSupportedFeature ? 500 : 100,
       monthlyLimit: isSupportedFeature ? 10000 : 3000,
-      allowedRoles: isStaffOnlyFeature
-        ? ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'TRAINER', 'RECEPTION']
-        : ['SUPERADMIN', 'ORGANISATION_OWNER', 'OUTLET_MANAGER', 'TRAINER', 'MEMBER'],
+      allowedRoles,
       configuration: {
-        maxTokens: isStaffOnlyFeature ? 1200 : 1000,
-        temperature: isStaffOnlyFeature ? 0.3 : 0.7,
+        maxTokens: isStaffOnlyFeature || feature === 'FINANCE_ASSISTANT' ? 1200 : 1000,
+        temperature: feature === 'FINANCE_ASSISTANT' ? 0.1 : isStaffOnlyFeature ? 0.3 : 0.7,
       },
     };
   }

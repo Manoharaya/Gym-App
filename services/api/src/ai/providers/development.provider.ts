@@ -116,6 +116,11 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       return this.generateSalesAgentJson(contextText, userPrompt);
     }
 
+    // Check if this is the FinanceAssistantResponse schema
+    if (schema.properties?.facts && schema.properties?.observations && schema.properties?.possibleExplanations && schema.properties?.recommendations) {
+      return this.generateFinanceAssistantJson(contextText, userPrompt);
+    }
+
     const result: Record<string, any> = {};
     const properties = schema.properties || {};
 
@@ -1626,6 +1631,106 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
         },
       ],
       handoffRequired: false,
+    };
+  }
+
+  private generateFinanceAssistantJson(contextText: string, userPrompt: string): Record<string, any> {
+    const isNepali = userPrompt.includes('Language: Nepali') || /[\u0900-\u097F]/.test(userPrompt);
+    let parsedFacts: any[] = [];
+    let parsedComparisons: any[] = [];
+    let currency = 'AUD';
+    let dataQuality = 'HIGH';
+    let period = 'This Month';
+
+    // Extract JSON block from userPrompt or contextText
+    const sourceText = userPrompt.includes('Verified Authoritative Financial Context:') ? userPrompt : contextText;
+    const marker = 'Verified Authoritative Financial Context:';
+    const markerIdx = sourceText.indexOf(marker);
+    if (markerIdx !== -1) {
+      try {
+        const jsonCandidate = sourceText.slice(markerIdx + marker.length).trim();
+        const firstBrace = jsonCandidate.indexOf('{');
+        const lastBrace = jsonCandidate.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+          const parsed = JSON.parse(jsonCandidate.substring(firstBrace, lastBrace + 1));
+          if (parsed.facts) parsedFacts = parsed.facts;
+          if (parsed.comparisons) parsedComparisons = parsed.comparisons;
+          if (parsed.currency) currency = parsed.currency;
+          if (parsed.dataQuality) dataQuality = parsed.dataQuality;
+          if (parsed.period) period = parsed.period;
+        }
+      } catch {
+        // fallback
+      }
+    }
+
+    const netRevFact = parsedFacts.find((f) => f.metric === 'Net Revenue');
+    const netRevenue = netRevFact ? netRevFact.value : 50300;
+
+    let answer = isNepali
+      ? `वित्तीय विश्लेषण अनुसार यस अवधिको कुल आम्दानी ${currency} ${netRevenue} रहेको छ। संकलन दर र विवरण तल प्रस्तुत गरिएको छ।`
+      : `Based on authoritative financial records for ${period}, recognized net revenue is ${currency} ${netRevenue}. Detailed performance metrics and observations are grounded below.`;
+
+    const lowerPrompt = userPrompt.toLowerCase();
+    if (lowerPrompt.includes('accounting') || lowerPrompt.includes('sync')) {
+      const acctFact = parsedFacts.find((f) => f.metric === 'Accounting Connection Status');
+      const connStatus = acctFact?.value || 'CONNECTED';
+      answer = `Accounting sync is currently connected. Integration status is verified as ${connStatus}.`;
+    } else if (lowerPrompt.includes('reconciliation') || lowerPrompt.includes('conflict')) {
+      const conflictFact = parsedFacts.find((f) => f.metric === 'Unresolved Conflicts');
+      const conflictCount = conflictFact?.value ?? 0;
+      answer = `There are currently ${conflictCount} unresolved reconciliation conflicts detected in the accounting ledger.`;
+    } else if (lowerPrompt.includes('recurring') || lowerPrompt.includes('collection rate')) {
+      const collFact = parsedFacts.find((f) => f.metric === 'Collection Rate');
+      const rate = collFact ? collFact.value : 100;
+      answer = `The recurring billing collection rate is ${rate}% across active recurring schedules.`;
+    } else if (lowerPrompt.includes('outstanding') || lowerPrompt.includes('invoice')) {
+      const invFact = parsedFacts.find((f) => f.metric === 'Outstanding Invoices');
+      const bal = invFact ? invFact.value : 0;
+      answer = `Outstanding invoice balance is ${currency} ${bal} across pending and past-due invoices.`;
+    }
+
+    return {
+      answer,
+      summary: `Net Revenue: ${currency} ${netRevenue}`,
+      facts: parsedFacts.length > 0 ? parsedFacts : [
+        {
+          metric: 'Net Revenue',
+          value: netRevenue,
+          currency,
+          source: 'FinancialAnalyticsService.getOverview',
+        },
+      ],
+      comparisons: parsedComparisons,
+      observations: isNepali
+        ? [`उल्लेखित अवधिमा कुल आम्दानी ${currency} ${netRevenue} अभिलेख गरिएको छ।`]
+        : [`Recorded net revenue of ${currency} ${netRevenue} across verified transactions.`],
+      possibleExplanations: [
+        'Observed revenue performance reflects recorded membership and service collections.',
+      ],
+      recommendations: [
+        {
+          recommendation: isNepali
+            ? 'नियमित संकलन दर र भाखा नाघेका बिलहरूको अनुगमन जारी राख्नुहोस्।'
+            : 'Continue monitoring the recurring collection rate and past-due invoice queues.',
+          reason: 'Protects operational cash flow and recurring revenue stability.',
+          priority: 'MEDIUM',
+        },
+      ],
+      dataWindow: {
+        start: new Date().toISOString(),
+        end: new Date().toISOString(),
+        timezone: 'UTC',
+      },
+      currency,
+      dataQuality,
+      limitations: [
+        'This analysis describes observed financial relationships and does not establish causation.',
+      ],
+      sources: [
+        { tool: 'getRevenueSummary', metric: 'Gross and Net Revenue' },
+      ],
+      confidence: 0.98,
     };
   }
 }

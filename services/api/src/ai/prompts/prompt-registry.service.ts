@@ -13,6 +13,7 @@ import { LEAD_QUALIFICATION_PROMPT_DEFINITION } from '../features/lead-qualifica
 import { SALES_AGENT_PROMPT_DEFINITION } from '../features/sales-agent/prompts/sales_agent.v1';
 import { FOLLOW_UP_MESSAGE_PROMPT_DEFINITION } from '../features/follow-up/prompts/follow_up_message.v1';
 import { SALES_INTELLIGENCE_PROMPT_DEFINITION } from '../../sales-intelligence/prompts/sales_intelligence.v1';
+import { FINANCE_ASSISTANT_PROMPT_DEFINITION } from '../features/finance-assistant/prompts/finance_assistant.v1';
 
 @Injectable()
 export class PromptRegistryService implements OnModuleInit {
@@ -342,6 +343,7 @@ export class PromptRegistryService implements OnModuleInit {
       SALES_AGENT_PROMPT_DEFINITION,
       FOLLOW_UP_MESSAGE_PROMPT_DEFINITION,
       SALES_INTELLIGENCE_PROMPT_DEFINITION,
+      FINANCE_ASSISTANT_PROMPT_DEFINITION,
     ];
 
     for (const p of defaultPrompts) {
@@ -406,6 +408,8 @@ export class PromptRegistryService implements OnModuleInit {
         ? 'follow_up_message.v1'
         : key === 'default' && feature === 'SALES_INTELLIGENCE'
         ? 'sales_intelligence.v1'
+        : key === 'default' && feature === 'FINANCE_ASSISTANT'
+        ? 'finance_assistant.v1'
         : key;
 
     if (version) {

@@ -47,6 +47,8 @@ import { FollowUpModule } from './ai/features/follow-up/follow-up.module';
 import { SalesIntelligenceModule } from './sales-intelligence/sales-intelligence.module';
 import { FinancialIntelligenceModule } from './financial-intelligence/financial-intelligence.module';
 import { RecurringBillingModule } from './recurring-billing/recurring-billing.module';
+import { AccountingIntegrationModule } from './accounting-integration/accounting-integration.module';
+import { FinanceAssistantModule } from './ai/features/finance-assistant/finance-assistant.module';
 import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
@@ -110,6 +112,8 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     SalesIntelligenceModule,
     FinancialIntelligenceModule,
     RecurringBillingModule,
+    AccountingIntegrationModule,
+    FinanceAssistantModule,
     AutomationModule,
     HealthModule,
     WearablesModule,
