@@ -25,3 +25,4 @@ export * from './sales-agent';
 export * from './sales-pipeline';
 export * from './lead-qualification';
 export * from './follow-up';
+export * from './sales-intelligence';
