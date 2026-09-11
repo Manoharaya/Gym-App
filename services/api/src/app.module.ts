@@ -49,6 +49,11 @@ import { FinancialIntelligenceModule } from './financial-intelligence/financial-
 import { RecurringBillingModule } from './recurring-billing/recurring-billing.module';
 import { AccountingIntegrationModule } from './accounting-integration/accounting-integration.module';
 import { FinanceAssistantModule } from './ai/features/finance-assistant/finance-assistant.module';
+import { BusinessIntelligenceModule } from './business-intelligence/business-intelligence.module';
+import { MultiOutletIntelligenceModule } from './multi-outlet-intelligence/multi-outlet-intelligence.module';
+import { ResourceCapacityIntelligenceModule } from './resource-capacity-intelligence/resource-capacity-intelligence.module';
+import { IntegrationsModule } from './integrations/integrations.module';
+import { DeveloperPlatformModule } from './developer-platform/developer-platform.module';
 import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
@@ -114,6 +119,11 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     RecurringBillingModule,
     AccountingIntegrationModule,
     FinanceAssistantModule,
+    BusinessIntelligenceModule,
+    MultiOutletIntelligenceModule,
+    ResourceCapacityIntelligenceModule,
+    IntegrationsModule,
+    DeveloperPlatformModule,
     AutomationModule,
     HealthModule,
     WearablesModule,

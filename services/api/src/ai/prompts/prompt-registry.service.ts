@@ -14,6 +14,9 @@ import { SALES_AGENT_PROMPT_DEFINITION } from '../features/sales-agent/prompts/s
 import { FOLLOW_UP_MESSAGE_PROMPT_DEFINITION } from '../features/follow-up/prompts/follow_up_message.v1';
 import { SALES_INTELLIGENCE_PROMPT_DEFINITION } from '../../sales-intelligence/prompts/sales_intelligence.v1';
 import { FINANCE_ASSISTANT_PROMPT_DEFINITION } from '../features/finance-assistant/prompts/finance_assistant.v1';
+import { BUSINESS_INTELLIGENCE_PROMPT_DEFINITION } from '../../business-intelligence/prompts/business_intelligence.v1';
+import { MULTI_OUTLET_INTELLIGENCE_PROMPT_DEFINITION } from '../../multi-outlet-intelligence/prompts/multi_outlet_intelligence.v1';
+import { RESOURCE_CAPACITY_INTELLIGENCE_PROMPT_DEFINITION } from '../../resource-capacity-intelligence/prompts/resource_capacity_intelligence.v1';
 
 @Injectable()
 export class PromptRegistryService implements OnModuleInit {
@@ -344,6 +347,9 @@ export class PromptRegistryService implements OnModuleInit {
       FOLLOW_UP_MESSAGE_PROMPT_DEFINITION,
       SALES_INTELLIGENCE_PROMPT_DEFINITION,
       FINANCE_ASSISTANT_PROMPT_DEFINITION,
+      BUSINESS_INTELLIGENCE_PROMPT_DEFINITION,
+      MULTI_OUTLET_INTELLIGENCE_PROMPT_DEFINITION,
+      RESOURCE_CAPACITY_INTELLIGENCE_PROMPT_DEFINITION,
     ];
 
     for (const p of defaultPrompts) {
@@ -410,6 +416,12 @@ export class PromptRegistryService implements OnModuleInit {
         ? 'sales_intelligence.v1'
         : key === 'default' && feature === 'FINANCE_ASSISTANT'
         ? 'finance_assistant.v1'
+        : key === 'default' && feature === 'BUSINESS_INTELLIGENCE'
+        ? 'business_intelligence.v1'
+        : key === 'default' && feature === 'MULTI_OUTLET_INTELLIGENCE'
+        ? 'multi_outlet_intelligence.v1'
+        : key === 'default' && feature === 'RESOURCE_CAPACITY_INTELLIGENCE'
+        ? 'resource_capacity_intelligence.v1'
         : key;
 
     if (version) {

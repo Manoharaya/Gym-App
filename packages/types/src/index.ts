@@ -30,3 +30,8 @@ export * from './financial-intelligence';
 export * from './recurring-billing';
 export * from './accounting-integration';
 export * from './finance-assistant';
+export * from './business-intelligence';
+export * from './multi-outlet-intelligence';
+export * from './resource-capacity-intelligence';
+export * from './integrations';
+export * from './developer-platform';

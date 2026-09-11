@@ -177,6 +177,19 @@ model Organisation {
   accountingReconciliationReports AccountingReconciliationReport[]
   financeAssistantConversations FinanceAssistantConversation[]
   financeAssistantFeedbacks     FinanceAssistantFeedback[]
+  businessMetricProjections     BusinessMetricProjection[]
+  businessMetricSnapshots       BusinessMetricSnapshot[]
+  businessDashboardPreferences  BusinessDashboardPreference[]
+  integrationConnections        IntegrationConnection[]
+  integrationWebhookEvents      IntegrationWebhookEvent[]
+  integrationSyncJobs           IntegrationSyncJob[]
+  integrationSyncRecords        IntegrationSyncRecord[]
+  integrationAuditLogs          IntegrationAuditLog[]
+  developerApplications        DeveloperApplication[]
+  oauthAuthorizations          OAuthAuthorization[]
+  oauthTokens                  OAuthToken[]
+  webhookSubscriptions         WebhookSubscription[]
+  webhookDeliveries            WebhookDelivery[]
 
   @@index([slug])
   @@index([status])
@@ -283,6 +296,9 @@ model Outlet {
   collectionTasks              CollectionTask[]
   accountingMappings           AccountingMapping[]
   financeAssistantConversations FinanceAssistantConversation[]
+  businessMetricProjections     BusinessMetricProjection[]
+  businessMetricSnapshots       BusinessMetricSnapshot[]
+  integrationConnections        IntegrationConnection[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
@@ -354,6 +370,10 @@ model User {
   communicationPreferences  CommunicationPreference[] @relation("UserCommPreferences")
   assignedRetentionOutreaches RetentionOutreach[]     @relation("AssignedOutreachStaff")
   approvedRetentionOutreaches RetentionOutreach[]     @relation("ApprovedOutreachStaff")
+  businessDashboardPreferences BusinessDashboardPreference[]
+  developerApplicationsCreated DeveloperApplication[] @relation("DeveloperApplicationsCreated")
+  oauthAuthorizations          OAuthAuthorization[]
+  oauthTokens                  OAuthToken[]
 
   @@index([email])
   @@index([phone])
@@ -6634,12 +6654,437 @@ model FinanceAssistantFeedback {
   @@map("finance_assistant_feedbacks")
 }
 
+// ==========================================
+// DAY 45: BUSINESS INTELLIGENCE PROJECTIONS
+// ==========================================
 
+model BusinessMetricProjection {
+  id              String        @id @default(cuid())
+  organisationId  String
+  outletId        String?
+  metricKey       String
+  periodType      String        // DAILY, WEEKLY, MONTHLY
+  periodStart     DateTime
+  periodEnd       DateTime
+  value           Float
+  currency        String?
+  dataVersion     Int           @default(1)
+  sourceVersion   String?
+  generatedAt     DateTime      @default(now())
 
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
 
+  @@unique([organisationId, outletId, metricKey, periodType, periodStart, currency])
+  @@index([organisationId, metricKey, periodStart])
+  @@index([organisationId, periodType])
+  @@index([outletId, metricKey])
+  @@map("business_metric_projections")
+}
 
+model BusinessMetricSnapshot {
+  id              String        @id @default(cuid())
+  organisationId  String
+  outletId        String?
+  snapshotDate    DateTime
+  domain          String        // MEMBERSHIP, SALES, FINANCE, ATTENDANCE, BOOKING, TRAINING, NUTRITION, DAILY_CHECKIN, WEARABLES, ENGAGEMENT, RETENTION, COMMUNICATION, OPERATIONS, AI
+  metrics         Json
+  currency        String?
+  generatedAt     DateTime      @default(now())
 
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
 
+  @@unique([organisationId, outletId, snapshotDate, domain, currency])
+  @@index([organisationId, domain, snapshotDate])
+  @@map("business_metric_snapshots")
+}
 
+model BusinessDashboardPreference {
+  id                 String        @id @default(cuid())
+  organisationId     String
+  userId             String
+  defaultOutletId    String?
+  defaultDateRange   String        @default("LAST_30_DAYS")
+  defaultCurrency    String        @default("AUD")
+  pinnedKpiKeys      String[]      @default([])
+  enabledDomains     String[]      @default([])
+  layoutPreferences  Json?
+  chartPreferences   Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
+  organisation       Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([organisationId, userId])
+  @@index([organisationId, userId])
+  @@map("business_dashboard_preferences")
+}
+
+// ==========================================
+// DAY 48: INTEGRATIONS PLATFORM
+// ==========================================
+
+model IntegrationConnection {
+  id                         String       @id @default(cuid())
+  organisationId             String
+  outletId                   String?
+  memberId                   String?
+  staffId                    String?
+  integrationKey             String       // STRIPE, XERO, QUICKBOOKS, TWILIO, SENDGRID, RESEND, WHATSAPP, APPLE_HEALTH, HEALTH_CONNECT, FITBIT, GOOGLE_CALENDAR, MICROSOFT_CALENDAR, ACCESS_CONTROL_PROVIDER
+  provider                   String       // STRIPE, XERO, TWILIO, etc.
+  category                   String       // PAYMENTS, ACCOUNTING, COMMUNICATION, WEARABLE, CALENDAR, ACCESS_CONTROL, etc.
+  scope                      String       @default("ORGANISATION") // ORGANISATION, OUTLET, MEMBER, STAFF
+  status                     String       @default("PENDING") // PENDING, CONNECTING, CONNECTED, SYNCING, DEGRADED, AUTHENTICATION_REQUIRED, ERROR, DISCONNECTED, REVOKED, SUSPENDED
+  environment                String       @default("DEVELOPMENT") // DEVELOPMENT, STAGING, PRODUCTION
+  externalAccountId          String?
+  externalAccountName        String?
+  encryptedCredentials       String?      // AES-256-GCM encrypted credentials JSON
+  configuration              Json?        // Non-sensitive configuration (timezone, sender, syncFrequency, etc.)
+  connectedByUserId          String
+  connectedAt                DateTime?
+  disconnectedAt             DateTime?
+  lastSuccessfulOperationAt  DateTime?
+  lastFailedOperationAt      DateTime?
+  lastHealthCheckAt          DateTime?
+  lastSyncAt                 DateTime?
+  configurationVersion       Int          @default(1)
+  healthStatus               String       @default("HEALTHY") // HEALTHY, DEGRADED, AUTHENTICATION_REQUIRED, RATE_LIMITED, PROVIDER_UNAVAILABLE, CONFIGURATION_ERROR, UNKNOWN
+  failureCount               Int          @default(0)
+  consecutiveFailures        Int          @default(0)
+  metadata                   Json?
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+
+  organisation               Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                     Outlet?      @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  webhookEvents              IntegrationWebhookEvent[]
+  syncJobs                   IntegrationSyncJob[]
+  auditLogs                  IntegrationAuditLog[]
+
+  @@unique([organisationId, integrationKey, scope, outletId, memberId, staffId])
+  @@index([organisationId, status])
+  @@index([organisationId, category])
+  @@index([integrationKey, status])
+  @@index([outletId])
+  @@index([memberId])
+  @@index([staffId])
+  @@map("integration_connections")
+}
+
+model IntegrationWebhookEvent {
+  id                      String       @id @default(cuid())
+  organisationId          String?
+  outletId                String?
+  connectionId            String?
+  provider                String       // STRIPE, XERO, TWILIO, etc.
+  externalEventId         String
+  eventType               String       // Provider specific event type
+  normalizedType          String?      // PAYMENT_SUCCEEDED, INVOICE_PAID, etc.
+  status                  String       @default("RECEIVED") // RECEIVED, VERIFIED, QUEUED, PROCESSING, PROCESSED, FAILED, IGNORED, DUPLICATE
+  attemptCount            Int          @default(1)
+  payloadHash             String
+  errorCode               String?
+  errorMessage            String?
+  rawPayload              Json?
+  receivedAt              DateTime     @default(now())
+  processedAt             DateTime?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  organisation            Organisation? @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection              IntegrationConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, externalEventId])
+  @@index([organisationId, status])
+  @@index([connectionId])
+  @@index([provider, eventType])
+  @@index([receivedAt])
+  @@map("integration_webhook_events")
+}
+
+model IntegrationSyncJob {
+  id               String       @id @default(cuid())
+  organisationId   String
+  connectionId     String
+  syncType         String       // INITIAL, INCREMENTAL, FULL, ENTITY, RECONCILIATION
+  status           String       @default("PENDING") // PENDING, RUNNING, COMPLETED, PARTIAL, FAILED, CANCELLED
+  recordsProcessed Int          @default(0)
+  recordsSucceeded Int          @default(0)
+  recordsFailed    Int          @default(0)
+  cursor           String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  errorCount       Int          @default(0)
+  errorMessage     String?
+  triggeredBy      String?      // SYSTEM, CRON, STAFF_<userId>
+  metadata         Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organisation     Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection       IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  records          IntegrationSyncRecord[]
+
+  @@index([organisationId, status])
+  @@index([connectionId, syncType])
+  @@index([startedAt])
+  @@map("integration_sync_jobs")
+}
+
+model IntegrationSyncRecord {
+  id               String             @id @default(cuid())
+  syncJobId        String
+  organisationId   String
+  entityType       String             // CONTACT, INVOICE, PAYMENT, EVENT, HEALTH_RECORD, ACCESS_LOG
+  fitcoreEntityId  String?
+  externalEntityId String?
+  operation        String             // CREATE, UPDATE, DELETE, SKIP, RETRY, FAILED
+  status           String             // PENDING, PROCESSING, SYNCED, FAILED, RETRYING, SKIPPED, CONFLICT
+  attemptCount     Int                @default(1)
+  errorCode        String?
+  errorMessage     String?
+  startedAt        DateTime           @default(now())
+  completedAt      DateTime?
+  createdAt        DateTime           @default(now())
+
+  syncJob          IntegrationSyncJob @relation(fields: [syncJobId], references: [id], onDelete: Cascade)
+  organisation     Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([syncJobId, status])
+  @@index([organisationId, entityType])
+  @@map("integration_sync_records")
+}
+
+model IntegrationAuditLog {
+  id             String                 @id @default(cuid())
+  organisationId String?
+  connectionId   String?
+  userId         String?
+  action         String                 // INTEGRATION_CONNECTED, INTEGRATION_DISCONNECTED, INTEGRATION_REAUTHORIZED, INTEGRATION_HEALTH_CHECKED, etc.
+  resource       String                 @default("IntegrationConnection")
+  resourceId     String
+  status         String                 @default("SUCCESS") // SUCCESS, FAILED
+  metadata       Json?
+  createdAt      DateTime               @default(now())
+
+  organisation   Organisation?          @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  connection     IntegrationConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, action])
+  @@index([connectionId])
+  @@index([createdAt])
+  @@map("integration_audit_logs")
+}
+
+// ============================================================================
+// DAY 49: DEVELOPER PLATFORM & PUBLIC API
+// ============================================================================
+
+model DeveloperApplication {
+  id                   String                 @id @default(cuid())
+  organisationId       String?
+  createdByUserId      String
+  name                 String
+  description          String?
+  applicationType      String                 @default("ORGANISATION") // INTERNAL, ORGANISATION, PARTNER, THIRD_PARTY, MARKETPLACE
+  status               String                 @default("ACTIVE") // DRAFT, ACTIVE, SUSPENDED, REVOKED, ARCHIVED
+  environment          String                 @default("SANDBOX") // DEVELOPMENT, SANDBOX, PRODUCTION
+  clientId             String                 @unique
+  clientSecretHash     String?
+  redirectUris         String[]               @default([])
+  allowedScopes        String[]               @default([])
+  webhookEnabled       Boolean                @default(true)
+  rateLimitTier        String                 @default("STANDARD") // STANDARD, PARTNER, ENTERPRISE, INTERNAL, SANDBOX
+  metadata             Json?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  organisation         Organisation?          @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  createdByUser        User                   @relation("DeveloperApplicationsCreated", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  apiKeys              DeveloperApiKey[]
+  webhookSubscriptions WebhookSubscription[]
+  oauthAuthorizations  OAuthAuthorization[]
+  oauthTokens          OAuthToken[]
+  apiUsages            DeveloperApiUsage[]
+  auditLogs            DeveloperAuditLog[]
+
+  @@index([organisationId, status])
+  @@index([clientId])
+  @@map("developer_applications")
+}
+
+model DeveloperApiKey {
+  id             String               @id @default(cuid())
+  applicationId  String
+  organisationId String?
+  name           String?
+  keyPrefix      String
+  keyHash        String               @unique
+  environment    String               @default("SANDBOX") // DEVELOPMENT, SANDBOX, PRODUCTION
+  scopes         String[]             @default([])
+  status         String               @default("ACTIVE") // ACTIVE, EXPIRED, REVOKED, SUSPENDED
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  rotatedFromId  String?
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  application    DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, status])
+  @@index([keyPrefix])
+  @@index([keyHash])
+  @@map("developer_api_keys")
+}
+
+model OAuthAuthorization {
+  id                  String               @id @default(cuid())
+  code                String               @unique
+  applicationId       String
+  organisationId      String
+  userId              String
+  redirectUri         String
+  scopes              String[]             @default([])
+  codeChallenge       String?
+  codeChallengeMethod String?              @default("S256")
+  consumed            Boolean              @default(false)
+  expiresAt           DateTime
+  createdAt           DateTime             @default(now())
+
+  application         DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  organisation        Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("oauth_authorizations")
+}
+
+model OAuthToken {
+  id               String               @id @default(cuid())
+  applicationId    String
+  organisationId   String
+  userId           String
+  accessTokenHash  String               @unique
+  refreshTokenHash String?              @unique
+  tokenType        String               @default("Bearer")
+  scopes           String[]             @default([])
+  environment      String               @default("SANDBOX")
+  status           String               @default("ACTIVE") // ACTIVE, REVOKED, EXPIRED
+  expiresAt        DateTime
+  refreshExpiresAt DateTime?
+  lastUsedAt       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  application      DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  organisation     Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, status])
+  @@index([accessTokenHash])
+  @@index([refreshTokenHash])
+  @@map("oauth_tokens")
+}
+
+model WebhookSubscription {
+  id                  String               @id @default(cuid())
+  applicationId       String
+  organisationId      String
+  endpointUrl         String
+  description         String?
+  eventTypes          String[]             @default([])
+  status              String               @default("ACTIVE") // ACTIVE, PAUSED, FAILING, DISABLED, REVOKED
+  secretReference     String               // AES-256-GCM encrypted webhook signing secret
+  failureCount        Int                  @default(0)
+  consecutiveFailures Int                  @default(0)
+  lastDeliveryAt      DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  application         DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  organisation        Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  deliveries          WebhookDelivery[]
+
+  @@index([applicationId, status])
+  @@index([organisationId])
+  @@map("webhook_subscriptions")
+}
+
+model WebhookDelivery {
+  id             String              @id @default(cuid())
+  subscriptionId String
+  organisationId String
+  eventId        String
+  eventType      String
+  attemptNumber  Int                 @default(1)
+  status         String              @default("PENDING") // PENDING, DELIVERING, DELIVERED, FAILED, RETRYING, EXPIRED
+  httpStatus     Int?
+  responseTimeMs Int?
+  deliveredAt    DateTime?
+  nextRetryAt    DateTime?
+  errorCode      String?
+  errorMessage   String?
+  requestHeaders Json?
+  payload        Json
+  createdAt      DateTime            @default(now())
+
+  subscription   WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  organisation   Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, status])
+  @@index([organisationId, eventType])
+  @@index([eventId])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
+}
+
+model DeveloperApiUsage {
+  id             String               @id @default(cuid())
+  applicationId  String
+  organisationId String?
+  apiKeyId       String?
+  environment    String               @default("SANDBOX")
+  endpoint       String
+  method         String
+  statusCode     Int
+  latencyMs      Int
+  scope          String?
+  requestId      String
+  ipAddress      String?
+  userAgent      String?
+  timestamp      DateTime             @default(now())
+
+  application    DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, timestamp])
+  @@index([organisationId, timestamp])
+  @@index([endpoint])
+  @@index([requestId])
+  @@map("developer_api_usages")
+}
+
+model DeveloperAuditLog {
+  id             String                @id @default(cuid())
+  organisationId String?
+  applicationId  String?
+  userId         String?
+  action         String
+  resource       String                @default("DeveloperApplication")
+  resourceId     String
+  status         String                @default("SUCCESS") // SUCCESS, FAILED
+  metadata       Json?
+  createdAt      DateTime              @default(now())
+
+  application    DeveloperApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, action])
+  @@index([applicationId])
+  @@index([createdAt])
+  @@map("developer_audit_logs")
+}

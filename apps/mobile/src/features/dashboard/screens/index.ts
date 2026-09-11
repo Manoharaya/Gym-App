@@ -5,3 +5,8 @@ export * from './SuperadminHomeScreen';
 export * from './SalesIntelligenceDashboardScreen';
 export * from './FinancialIntelligenceDashboardScreen';
 export * from './FinanceAssistantScreen';
+export * from './BusinessIntelligenceDashboardScreen';
+export * from './MultiOutletIntelligenceScreen';
+export * from './ResourceCapacityScreen';
+export * from './IntegrationsScreen';
+export * from './DeveloperPlatformScreen';

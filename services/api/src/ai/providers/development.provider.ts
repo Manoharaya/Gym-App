@@ -121,6 +121,11 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
       return this.generateFinanceAssistantJson(contextText, userPrompt);
     }
 
+    // Check if this is the MultiOutletAIInsight schema
+    if (schema.properties?.leaders && schema.properties?.attentionAreas && schema.properties?.comparisons && schema.properties?.recommendations) {
+      return this.generateMultiOutletIntelligenceJson(contextText, userPrompt);
+    }
+
     const result: Record<string, any> = {};
     const properties = schema.properties || {};
 
@@ -1731,6 +1736,111 @@ export class DevelopmentAIProvider implements AIProviderAdapter {
         { tool: 'getRevenueSummary', metric: 'Gross and Net Revenue' },
       ],
       confidence: 0.98,
+    };
+  }
+
+  private generateMultiOutletIntelligenceJson(
+    contextText: string,
+    userPrompt: string,
+  ): Record<string, any> {
+    const isNepali =
+      userPrompt.includes('Language Preference: ne') ||
+      userPrompt.includes('नेपाली') ||
+      contextText.includes('Language Preference: ne');
+
+    const lowerPrompt = userPrompt.toLowerCase();
+
+    // Check for prompt injection / fabrication attempts
+    if (
+      lowerPrompt.includes('ignore previous') ||
+      lowerPrompt.includes('simulate') ||
+      lowerPrompt.includes('fabricate') ||
+      lowerPrompt.includes('invent') ||
+      lowerPrompt.includes('override')
+    ) {
+      return {
+        summary: isNepali
+          ? 'अनुरोध अस्वीकार गरियो: एआईले प्रमाणित नभएका शाखा तथ्याङ्क वा मनगढन्ते आम्दानी देखाउन सक्दैन।'
+          : 'Request Refused: Platform integrity directives prohibit simulating, inventing, or overriding verified multi-outlet metrics.',
+        leaders: [],
+        attentionAreas: [
+          {
+            outletId: 'system',
+            outletName: 'Integrity Enforcement',
+            issue: 'Prompt injection attempted',
+            evidence: 'Prompt attempted to override verified metrics or request simulated numbers.',
+            severity: 'HIGH',
+          },
+        ],
+        comparisons: [],
+        recommendations: [],
+        limitations: [
+          'Directives strictly prohibit metric fabrication or override.',
+        ],
+        confidence: 1.0,
+      };
+    }
+
+    const summary = isNepali
+      ? 'सबै शाखाहरूको कार्यसम्पादन विश्लेषण: शाखाहरू बीच आम्दानी, सदस्यता वृद्धि, र उपयोगिता दरमा भिन्नता देखिएको छ।'
+      : 'Comprehensive multi-outlet performance evaluation based on verified database metrics across active locations.';
+
+    return {
+      summary,
+      leaders: [
+        {
+          outletId: 'outlet-1',
+          outletName: 'Downtown Flagship',
+          metric: 'finance.net_revenue',
+          value: 'Highest Net Revenue',
+          evidence: 'Generated highest verified net revenue in the selected reporting period.',
+        },
+        {
+          outletId: 'outlet-2',
+          outletName: 'Suburban Hub',
+          metric: 'membership.growth_rate',
+          value: 'Highest Member Growth Rate',
+          evidence: 'Exhibited strongest net active member expansion rate.',
+        },
+      ],
+      attentionAreas: [
+        {
+          outletId: 'outlet-2',
+          outletName: 'Suburban Hub',
+          issue: 'Elevated Retention Risk',
+          evidence: 'Proportion of members without visit activity exceeds normal threshold.',
+          severity: 'MEDIUM',
+        },
+      ],
+      comparisons: [
+        {
+          metric: 'finance.revenue_per_member',
+          outlets: ['Downtown Flagship', 'Suburban Hub'],
+          observation: 'Downtown Flagship maintains higher revenue per active member due to premium personal training tiers.',
+        },
+      ],
+      recommendations: [
+        {
+          recommendation: isNepali
+            ? 'कम उपस्थिति भएका सदस्यहरूलाई सक्रिय सम्पर्क अभियान सुरु गर्नुहोस्।'
+            : 'Deploy structured re-engagement outreach for high-risk members at lagging outlets.',
+          reason: 'Proactive engagement stabilizes retention and preserves recurring membership dues.',
+          priority: 'HIGH',
+          targetOutletId: 'outlet-2',
+        },
+        {
+          recommendation: isNepali
+            ? 'सफल बिक्री प्रक्रिया अन्य शाखाहरूमा पनि लागू गर्नुहोस्।'
+            : 'Benchmark Suburban lead follow-up cadences and adopt them across other locations.',
+          reason: 'Consistent sales conversion cadences elevate overall organisation revenue velocity.',
+          priority: 'MEDIUM',
+        },
+      ],
+      limitations: [
+        'Metric comparisons reflect recorded transactional and check-in events; no unverified causal inferences are made.',
+        'Denominators are explicitly accounted for in all rate calculations.',
+      ],
+      confidence: 0.95,
     };
   }
 }
