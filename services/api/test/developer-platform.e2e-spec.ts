@@ -35,6 +35,7 @@ import request from 'supertest';
 import * as crypto from 'crypto';
 
 describe('Day 49: Developer Platform E2E Suite', () => {
+  jest.setTimeout(90000);
   let app: INestApplication;
   let prisma: PrismaService;
   let appService: DeveloperApplicationService;
@@ -198,6 +199,34 @@ describe('Day 49: Developer Platform E2E Suite', () => {
         membershipType: 'STANDARD',
         billingType: 'RECURRING',
         status: 'ACTIVE',
+        durationValue: 1,
+        durationUnit: 'MONTH',
+        entitlements: {
+          create: [
+            {
+              type: 'GROUP_CLASSES',
+              name: 'Group Fitness Classes',
+            },
+          ],
+        },
+      },
+    });
+
+    await prisma.memberMembership.create({
+      data: {
+        organisationId: orgA.id,
+        memberProfileId: memberA.id,
+        membershipPlanId: membershipPlanA.id,
+        status: 'ACTIVE',
+        accessScope: 'ALL_ORGANISATION_OUTLETS',
+        startDate: new Date(Date.now() - 30 * 24 * 3600 * 1000),
+        endDate: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+        planNameAtPurchase: membershipPlanA.name,
+        priceAtPurchase: membershipPlanA.price,
+        currencyAtPurchase: 'AUD',
+        billingTypeAtPurchase: 'RECURRING',
+        durationValueAtPurchase: 1,
+        durationUnitAtPurchase: 'MONTH',
       },
     });
 
@@ -233,20 +262,33 @@ describe('Day 49: Developer Platform E2E Suite', () => {
   });
 
   afterAll(async () => {
-    // Cleanup created records
+    // Cleanup created records in reverse dependency order
     try {
-      if (orgA?.id) {
-        await prisma.developerApplication.deleteMany({ where: { organisationId: orgA.id } });
-        await prisma.organisation.delete({ where: { id: orgA.id } });
-      }
-      if (orgB?.id) {
-        await prisma.organisation.delete({ where: { id: orgB.id } });
-      }
-      if (userA?.id) {
-        await prisma.user.delete({ where: { id: userA.id } });
-      }
-      if (staffUserA?.id) {
-        await prisma.user.delete({ where: { id: staffUserA.id } });
+      const orgIds = [orgA?.id, orgB?.id].filter(Boolean);
+      if (orgIds.length > 0) {
+        await prisma.developerAuditLog.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.developerApiUsage.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.webhookDelivery.deleteMany({}).catch(() => {});
+        await prisma.webhookSubscription.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.oAuthToken.deleteMany({}).catch(() => {});
+        await prisma.oAuthAuthorization.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.developerApiKey.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.developerApplication.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.booking.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.classSession.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.classType.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.membershipPlan.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.attendanceRecord.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.memberMembership.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.staffProfile.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.memberProfile.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.userRole.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        await prisma.outlet.deleteMany({ where: { organisationId: { in: orgIds } } }).catch(() => {});
+        const userIds = [userA?.id, staffUserA?.id].filter(Boolean);
+        if (userIds.length > 0) {
+          await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => {});
+        }
+        await prisma.organisation.deleteMany({ where: { id: { in: orgIds } } }).catch(() => {});
       }
     } catch {
       // ignore teardown cascading errors
@@ -263,6 +305,7 @@ describe('Day 49: Developer Platform E2E Suite', () => {
         .post('/api/v1/developer/applications')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
+          organisationId: orgA.id,
           name: 'Partner Mobile Companion',
           description: 'Production partner application for gym members',
           applicationType: 'ORGANISATION',
@@ -329,7 +372,15 @@ describe('Day 49: Developer Platform E2E Suite', () => {
         .send({
           name: 'Live Mobile API Key',
           environment: 'PRODUCTION',
-          scopes: ['members:read', 'classes:read', 'bookings:read', 'bookings:write', 'attendance:read'],
+          scopes: [
+            'members:read',
+            'classes:read',
+            'bookings:read',
+            'bookings:write',
+            'attendance:read',
+            'trainers:read',
+            'memberships:read',
+          ],
           expiresInDays: 90,
         })
         .expect(201);

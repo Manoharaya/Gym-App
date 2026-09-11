@@ -10,3 +10,5 @@ export * from './MultiOutletIntelligenceScreen';
 export * from './ResourceCapacityScreen';
 export * from './IntegrationsScreen';
 export * from './DeveloperPlatformScreen';
+export * from './MarketplaceScreen';
+export * from './EnterpriseDashboardScreen';

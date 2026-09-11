@@ -17,9 +17,15 @@ export type UserRole =
   | 'RECEPTION'
   | 'TRAINER'
   | 'FINANCE'
-  | 'MEMBER';
+  | 'MEMBER'
+  | 'ENTERPRISE_ADMIN'
+  | 'REGIONAL_MANAGER'
+  | 'BRAND_MANAGER'
+  | 'OPERATIONS_MANAGER'
+  | 'COMPLIANCE_MANAGER'
+  | 'ANALYTICS_MANAGER';
 
-export type PermissionScope = 'PLATFORM' | 'ORGANISATION' | 'OUTLET' | 'ASSIGNED_CLIENTS' | 'SELF';
+export type PermissionScope = 'PLATFORM' | 'ORGANISATION' | 'BRAND' | 'REGION' | 'OUTLET' | 'ASSIGNED_CLIENTS' | 'SELF';
 
 export type PermissionResource =
   | 'members'
@@ -63,7 +69,15 @@ export type PermissionResource =
   | 'engagement'
   | 'habits'
   | 'challenges'
-  | 'rewards';
+  | 'rewards'
+  | 'marketplace'
+  | 'enterprise'
+  | 'policies'
+  | 'brands'
+  | 'domains'
+  | 'security'
+  | 'privacy'
+  | 'compliance';
 
 export type PermissionAction =
   'read' | 'write' | 'create' | 'update' | 'delete' | 'manage' | 'use' | 'configure' | 'export';

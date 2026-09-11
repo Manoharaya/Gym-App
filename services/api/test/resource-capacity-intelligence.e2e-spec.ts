@@ -319,8 +319,8 @@ describe('Day 47: Resource & Capacity Intelligence E2E Suite', () => {
     // 7. Create Class Sessions
     // Session 1: 100% Fill Rate (20/20 Booked) but ONLY 5/20 Checked In (25% Attendance Utilisation)
     const now = new Date();
-    const sessionStart = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 hours ago
-    const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000); // 1 hour ago
+    const sessionStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0, 0);
+    const sessionEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0);
 
     sessionFullYoga = await prisma.classSession.create({
       data: {

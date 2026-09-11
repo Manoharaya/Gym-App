@@ -14,8 +14,16 @@ model Organisation {
   status      String    @default("ACTIVE") // ACTIVE, SUSPENDED, TRIAL, DELETED
   timezone    String    @default("Australia/Perth")
   currency    String    @default("AUD")
-  country     String    @default("Australia")
-  createdAt   DateTime  @default(now())
+  country                  String    @default("Australia")
+  organisationType         String    @default("FITNESS_CLUB")
+  legalName                String?
+  displayName              String?
+  industry                 String    @default("Fitness & Wellness")
+  defaultLocale            String    @default("en-AU")
+  contactEmail             String?
+  contactPhone             String?
+  website                  String?
+  createdAt                DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
@@ -190,6 +198,30 @@ model Organisation {
   oauthTokens                  OAuthToken[]
   webhookSubscriptions         WebhookSubscription[]
   webhookDeliveries            WebhookDelivery[]
+  marketplaceListings          MarketplaceListing[]
+  marketplaceInstallations     MarketplaceInstallation[]
+  marketplacePermissionGrants  MarketplacePermissionGrant[]
+  marketplaceReviews           MarketplaceReview[]
+  brands                       OrganisationBrand[]
+  enterpriseRoleAssignments    EnterpriseRoleAssignment[]
+  enterprisePolicies           EnterprisePolicy[]
+  enterpriseConfigurations     EnterpriseConfiguration[]
+  enterpriseBrandings          EnterpriseBranding[]
+  customDomains                CustomDomain[]
+  sessions                     Session[]
+  securityEvents               SecurityEvent[]
+  securityAlerts               SecurityAlert[]
+  securityIpPolicies           SecurityIpPolicy[]
+  privacyDataAssets            PrivacyDataAsset[]
+  privacyPreferences           MemberPrivacyPreference[]
+  privacyRestrictions          MemberPrivacyRestriction[]
+  privacyRequests              PrivacyRequest[]
+  privacyExportJobs            PrivacyExportJob[]
+  privacyDeletionPlans         PrivacyDeletionPlan[]
+  privacyRetentionPolicies     PrivacyRetentionPolicy[]
+  privacyRetentionHolds        PrivacyRetentionHold[]
+  privacyProcessors            PrivacyProcessor[]
+  privacyRequestPolicies       PrivacyRequestPolicy[]
 
   @@index([slug])
   @@index([status])
@@ -213,6 +245,10 @@ model Outlet {
   longitude       Float?
   phone           String?
   email           String?
+  currency        String        @default("AUD")
+  website         String?
+  brandId         String?
+  managerUserId   String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
@@ -299,11 +335,19 @@ model Outlet {
   businessMetricProjections     BusinessMetricProjection[]
   businessMetricSnapshots       BusinessMetricSnapshot[]
   integrationConnections        IntegrationConnection[]
+  marketplaceInstallations      MarketplaceInstallation[]
+  brand                         OrganisationBrand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  managerUser                   User?                      @relation("OutletManagerUser", fields: [managerUserId], references: [id], onDelete: SetNull)
+  enterpriseRoleAssignments     EnterpriseRoleAssignment[]
+  enterprisePolicies            EnterprisePolicy[]
+  enterpriseBrandings           EnterpriseBranding[]
 
   @@unique([organisationId, slug])
   @@unique([organisationId, code])
   @@index([organisationId])
   @@index([status])
+  @@index([brandId])
+  @@index([managerUserId])
   @@map("outlets")
 }
 
@@ -374,6 +418,18 @@ model User {
   developerApplicationsCreated DeveloperApplication[] @relation("DeveloperApplicationsCreated")
   oauthAuthorizations          OAuthAuthorization[]
   oauthTokens                  OAuthToken[]
+  marketplaceInstallations     MarketplaceInstallation[] @relation("MarketplaceInstalledByUser")
+  marketplaceReviews           MarketplaceReview[]       @relation("MarketplaceReviewsAuthored")
+  managedOutlets               Outlet[]                  @relation("OutletManagerUser")
+  enterpriseRoleAssignments    EnterpriseRoleAssignment[]
+  enterpriseRoleAssignmentsCreated EnterpriseRoleAssignment[] @relation("RoleAssignmentsCreated")
+  mfaMethods                   UserMfaMethod[]
+  mfaRecoveryCodes             UserMfaRecoveryCode[]
+  devices                      UserDevice[]
+  securityEvents               SecurityEvent[]
+  securityAlerts               SecurityAlert[]
+  actionChallenges             SecurityActionChallenge[]
+  privacyRequests              PrivacyRequest[]        @relation("PrivacyRequestsCreated")
 
   @@index([email])
   @@index([phone])
@@ -393,6 +449,7 @@ model Role {
   permissions   RolePermission[]
   userRoles     UserRole[]
   invitations   Invitation[]
+  enterpriseRoleAssignments EnterpriseRoleAssignment[]
 
   @@map("roles")
 }
@@ -460,23 +517,38 @@ model UserOutlet {
 }
 
 model Session {
-  id            String         @id @default(cuid())
-  userId        String
-  tokenFamily   String
-  isValid       Boolean        @default(true)
-  userAgent     String?
-  ipAddress     String?
-  expiresAt     DateTime
-  lastUsedAt    DateTime?
-  revokedAt     DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                    String         @id @default(cuid())
+  userId                String
+  organisationId        String?
+  sessionTokenReference String?
+  tokenFamily           String
+  isValid               Boolean        @default(true)
+  status                String         @default("ACTIVE") // ACTIVE, EXPIRED, REVOKED, COMPROMISED
+  userAgent             String?
+  ipAddress             String?
+  deviceId              String?
+  authMethod            String         @default("PASSWORD") // PASSWORD, MFA, OAUTH, API_KEY
+  mfaVerified           Boolean        @default(false)
+  lastStepUpAt          DateTime?
+  expiresAt             DateTime
+  lastUsedAt            DateTime?
+  revokedAt             DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  refreshTokens RefreshToken[]
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation          Organisation?  @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  device                UserDevice?    @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  refreshTokens         RefreshToken[]
+  securityEvents        SecurityEvent[]
+  securityAlerts        SecurityAlert[]
+  actionChallenges      SecurityActionChallenge[]
 
   @@index([userId])
   @@index([tokenFamily])
+  @@index([organisationId])
+  @@index([deviceId])
+  @@index([status])
   @@map("sessions")
 }
 
@@ -655,6 +727,12 @@ model MemberProfile {
   billingCycles                BillingCycle[]
   dunningCases                 DunningCase[]
   collectionTasks              CollectionTask[]
+  privacyPreferences           MemberPrivacyPreference?
+  privacyRestrictions          MemberPrivacyRestriction[]
+  privacyRequests              PrivacyRequest[]
+  privacyExportJobs            PrivacyExportJob[]
+  privacyDeletionPlans         PrivacyDeletionPlan[]
+  privacyRetentionHolds        PrivacyRetentionHold[]
 
   @@index([userId])
   @@index([organisationId])
@@ -861,9 +939,15 @@ model ConsentVersion {
   id            String          @id @default(cuid())
   consentTypeId String
   version       String          // e.g. "1.0", "2.0"
+  title         String?
+  summary       String?
   content       String          // Summary/URL of policy text
+  contentReference String?
+  status        String          @default("PUBLISHED") // DRAFT, PUBLISHED, SUPERSEDED, RETIRED
+  requiresReconsent Boolean      @default(false)
   effectiveFrom DateTime        @default(now())
   effectiveTo   DateTime?
+  publishedAt   DateTime?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -883,6 +967,10 @@ model ConsentRecord {
   status           String         @default("CONSENTED") // CONSENTED, DECLINED, WITHDRAWN
   consentedAt      DateTime       @default(now())
   withdrawnAt      DateTime?
+  actorUserId      String?
+  evidenceReference String?
+  withdrawalReason  String?
+  source           String?        @default("MEMBER_APP")
   ipAddress        String?
   userAgent        String?
   createdAt        DateTime       @default(now())
@@ -1962,6 +2050,7 @@ model StaffOutletAssignment {
   outletId        String
   roleScope       String?      // e.g. "OUTLET_MANAGER", "TRAINER", "RECEPTION"
   status          String       @default("ACTIVE") // ACTIVE, INACTIVE, TEMPORARY, SCHEDULED
+  assignmentType  String       @default("PRIMARY") // PRIMARY, SECONDARY, TEMPORARY, REGIONAL
   isPrimary       Boolean      @default(false)
   startDate       DateTime     @default(now())
   endDate         DateTime?
@@ -2007,6 +2096,7 @@ model TrainerProfile {
   workouts                 Workout[]
   trainingPlans            TrainingPlan[]
   assessments              Assessment[]
+  marketplaceListings      MarketplaceListing[]
 
   @@index([organisationId])
   @@index([staffProfileId])
@@ -6909,6 +6999,7 @@ model DeveloperApplication {
   oauthTokens          OAuthToken[]
   apiUsages            DeveloperApiUsage[]
   auditLogs            DeveloperAuditLog[]
+  marketplaceListings  MarketplaceListing[]
 
   @@index([organisationId, status])
   @@index([clientId])
@@ -7088,3 +7179,897 @@ model DeveloperAuditLog {
   @@index([createdAt])
   @@map("developer_audit_logs")
 }
+
+// ==========================================
+// DAY 50: MARKETPLACE FOUNDATION
+// ==========================================
+
+model MarketplaceCategory {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  listings    MarketplaceListing[]
+
+  @@index([slug])
+  @@index([sortOrder])
+  @@map("marketplace_categories")
+}
+
+model MarketplaceListing {
+  id                    String   @id @default(cuid())
+  slug                  String   @unique
+  title                 String
+  tagline               String
+  description           String   @db.Text
+  listingType           String   // APP, INTEGRATION, AI_AGENT, TRAINER, PROGRAM, SERVICE
+  publisherType         String   // FIRST_PARTY, VERIFIED_PARTNER, COMMUNITY, TRAINER
+  status                String   @default("DRAFT") // DRAFT, UNDER_REVIEW, APPROVED, PUBLISHED, SUSPENDED, DEPRECATED, ARCHIVED
+  visibility            String   @default("PUBLIC") // PUBLIC, PRIVATE, UNLISTED, RESTRICTED
+  categoryId            String
+  publisherOrgId        String?
+  publisherName         String
+  publisherEmail        String
+  publisherWebsite      String?
+  supportUrl            String?
+  privacyPolicyUrl      String?
+  termsUrl              String?
+  documentationUrl      String?
+  iconUrl               String?
+  bannerUrl             String?
+  screenshots           String[] @default([])
+  badges                String[] @default([])
+  featured              Boolean  @default(false)
+  verified              Boolean  @default(false)
+  currentVersion        String   @default("1.0.0")
+  pricingType           String   @default("FREE") // FREE, PAID, SUBSCRIPTION, USAGE_BASED, CONTACT_SALES
+  pricingModel          Json?
+  requiredPermissions   String[] @default([])
+  supportedScopes       String[] @default(["ORGANISATION"])
+  healthPiiRequested    Boolean  @default(false)
+  capabilities          String[] @default([])
+  dependencies          Json?
+  conflicts             String[] @default([])
+  developerAppId        String?
+  trainerProfileId      String?
+  ratingAverage         Float    @default(0.0)
+  reviewCount           Int      @default(0)
+  installCount          Int      @default(0)
+  viewCount             Int      @default(0)
+  metadata              Json?
+  rejectionReason       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  publishedAt           DateTime?
+
+  category              MarketplaceCategory         @relation(fields: [categoryId], references: [id])
+  publisherOrg          Organisation?               @relation(fields: [publisherOrgId], references: [id], onDelete: SetNull)
+  developerApp          DeveloperApplication?       @relation(fields: [developerAppId], references: [id], onDelete: SetNull)
+  trainerProfile        TrainerProfile?             @relation(fields: [trainerProfileId], references: [id], onDelete: SetNull)
+  versions              MarketplaceListingVersion[]
+  installations         MarketplaceInstallation[]
+  reviews               MarketplaceReview[]
+
+  @@index([slug])
+  @@index([listingType])
+  @@index([status])
+  @@index([visibility])
+  @@index([categoryId])
+  @@index([publisherOrgId])
+  @@index([featured])
+  @@index([ratingAverage])
+  @@map("marketplace_listings")
+}
+
+model MarketplaceListingVersion {
+  id                    String   @id @default(cuid())
+  listingId             String
+  version               String
+  changelog             String?  @db.Text
+  status                String   @default("DRAFT") // DRAFT, UNDER_REVIEW, APPROVED, PUBLISHED, DEPRECATED, ARCHIVED
+  manifest              Json
+  requiredPermissions   String[] @default([])
+  minCoreVersion        String?
+  supportedScopes       String[] @default(["ORGANISATION"])
+  dependencies          Json?
+  healthPiiRequested    Boolean  @default(false)
+  releasedAt            DateTime?
+  deprecatedAt          DateTime?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  listing               MarketplaceListing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  installations         MarketplaceInstallation[]
+
+  @@unique([listingId, version])
+  @@index([listingId])
+  @@index([version])
+  @@index([status])
+  @@map("marketplace_listing_versions")
+}
+
+model MarketplaceInstallation {
+  id                    String   @id @default(cuid())
+  organisationId        String
+  outletId              String?
+  listingId             String
+  versionId             String
+  installedByUserId     String
+  status                String   @default("ACTIVE") // PENDING, ACTIVE, PAUSED, ERROR, UPGRADING, UNINSTALLED
+  installationScope     String   @default("ORGANISATION") // ORGANISATION, OUTLET
+  config                Json?
+  healthStatus          String   @default("HEALTHY") // HEALTHY, DEGRADED, FAILING, UNKNOWN
+  healthDetails         Json?
+  lastHealthCheckAt     DateTime?
+  installedAt           DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  uninstalledAt         DateTime?
+  pausedAt              DateTime?
+  metadata              Json?
+
+  organisation          Organisation              @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlet                Outlet?                   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  listing               MarketplaceListing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  version               MarketplaceListingVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  installedByUser       User                      @relation("MarketplaceInstalledByUser", fields: [installedByUserId], references: [id], onDelete: Cascade)
+  permissionGrants      MarketplacePermissionGrant[]
+
+  @@unique([organisationId, listingId, outletId])
+  @@index([organisationId])
+  @@index([outletId])
+  @@index([listingId])
+  @@index([status])
+  @@index([healthStatus])
+  @@map("marketplace_installations")
+}
+
+model MarketplacePermissionGrant {
+  id                    String   @id @default(cuid())
+  installationId        String
+  organisationId        String
+  permission            String
+  status                String   @default("GRANTED") // GRANTED, DENIED, REVOKED
+  isHealthPii           Boolean  @default(false)
+  grantedByUserId       String?
+  grantedAt             DateTime @default(now())
+  revokedAt             DateTime?
+  revocationReason      String?
+
+  installation          MarketplaceInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  organisation          Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([installationId, permission])
+  @@index([installationId])
+  @@index([organisationId])
+  @@index([permission])
+  @@index([status])
+  @@map("marketplace_permission_grants")
+}
+
+model MarketplaceReview {
+  id                    String   @id @default(cuid())
+  listingId             String
+  organisationId        String
+  userId                String
+  rating                Int
+  title                 String?
+  comment               String?  @db.Text
+  status                String   @default("PUBLISHED") // PUBLISHED, FLAGGED, HIDDEN, REMOVED
+  isVerifiedInstallation Boolean @default(true)
+  moderationNotes       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  listing               MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  organisation          Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user                  User               @relation("MarketplaceReviewsAuthored", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, organisationId])
+  @@index([listingId])
+  @@index([organisationId])
+  @@index([userId])
+  @@index([status])
+  @@map("marketplace_reviews")
+}
+
+model MarketplaceAuditLog {
+  id                    String   @id @default(cuid())
+  organisationId        String?
+  listingId             String?
+  installationId        String?
+  userId                String?
+  action                String
+  resource              String   @default("Marketplace")
+  resourceId            String
+  details               Json?
+  ipAddress             String?
+  userAgent             String?
+  createdAt             DateTime @default(now())
+
+  @@index([organisationId])
+  @@index([listingId])
+  @@index([installationId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("marketplace_audit_logs")
+}
+
+// ============================================================================
+// DAY 51 — ENTERPRISE ADMINISTRATION
+// ============================================================================
+
+model OrganisationBrand {
+  id              String        @id @default(cuid())
+  organisationId  String
+  name            String
+  code            String
+  slug            String
+  description     String?
+  logoUrl         String?
+  website         String?
+  primaryColor    String?
+  secondaryColor  String?
+  accentColor     String?
+  status          String        @default("ACTIVE") // ACTIVE, INACTIVE, ARCHIVED
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outlets         Outlet[]
+  enterpriseRoleAssignments EnterpriseRoleAssignment[]
+  enterprisePolicies        EnterprisePolicy[]
+  enterpriseBrandings       EnterpriseBranding[]
+
+  @@unique([organisationId, slug])
+  @@unique([organisationId, code])
+  @@index([organisationId])
+  @@index([status])
+  @@map("organisation_brands")
+}
+
+model EnterpriseRoleAssignment {
+  id              String        @id @default(cuid())
+  organisationId  String
+  userId          String
+  roleId          String
+  scopeType       String        // PLATFORM, ORGANISATION, BRAND, REGION, OUTLET
+  scopeId         String?       // Brand ID, Region code, Outlet ID, or null for ORGANISATION/PLATFORM
+  brandId         String?
+  outletId        String?
+  status          String        @default("ACTIVE") // ACTIVE, SCHEDULED, EXPIRED, REVOKED
+  validFrom       DateTime      @default(now())
+  validTo         DateTime?
+  assignedById    String?
+  reason          String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  brand           OrganisationBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  assignedBy      User?         @relation("RoleAssignmentsCreated", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([scopeType, scopeId])
+  @@index([status])
+  @@map("enterprise_role_assignments")
+}
+
+model EnterprisePolicy {
+  id              String        @id @default(cuid())
+  organisationId  String
+  name            String
+  code            String
+  description     String?
+  category        String        // FEATURE, SECURITY, BRANDING, COMMUNICATION, INTEGRATION, AI, MARKETPLACE, DEVELOPER_API, DATA_ACCESS, RETENTION, ACCESS_CONTROL, FINANCE, BILLING, COMPLIANCE, OPERATIONS
+  scopeType       String        // ORGANISATION, BRAND, REGION, OUTLET
+  scopeId         String?
+  brandId         String?
+  outletId        String?
+  isHardCeiling   Boolean       @default(false)
+  priority        Int           @default(0)
+  status          String        @default("DRAFT") // DRAFT, ACTIVE, DEPRECATED, ARCHIVED
+  configJson      Json          // Actual configuration rules/parameters
+  enforcementMode String        @default("ENFORCED") // ENFORCED, ADVISORY, AUDIT_ONLY
+  currentVersion  Int           @default(1)
+  createdById     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  brand           OrganisationBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  versions        EnterprisePolicyVersion[]
+
+  @@unique([organisationId, code, scopeType, scopeId])
+  @@index([organisationId])
+  @@index([category])
+  @@index([scopeType, scopeId])
+  @@index([status])
+  @@map("enterprise_policies")
+}
+
+model EnterprisePolicyVersion {
+  id              String        @id @default(cuid())
+  policyId        String
+  versionNumber   Int
+  configJson      Json
+  changeReason    String?
+  createdById     String?
+  createdAt       DateTime      @default(now())
+
+  policy          EnterprisePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, versionNumber])
+  @@index([policyId])
+  @@map("enterprise_policy_versions")
+}
+
+model EnterpriseConfiguration {
+  id              String        @id @default(cuid())
+  organisationId  String
+  category        String        // SECURITY, COMPLIANCE, BILLING, INTEGRATION, AI, BRANDING
+  key             String
+  value           Json
+  isEncrypted     Boolean       @default(false)
+  scopeType       String        @default("ORGANISATION") // ORGANISATION, BRAND, REGION, OUTLET
+  scopeId         String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, category, key, scopeType, scopeId])
+  @@index([organisationId])
+  @@index([category])
+  @@map("enterprise_configurations")
+}
+
+model EnterpriseBranding {
+  id              String        @id @default(cuid())
+  organisationId  String
+  scopeType       String        // ORGANISATION, BRAND, OUTLET
+  scopeId         String?
+  brandId         String?
+  outletId        String?
+  brandName       String?
+  logoUrl         String?
+  logoDarkUrl     String?
+  faviconUrl      String?
+  primaryColor    String?
+  secondaryColor  String?
+  accentColor     String?
+  backgroundColor String?
+  surfaceColor    String?
+  fontFamily      String?
+  emailHeaderUrl  String?
+  customCss       String?       @db.Text
+  themeJson       Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  brand           OrganisationBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  outlet          Outlet?       @relation(fields: [outletId], references: [id], onDelete: SetNull)
+
+  @@unique([organisationId, scopeType, scopeId])
+  @@index([organisationId])
+  @@index([scopeType, scopeId])
+  @@map("enterprise_brandings")
+}
+
+model CustomDomain {
+  id                  String        @id @default(cuid())
+  organisationId      String
+  domain              String        @unique
+  scopeType           String        @default("ORGANISATION") // ORGANISATION, BRAND, OUTLET
+  scopeId             String?
+  status              String        @default("PENDING_VERIFICATION") // PENDING_VERIFICATION, VERIFIED, ACTIVE, FAILED, SUSPENDED, DELETED
+  verificationMethod  String        @default("DNS_TXT") // DNS_TXT, DNS_CNAME, HTTP_TOKEN
+  verificationToken   String
+  txtRecordName       String
+  txtRecordValue      String
+  cnameRecordName     String
+  cnameRecordValue    String
+  sslStatus           String        @default("PENDING") // PENDING, ISSUED, EXPIRED, FAILED
+  sslCertificateArn   String?
+  sslIssuedAt         DateTime?
+  sslExpiresAt        DateTime?
+  verifiedAt          DateTime?
+  activatedAt         DateTime?
+  fallbackUrl         String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  organisation        Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([domain])
+  @@index([status])
+  @@map("custom_domains")
+}
+
+// ==========================================
+// DAY 52: ADVANCED SECURITY FOUNDATION
+// ==========================================
+
+model UserMfaMethod {
+  id              String    @id @default(cuid())
+  userId          String
+  type            String    // TOTP, EMAIL_OTP
+  status          String    @default("PENDING") // PENDING, ACTIVE, DISABLED, REVOKED
+  label           String?
+  secretReference String    // Encrypted secret (AES-256-GCM)
+  verifiedAt      DateTime?
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("user_mfa_methods")
+}
+
+model UserMfaRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    // bcrypt or sha256 hash
+  status    String    @default("UNUSED") // UNUSED, USED, REVOKED
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("user_mfa_recovery_codes")
+}
+
+model UserDevice {
+  id                   String          @id @default(cuid())
+  userId               String
+  deviceIdentifierHash String
+  deviceName           String
+  platform             String?
+  appVersion           String?
+  browser              String?
+  ipAddress            String?
+  status               String          @default("NEW") // NEW, TRUSTED, BLOCKED, REVOKED
+  trustedAt            DateTime?
+  lastSeenAt           DateTime        @default(now())
+  firstSeenAt          DateTime        @default(now())
+  revokedAt            DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions             Session[]
+  securityEvents       SecurityEvent[]
+
+  @@index([userId])
+  @@index([userId, deviceIdentifierHash])
+  @@map("user_devices")
+}
+
+model SecurityEvent {
+  id             String        @id @default(cuid())
+  organisationId String?
+  userId         String?
+  eventType      String
+  severity       String        // INFO, LOW, MEDIUM, HIGH, CRITICAL
+  source         String        // WEB, MOBILE, API, SYSTEM, ADMIN
+  ipAddress      String?
+  deviceId       String?
+  sessionId      String?
+  requestId      String?
+  correlationId  String?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+
+  organisation   Organisation? @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session        Session?      @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  device         UserDevice?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, createdAt])
+  @@index([userId, createdAt])
+  @@index([eventType])
+  @@index([severity])
+  @@map("security_events")
+}
+
+model SecurityAlert {
+  id               String        @id @default(cuid())
+  organisationId   String
+  severity         String        // INFO, LOW, MEDIUM, HIGH, CRITICAL
+  type             String
+  description      String
+  relatedUserId    String?
+  relatedSessionId String?
+  relatedDeviceId  String?
+  status           String        @default("OPEN") // OPEN, ACKNOWLEDGED, INVESTIGATING, RESOLVED, DISMISSED
+  assignedTo       String?
+  metadata         Json?
+  resolvedAt       DateTime?
+  resolvedBy       String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organisation     Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user             User?         @relation(fields: [relatedUserId], references: [id], onDelete: SetNull)
+  session          Session?      @relation(fields: [relatedSessionId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([severity])
+  @@map("security_alerts")
+}
+
+model SecurityIpPolicy {
+  id             String           @id @default(cuid())
+  organisationId String
+  scopeType      String           @default("ORGANISATION") // ORGANISATION, BRAND, OUTLET
+  scopeId        String?
+  name           String
+  type           String           // ALLOWLIST, DENYLIST
+  targetSurfaces String[]
+  status         String           @default("ACTIVE") // ACTIVE, INACTIVE
+  isHardCeiling  Boolean          @default(true)
+  priority       Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organisation   Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  rules          SecurityIpRule[]
+
+  @@index([organisationId])
+  @@index([scopeType, scopeId])
+  @@map("security_ip_policies")
+}
+
+model SecurityIpRule {
+  id          String           @id @default(cuid())
+  policyId    String
+  ipOrCidr    String
+  description String?
+  createdAt   DateTime         @default(now())
+
+  policy      SecurityIpPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([policyId])
+  @@map("security_ip_rules")
+}
+
+model SecurityActionChallenge {
+  id          String    @id @default(cuid())
+  userId      String
+  sessionId   String?
+  action      String
+  tokenHash   String    @unique
+  status      String    @default("PENDING") // PENDING, VERIFIED, CONSUMED, EXPIRED
+  expiresAt   DateTime
+  verifiedAt  DateTime?
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session     Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("security_action_challenges")
+}
+
+// ==========================================
+// DAY 53: PRIVACY & COMPLIANCE CENTER MODELS
+// ==========================================
+
+model PrivacyDataAsset {
+  id               String       @id @default(cuid())
+  organisationId   String?
+  category         String       // IDENTITY, CONTACT, PROFILE, HEALTH, MEDICAL_DOCUMENT, FITNESS, TRAINING, NUTRITION, WEARABLE, ATTENDANCE, BOOKING, MEMBERSHIP, PAYMENT, FINANCIAL, COMMUNICATION, AI_INTERACTION, ENGAGEMENT, RETENTION, SECURITY, DEVICE, AUDIT, DOCUMENT, CONSENT, MARKETING
+  domain           String       // auth, members, health, training, nutrition, wearables, payments, ai, communications, security
+  entity           String       // MemberProfile, HealthScreening, WearableConnection, etc.
+  fieldPath        String?
+  classification   String       @default("PERSONAL") // PUBLIC, INTERNAL, PERSONAL, SENSITIVE, HIGHLY_SENSITIVE
+  purpose          String       @default("MEMBERSHIP_MANAGEMENT") // ACCOUNT_MANAGEMENT, TRAINING, NUTRITION, WEARABLE_SYNC, etc.
+  source           String       @default("USER_INPUT") // USER_INPUT, DEVICE_SYNC, SYSTEM_GENERATED, STAFF_INPUT, THIRD_PARTY
+  storageLocation  String       @default("POSTGRES") // POSTGRES, OBJECT_STORAGE, REDIS
+  retentionPolicy  String       @default("DURATION_OF_MEMBERSHIP")
+  deletionPolicy   String       @default("DELETE") // DELETE, ANONYMIZE, RETAIN, RESTRICT, ARCHIVE, SKIP
+  exportable       Boolean      @default(true)
+  deletable        Boolean      @default(true)
+  requiresConsent  Boolean      @default(false)
+  sensitive        Boolean      @default(false)
+  description      String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organisation     Organisation? @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([category])
+  @@index([classification])
+  @@map("privacy_data_assets")
+}
+
+model MemberPrivacyPreference {
+  id                 String       @id @default(cuid())
+  memberId           String       @unique
+  organisationId     String
+  aiPersonalization  Boolean      @default(true)
+  analytics          Boolean      @default(true)
+  marketing          Boolean      @default(false)
+  wearables          Boolean      @default(true)
+  dataSharing        Boolean      @default(false)
+  personalization    Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  memberProfile      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  organisation       Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, memberId])
+  @@map("member_privacy_preferences")
+}
+
+model MemberPrivacyRestriction {
+  id                 String       @id @default(cuid())
+  memberId           String
+  organisationId     String
+  status             String       @default("NONE") // NONE, RESTRICTED, UNDER_REVIEW
+  reason             String?
+  restrictedFeatures String[]     @default([])
+  imposedBy          String?
+  imposedAt          DateTime?
+  releasedAt         DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  memberProfile      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  organisation       Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, memberId])
+  @@index([status])
+  @@map("member_privacy_restrictions")
+}
+
+model PrivacyRequest {
+  id                 String               @id @default(cuid())
+  organisationId     String
+  requesterUserId    String
+  memberId           String?
+  type               String               // ACCESS, EXPORT, CORRECTION, DELETION, RESTRICTION, CONSENT_WITHDRAWAL, OTHER
+  status             String               @default("SUBMITTED") // SUBMITTED, RECEIVED, IDENTITY_VERIFICATION_REQUIRED, VERIFICATION_PENDING, APPROVED, PROCESSING, WAITING_FOR_REVIEW, COMPLETED, REJECTED, CANCELLED, EXPIRED, FAILED
+  reason             String?
+  submittedAt        DateTime             @default(now())
+  verifiedAt         DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  expiresAt          DateTime?
+  assignedTo         String?
+  resolution         String?
+  metadata           Json?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  organisation       Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  requesterUser      User                 @relation("PrivacyRequestsCreated", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  memberProfile      MemberProfile?       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  exportJobs         PrivacyExportJob[]
+  deletionPlans      PrivacyDeletionPlan[]
+
+  @@index([organisationId, status])
+  @@index([organisationId, memberId])
+  @@index([requesterUserId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("privacy_requests")
+}
+
+model PrivacyExportJob {
+  id                    String                  @id @default(cuid())
+  privacyRequestId      String?
+  organisationId        String
+  memberId              String
+  status                String                  @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, EXPIRED
+  formats               String[]                @default(["JSON"])
+  downloadTokenHash     String?
+  downloadExpiresAt     DateTime?
+  downloadCount         Int                     @default(0)
+  maxDownloads          Int                     @default(3)
+  encryptionAlgorithm   String                  @default("AES-256-GCM")
+  encryptedKeyReference String?
+  fileSizeBytes         Int?
+  errorReason           String?
+  completedAt           DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  privacyRequest        PrivacyRequest?         @relation(fields: [privacyRequestId], references: [id], onDelete: SetNull)
+  organisation          Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile         MemberProfile           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  artifacts             PrivacyExportArtifact[]
+
+  @@index([organisationId, status])
+  @@index([memberId])
+  @@index([downloadTokenHash])
+  @@map("privacy_export_jobs")
+}
+
+model PrivacyExportArtifact {
+  id             String           @id @default(cuid())
+  exportJobId    String
+  format         String           // JSON, CSV, PDF_SUMMARY
+  storagePath    String
+  mimeType       String
+  checksumSha256 String
+  fileSizeBytes  Int
+  createdAt      DateTime         @default(now())
+
+  exportJob      PrivacyExportJob @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
+
+  @@index([exportJobId])
+  @@map("privacy_export_artifacts")
+}
+
+model PrivacyDeletionPlan {
+  id               String                @id @default(cuid())
+  privacyRequestId String?
+  organisationId   String
+  memberId         String
+  status           String                @default("DRAFT") // DRAFT, REVIEW_REQUIRED, APPROVED, EXECUTING, COMPLETED, FAILED, CANCELLED
+  requiresReview   Boolean               @default(false)
+  reviewReason     String?
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  executedAt       DateTime?
+  completedAt      DateTime?
+  errorReason      String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  privacyRequest   PrivacyRequest?       @relation(fields: [privacyRequestId], references: [id], onDelete: SetNull)
+  organisation     Organisation          @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile    MemberProfile         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items            PrivacyDeletionItem[]
+
+  @@index([organisationId, status])
+  @@index([memberId])
+  @@map("privacy_deletion_plans")
+}
+
+model PrivacyDeletionItem {
+  id              String              @id @default(cuid())
+  deletionPlanId  String
+  domain          String              // PROFILE, HEALTH, WEARABLES, TRAINING, NUTRITION, PAYMENTS, COMMUNICATION, AI, DOCUMENTS, AUDIT, ENGAGEMENT
+  entity          String
+  action          String              // DELETE, ANONYMIZE, RETAIN, RESTRICT, ARCHIVE, SKIP
+  status          String              @default("PENDING") // PENDING, DELETED, ANONYMIZED, RETAINED, RESTRICTED, SKIPPED, FAILED, REQUIRES_REVIEW
+  retentionReason String?             // LEGAL_ACCOUNTING_REQUIREMENT, ACTIVE_RETENTION_HOLD, AUDIT_TELEMETRY_POLICY
+  recordsAffected Int                 @default(0)
+  executedAt      DateTime?
+  errorMessage    String?
+
+  deletionPlan    PrivacyDeletionPlan @relation(fields: [deletionPlanId], references: [id], onDelete: Cascade)
+
+  @@index([deletionPlanId])
+  @@index([domain, status])
+  @@map("privacy_deletion_items")
+}
+
+model PrivacyRetentionPolicy {
+  id                  String                      @id @default(cuid())
+  organisationId      String?
+  dataCategory        String                      // IDENTITY, HEALTH, FINANCIAL, AUDIT, etc.
+  name                String
+  retentionPeriodDays Int
+  action              String                      @default("DELETE") // DELETE, ANONYMIZE, ARCHIVE, RESTRICT, REVIEW
+  legalHold           Boolean                     @default(false)
+  enabled             Boolean                     @default(true)
+  effectiveAt         DateTime                    @default(now())
+  description         String?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  organisation        Organisation?               @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  executions          PrivacyRetentionExecution[]
+
+  @@index([organisationId, enabled])
+  @@index([dataCategory])
+  @@map("privacy_retention_policies")
+}
+
+model PrivacyRetentionExecution {
+  id              String                 @id @default(cuid())
+  policyId        String
+  status          String                 @default("RUNNING") // RUNNING, COMPLETED, PARTIAL_FAILURE, FAILED
+  itemsEvaluated  Int                    @default(0)
+  itemsActioned   Int                    @default(0)
+  itemsRetained   Int                    @default(0)
+  itemsFailed     Int                    @default(0)
+  startedAt       DateTime               @default(now())
+  completedAt     DateTime?
+  errorSummary    String?
+
+  policy          PrivacyRetentionPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([policyId])
+  @@index([status])
+  @@map("privacy_retention_executions")
+}
+
+model PrivacyRetentionHold {
+  id             String        @id @default(cuid())
+  organisationId String
+  memberId       String?
+  dataCategory   String        @default("ALL")
+  reason         String
+  status         String        @default("ACTIVE") // ACTIVE, RELEASED, EXPIRED
+  createdBy      String
+  releasedBy     String?
+  releasedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberProfile  MemberProfile? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([memberId])
+  @@map("privacy_retention_holds")
+}
+
+model PrivacyProcessor {
+  id                     String       @id @default(cuid())
+  organisationId         String?
+  name                   String
+  category               String       // AI_PROVIDER, PAYMENT_PROVIDER, COMMUNICATION_PROVIDER, WEARABLE_PROVIDER, ACCOUNTING_PROVIDER, CLOUD_STORAGE
+  purpose                String
+  dataCategories         String[]     @default([])
+  status                 String       @default("ACTIVE")
+  privacyPolicyReference String?
+  dataRegion             String?
+  enabled                Boolean      @default(true)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  organisation           Organisation? @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, enabled])
+  @@index([category])
+  @@map("privacy_processors")
+}
+
+model PrivacyRequestPolicy {
+  id                   String       @id @default(cuid())
+  organisationId       String
+  requestType          String       // ACCESS, EXPORT, DELETION, etc.
+  verificationRequired Boolean      @default(true)
+  targetProcessingDays Int          @default(30)
+  reviewRequired       Boolean      @default(false)
+  enabled              Boolean      @default(true)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  organisation         Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, requestType])
+  @@index([organisationId])
+  @@map("privacy_request_policies")
+}
+

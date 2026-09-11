@@ -22,6 +22,11 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponseEn
 
     return next.handle().pipe(
       map((data) => {
+        // If data is an RFC 6749 OAuth token response, preserve top-level standard fields
+        if (data && typeof data === 'object' && 'access_token' in data) {
+          return data;
+        }
+
         // If data is already enveloped with success property, preserve it
         if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
           return {

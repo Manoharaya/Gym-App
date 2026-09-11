@@ -4,7 +4,13 @@ import { AuthenticatedUser } from '../common/interfaces/request-with-user.interf
 
 export const ROLE_HIERARCHY: Record<string, number> = {
   SUPERADMIN: 100,
+  ENTERPRISE_ADMIN: 90,
   ORGANISATION_OWNER: 80,
+  REGIONAL_MANAGER: 75,
+  BRAND_MANAGER: 70,
+  OPERATIONS_MANAGER: 65,
+  COMPLIANCE_MANAGER: 65,
+  ANALYTICS_MANAGER: 65,
   OUTLET_MANAGER: 60,
   FINANCE: 50,
   RECEPTION: 40,
@@ -67,7 +73,7 @@ export class PermissionsService {
 
     // 4. Outlet scoping check: If actor is OUTLET_MANAGER, they can only assign for their own outlet
     const isOrgWideAdmin = actorOrgRoles.some((r) =>
-      ['ORGANISATION_OWNER', 'FINANCE'].includes(r.role),
+      ['ENTERPRISE_ADMIN', 'ORGANISATION_OWNER', 'FINANCE'].includes(r.role),
     );
 
     if (!isOrgWideAdmin && targetOutletId) {

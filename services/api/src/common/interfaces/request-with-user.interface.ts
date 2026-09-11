@@ -24,6 +24,7 @@ export interface AuthenticatedUser {
   primaryOrganisationId?: string;
   primaryOutletId?: string | null;
   isSuperAdmin: boolean;
+  sessionId?: string;
 }
 
 export interface TenantContext {

@@ -55,6 +55,27 @@ export class AuthController {
   }
 
   @Public()
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify MFA challenge during login' })
+  @ApiResponse({ status: 200, description: 'MFA verified and session created' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired MFA challenge or code' })
+  async verifyMfa(
+    @Body() dto: { challengeToken: string; code: string; isRecoveryCode?: boolean },
+    @Req() req: RequestWithUser,
+  ) {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const requestId = req.requestId;
+    return this.authService.verifyMfaLogin(
+      dto.challengeToken,
+      dto.code,
+      dto.isRecoveryCode,
+      { ipAddress, userAgent, requestId },
+    );
+  }
+
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate single-use refresh token and acquire new access token' })

@@ -1,0 +1,17 @@
+export enum EnterpriseEvent {
+  BRAND_CREATED = 'enterprise.brand.created',
+  BRAND_UPDATED = 'enterprise.brand.updated',
+  BRAND_ARCHIVED = 'enterprise.brand.archived',
+  OUTLET_TRANSFERRED = 'enterprise.outlet.transferred',
+  OUTLET_ARCHIVED = 'enterprise.outlet.archived',
+  ROLE_ASSIGNED = 'enterprise.role.assigned',
+  ROLE_REVOKED = 'enterprise.role.revoked',
+  POLICY_CREATED = 'enterprise.policy.created',
+  POLICY_UPDATED = 'enterprise.policy.updated',
+  POLICY_CEILING_ENFORCED = 'enterprise.policy.ceiling_enforced',
+  DOMAIN_REGISTERED = 'enterprise.domain.registered',
+  DOMAIN_VERIFIED = 'enterprise.domain.verified',
+  DOMAIN_ACTIVATED = 'enterprise.domain.activated',
+  BRANDING_CONFIGURED = 'enterprise.branding.configured',
+  STAFF_OUTLET_TRANSFERRED = 'enterprise.staff.transferred',
+}

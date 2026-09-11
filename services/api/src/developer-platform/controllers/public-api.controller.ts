@@ -34,8 +34,10 @@ import {
 } from '@fitcore/types';
 import { PublicPaginationQueryDto } from '../dto/pagination-query.dto';
 import { DeveloperError } from '../domain/developer-errors';
+import { Public } from '../../common/decorators/public.decorator';
 
-@Controller('api/v1/public')
+@Public()
+@Controller('public')
 @UseGuards(DeveloperApiAuthGuard, DeveloperScopeGuard)
 export class PublicApiController {
   constructor(
@@ -290,10 +292,14 @@ export class PublicApiController {
   @RequireScopes('bookings:write')
   async createBooking(
     @Body() dto: CreatePublicBookingDto,
-    @Headers('idempotency-key') idempotencyKey: string,
     @CurrentDeveloperContext() ctx: DeveloperSecurityContext,
     @Req() req: any,
   ): Promise<PublicResponseEnvelope<PublicBookingDto>> {
+    const idempotencyKey =
+      req.header('Idempotency-Key') ||
+      req.header('idempotency-key') ||
+      undefined;
+
     // Assert member belongs to this organisation
     const member = await this.prisma.memberProfile.findFirst({
       where: { id: dto.memberId, organisationId: ctx.organisationId },

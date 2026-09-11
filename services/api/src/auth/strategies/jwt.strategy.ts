@@ -83,6 +83,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       primaryOrganisationId,
       primaryOutletId,
       isSuperAdmin,
+      sessionId: payload.sessionId,
     };
   }
 }

@@ -35,3 +35,7 @@ export * from './multi-outlet-intelligence';
 export * from './resource-capacity-intelligence';
 export * from './integrations';
 export * from './developer-platform';
+export * from './marketplace';
+export * from './enterprise';
+export * from './security';
+export * from './privacy';

@@ -126,6 +126,7 @@ export interface DeveloperApplicationDto {
 }
 
 export interface CreateDeveloperApplicationDto {
+  organisationId?: string;
   name: string;
   description?: string;
   applicationType?: DeveloperApplicationType;

@@ -34,8 +34,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       } else if (typeof resObj === 'object' && resObj !== null) {
         const anyRes = resObj as any;
         message = anyRes.message || exception.message;
-        const rawCode = anyRes.code || anyRes.error || this.mapStatusToErrorCode(status);
+        const rawCode = anyRes.code || (typeof anyRes.error === 'object' && anyRes.error !== null ? anyRes.error.code : anyRes.error) || this.mapStatusToErrorCode(status);
         code = String(rawCode).toUpperCase().replace(/\s+/g, '_');
+        if (typeof anyRes.error === 'object' && anyRes.error?.message) {
+          message = anyRes.error.message;
+        }
         if (Array.isArray(anyRes.message)) {
           // Validation error
           code = 'VALIDATION_ERROR';

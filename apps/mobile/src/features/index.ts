@@ -27,3 +27,5 @@ export * from './staff';
 export * from './engagement';
 export * from './ai';
 export * from './automation';
+export * from './security';
+export * from './privacy';

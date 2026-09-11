@@ -3,6 +3,10 @@ import { DeveloperApplicationType, DeveloperEnvironment, ApiScope } from '@fitco
 
 export class CreateDeveloperApplicationInputDto {
   @IsString()
+  @IsOptional()
+  organisationId?: string;
+
+  @IsString()
   @IsNotEmpty()
   name: string;
 

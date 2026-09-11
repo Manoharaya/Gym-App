@@ -39,6 +39,8 @@ export class DeveloperError extends HttpException {
   ) {
     super(
       {
+        code,
+        message,
         error: {
           code,
           message,

@@ -54,6 +54,10 @@ import { MultiOutletIntelligenceModule } from './multi-outlet-intelligence/multi
 import { ResourceCapacityIntelligenceModule } from './resource-capacity-intelligence/resource-capacity-intelligence.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { DeveloperPlatformModule } from './developer-platform/developer-platform.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
+import { EnterpriseModule } from './enterprise/enterprise.module';
+import { SecurityModule } from './security/security.module';
+import { PrivacyModule } from './privacy/privacy.module';
 import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
@@ -124,6 +128,10 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     ResourceCapacityIntelligenceModule,
     IntegrationsModule,
     DeveloperPlatformModule,
+    MarketplaceModule,
+    EnterpriseModule,
+    SecurityModule,
+    PrivacyModule,
     AutomationModule,
     HealthModule,
     WearablesModule,

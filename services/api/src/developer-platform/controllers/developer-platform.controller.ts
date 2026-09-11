@@ -34,7 +34,7 @@ import {
   UpdateWebhookSubscriptionDto,
 } from '@fitcore/types';
 
-@Controller('api/v1/developer')
+@Controller('developer')
 @UseGuards(JwtAuthGuard)
 export class DeveloperPlatformController {
   constructor(
@@ -55,8 +55,15 @@ export class DeveloperPlatformController {
   async createApplication(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateDeveloperApplicationDto,
+    @Req() req: any,
   ) {
-    const orgId = user.primaryOrganisationId || user.roles[0]?.organisationId || null;
+    const orgId =
+      dto.organisationId ||
+      req.header('x-organisation-id') ||
+      req.header('X-Organisation-Id') ||
+      user.primaryOrganisationId ||
+      user.roles[0]?.organisationId ||
+      null;
     return this.applicationService.createApplication(orgId, user.id, dto);
   }
 

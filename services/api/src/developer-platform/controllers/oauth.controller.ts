@@ -24,8 +24,9 @@ import {
   OAuthRevokeTokenInputDto,
   OAuthTokenRequestInputDto,
 } from '../dto/oauth-token.dto';
+import { Public } from '../../common/decorators/public.decorator';
 
-@Controller('api/v1/oauth')
+@Controller('oauth')
 export class OAuthController {
   constructor(
     private readonly oauthService: OAuthService,
@@ -82,6 +83,7 @@ export class OAuthController {
   /**
    * Token endpoint (POST): Public OAuth token exchange (auth code / refresh token + PKCE).
    */
+  @Public()
   @Post('token')
   async exchangeToken(@Body() dto: OAuthTokenRequestInputDto) {
     return this.oauthService.exchangeToken({
@@ -98,6 +100,7 @@ export class OAuthController {
   /**
    * Revoke endpoint (POST): Revokes an access or refresh token.
    */
+  @Public()
   @Post('revoke')
   async revokeToken(@Body() dto: OAuthRevokeTokenInputDto) {
     return this.oauthService.revokeToken({

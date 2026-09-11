@@ -19,6 +19,7 @@ import { RegisterDto } from './dto/register.dto';
 import { ContextSwitchDto } from './dto/context-switch.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { AuthenticatedUser } from '../common/interfaces/request-with-user.interface';
+import { SecurityService } from '../security/security.service';
 
 @Injectable()
 export class AuthService {
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
     private readonly rateLimiter: RateLimiterService,
+    private readonly security: SecurityService,
   ) {}
 
   private hashToken(token: string): string {
@@ -238,13 +240,23 @@ export class AuthService {
     meta?: { ipAddress?: string; userAgent?: string; requestId?: string },
   ) {
     const rateLimitKey = dto.email.toLowerCase().trim();
+    this.security.accountProtection.checkLockout(rateLimitKey);
     await this.rateLimiter.checkLimit(rateLimitKey);
 
     let user: any;
     try {
       user = await this.validateUser(dto.email, dto.password);
     } catch (err: any) {
+      this.security.accountProtection.recordFailedAttempt(rateLimitKey);
       await this.rateLimiter.recordFailedAttempt(rateLimitKey);
+      await this.security.events.recordEvent({
+        eventType: 'LOGIN_FAILURE',
+        severity: 'LOW',
+        source: 'AUTH',
+        ipAddress: meta?.ipAddress,
+        requestId: meta?.requestId,
+        metadata: { email: dto.email, reason: err.message },
+      });
       await this.auditService.log({
         action: 'AUTH_LOGIN_FAILED',
         resource: 'auth',
@@ -257,7 +269,16 @@ export class AuthService {
     }
 
     if (!user) {
+      this.security.accountProtection.recordFailedAttempt(rateLimitKey);
       await this.rateLimiter.recordFailedAttempt(rateLimitKey);
+      await this.security.events.recordEvent({
+        eventType: 'LOGIN_FAILURE',
+        severity: 'LOW',
+        source: 'AUTH',
+        ipAddress: meta?.ipAddress,
+        requestId: meta?.requestId,
+        metadata: { email: dto.email, reason: 'Invalid credentials' },
+      });
       await this.auditService.log({
         action: 'AUTH_LOGIN_FAILED',
         resource: 'auth',
@@ -269,8 +290,42 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Reset rate limiter on successful auth
+    // Reset rate limiters on successful auth
+    this.security.accountProtection.resetAttempts(rateLimitKey);
     await this.rateLimiter.reset(rateLimitKey);
+
+    // Register or update device
+    const { deviceId } = await this.security.devices.registerOrUpdateDevice({
+      userId: user.id,
+      userAgent: meta?.userAgent,
+      ipAddress: meta?.ipAddress,
+    });
+
+    const orgId = user.userRoles[0]?.organisationId;
+
+    // Check if user has active MFA or enterprise policy requires it
+    const activeMfa = await this.prisma.userMfaMethod.findFirst({
+      where: { userId: user.id, status: 'ACTIVE' },
+    });
+    const policyRequiresMfa = await this.security.policies.isMfaRequiredForUser(user.id, orgId);
+
+    // Only present MFA challenge if the user has an active MFA method configured
+    if (activeMfa) {
+      const challenge = await this.security.stepUp.createChallenge(
+        user.id,
+        'CHANGE_PASSWORD' as any,
+      );
+
+      return {
+        mfaRequired: true,
+        mfaChallengeToken: challenge.challengeToken,
+        mfaType: activeMfa.type,
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+      };
+    }
 
     const tokenFamily = crypto.randomUUID();
     const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -278,8 +333,13 @@ export class AuthService {
     const session = await this.prisma.session.create({
       data: {
         userId: user.id,
+        organisationId: orgId,
+        deviceId,
         tokenFamily,
         isValid: true,
+        status: 'ACTIVE',
+        authMethod: 'PASSWORD',
+        mfaVerified: false,
         ipAddress: meta?.ipAddress,
         userAgent: meta?.userAgent,
         expiresAt: sessionExpiresAt,
@@ -291,7 +351,7 @@ export class AuthService {
     const refreshSecret = this.configService.get<string>('jwt.refreshSecret')!;
 
     const accessToken = this.jwtService.sign(
-      { sub: user.id, email: user.email, sessionId: session.id },
+      { sub: user.id, email: user.email, sessionId: session.id, mfaVerified: false },
       { secret: jwtSecret, expiresIn: '15m' },
     );
 
@@ -314,15 +374,151 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    await this.security.events.recordEvent({
+      organisationId: orgId,
+      userId: user.id,
+      sessionId: session.id,
+      deviceId,
+      eventType: 'LOGIN_SUCCESS',
+      severity: 'INFO',
+      source: 'AUTH',
+      ipAddress: meta?.ipAddress,
+      requestId: meta?.requestId,
+    });
+
     await this.auditService.log({
       userId: user.id,
-      organisationId: user.userRoles[0]?.organisationId,
+      organisationId: orgId,
       outletId: user.userRoles[0]?.outletId,
       action: 'AUTH_LOGIN_SUCCESS',
       resource: 'auth',
       resourceId: session.id,
       ipAddress: meta?.ipAddress,
       userAgent: meta?.userAgent,
+      requestId: meta?.requestId,
+    });
+
+    const roles = user.userRoles.map((ur: any) => ({
+      role: ur.role.name,
+      organisationId: ur.organisationId,
+      outletId: ur.outletId,
+    }));
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 900,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        displayName: user.displayName,
+        roles,
+      },
+    };
+  }
+
+  async verifyMfaLogin(
+    challengeToken: string,
+    code: string,
+    isRecoveryCode = false,
+    meta?: { ipAddress?: string; userAgent?: string; requestId?: string },
+  ) {
+    const tokenHash = this.hashToken(challengeToken);
+    const challenge = await this.prisma.securityActionChallenge.findUnique({
+      where: { tokenHash },
+      include: {
+        user: {
+          include: {
+            userRoles: {
+              include: {
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!challenge) {
+      throw new UnauthorizedException('Invalid or expired MFA challenge token');
+    }
+
+    if (challenge.status !== 'PENDING' || challenge.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedException('MFA challenge token has expired');
+    }
+
+    const user = challenge.user;
+
+    // Verify MFA code or recovery code
+    await this.security.mfa.verifyMfaChallenge(user.id, code, isRecoveryCode);
+
+    // Consume challenge
+    await this.prisma.securityActionChallenge.update({
+      where: { id: challenge.id },
+      data: { status: 'CONSUMED', consumedAt: new Date() },
+    });
+
+    // Register device
+    const { deviceId } = await this.security.devices.registerOrUpdateDevice({
+      userId: user.id,
+      userAgent: meta?.userAgent,
+      ipAddress: meta?.ipAddress,
+    });
+
+    const orgId = user.userRoles[0]?.organisationId;
+    const tokenFamily = crypto.randomUUID();
+    const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const session = await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        organisationId: orgId,
+        deviceId,
+        tokenFamily,
+        isValid: true,
+        status: 'ACTIVE',
+        authMethod: isRecoveryCode ? 'RECOVERY_CODE' : 'MFA',
+        mfaVerified: true,
+        ipAddress: meta?.ipAddress,
+        userAgent: meta?.userAgent,
+        expiresAt: sessionExpiresAt,
+        lastUsedAt: new Date(),
+      },
+    });
+
+    const jwtSecret = this.configService.get<string>('jwt.secret')!;
+    const refreshSecret = this.configService.get<string>('jwt.refreshSecret')!;
+
+    const accessToken = this.jwtService.sign(
+      { sub: user.id, email: user.email, sessionId: session.id, mfaVerified: true },
+      { secret: jwtSecret, expiresIn: '15m' },
+    );
+
+    const refreshToken = this.jwtService.sign(
+      { sub: user.id, sessionId: session.id, tokenFamily, jti: crypto.randomUUID() },
+      { secret: refreshSecret, expiresIn: '7d' },
+    );
+
+    await this.prisma.refreshToken.create({
+      data: {
+        sessionId: session.id,
+        tokenHash: this.hashToken(refreshToken),
+        isRevoked: false,
+        expiresAt: sessionExpiresAt,
+      },
+    });
+
+    await this.security.events.recordEvent({
+      organisationId: orgId,
+      userId: user.id,
+      sessionId: session.id,
+      deviceId,
+      eventType: isRecoveryCode ? 'RECOVERY_CODE_USED' : 'LOGIN_SUCCESS',
+      severity: 'INFO',
+      source: 'AUTH',
+      ipAddress: meta?.ipAddress,
       requestId: meta?.requestId,
     });
 
@@ -373,8 +569,31 @@ export class AuthService {
       );
       await this.prisma.session.update({
         where: { id: existingToken.sessionId },
-        data: { isValid: false, revokedAt: new Date() },
+        data: { isValid: false, status: 'COMPROMISED', revokedAt: new Date() },
       });
+      await this.prisma.refreshToken.updateMany({
+        where: { sessionId: existingToken.sessionId },
+        data: { isRevoked: true },
+      });
+      await this.security.events.recordEvent({
+        organisationId: existingToken.session?.organisationId,
+        userId: payload.sub,
+        sessionId: existingToken.sessionId,
+        eventType: 'REFRESH_TOKEN_REUSE_DETECTED',
+        severity: 'HIGH',
+        source: 'AUTH',
+        metadata: { sessionId: existingToken.sessionId },
+      });
+      if (existingToken.session?.organisationId) {
+        await this.security.alerts.createAlert({
+          organisationId: existingToken.session.organisationId,
+          severity: 'HIGH',
+          type: 'TOKEN_REUSE_COMPROMISE',
+          description: `Refresh token reuse detected for user ${payload.sub}. Session terminated.`,
+          relatedUserId: payload.sub,
+          relatedSessionId: existingToken.sessionId,
+        });
+      }
       await this.auditService.log({
         userId: payload.sub,
         action: 'AUTH_REFRESH_REUSE_DETECTED',
