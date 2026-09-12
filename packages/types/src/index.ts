@@ -39,3 +39,6 @@ export * from './marketplace';
 export * from './enterprise';
 export * from './security';
 export * from './privacy';
+export * from './platform-admin';
+export * from './saas-billing';
+export * from './observability';

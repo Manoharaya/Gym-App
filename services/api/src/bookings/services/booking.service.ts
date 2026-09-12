@@ -130,6 +130,38 @@ export class BookingService {
 
     // 3. Atomic Transactional Booking with Capacity Lock
     return this.prisma.$transaction(async (tx) => {
+      // Acquire exclusive row lock on the class session to prevent race conditions & overbooking
+      await tx.$executeRaw`SELECT id FROM class_sessions WHERE id = ${classSessionId} FOR UPDATE`;
+
+      // Check duplicate idempotency or double-booking inside locked transaction
+      if (options?.idempotencyKey) {
+        const existingTx = await tx.booking.findFirst({
+          where: { organisationId, idempotencyKey: options.idempotencyKey },
+          include: {
+            classSession: {
+              include: { classType: true, trainer: true, resource: true },
+            },
+          },
+        });
+        if (existingTx) {
+          return { ...existingTx, _isIdempotentReplay: true };
+        }
+      }
+
+      const existingMemberBooking = await tx.booking.findFirst({
+        where: {
+          classSessionId,
+          memberProfileId,
+          status: { in: ['CONFIRMED', 'WAITLISTED'] },
+        },
+      });
+      if (existingMemberBooking) {
+        throw new ConflictException({
+          code: existingMemberBooking.status === 'CONFIRMED' ? 'ALREADY_BOOKED' : 'ALREADY_WAITLISTED',
+          message: 'Member is already booked or waitlisted for this session',
+        });
+      }
+
       const session = await tx.classSession.findUnique({
         where: { id: classSessionId },
         include: {

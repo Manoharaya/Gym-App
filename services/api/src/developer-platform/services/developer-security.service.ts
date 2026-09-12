@@ -86,7 +86,8 @@ export class DeveloperSecurityService {
 
   /**
    * Validates a URL against Server-Side Request Forgery (SSRF) threats.
-   * Prohibits localhost, loopback, private IPv4 CIDRs, and AWS metadata endpoints.
+   * Prohibits localhost, loopback, private IPv4 CIDRs, Carrier-Grade NAT,
+   * decimal/hex IP encodings, link-local, IPv6 private/loopback, and cloud metadata endpoints.
    */
   validateUrlSafe(targetUrl: string, allowHttpForLocalTest = false): boolean {
     try {
@@ -102,37 +103,82 @@ export class DeveloperSecurityService {
         return false;
       }
 
-      const hostname = parsed.hostname.toLowerCase();
+      let hostname = parsed.hostname.toLowerCase();
+      // Remove bracket enclosing for IPv6
+      if (hostname.startsWith('[') && hostname.endsWith(']')) {
+        hostname = hostname.slice(1, -1);
+      }
 
-      // Check loopback / localhost
+      // Check loopback / localhost names
       if (
         hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
+        hostname === '0.0.0.0' ||
+        hostname === '0' ||
         hostname === '::1' ||
-        hostname.endsWith('.localhost')
+        hostname === '::' ||
+        hostname.endsWith('.localhost') ||
+        hostname.endsWith('.local') ||
+        hostname.endsWith('.internal')
       ) {
         return false;
       }
 
-      // Check AWS/cloud metadata address
-      if (hostname === '169.254.169.254') {
+      // Check AWS/cloud metadata address & domains
+      if (
+        hostname === '169.254.169.254' ||
+        hostname === 'metadata.google.internal' ||
+        hostname === 'metadata.google' ||
+        hostname.includes('metadata') ||
+        hostname === 'fd00:ec2::254'
+      ) {
         return false;
       }
 
-      // Check IPv4 octets for private IP ranges (RFC 1918)
+      // Prohibit pure decimal/integer IP representations (e.g. 2130706433 -> 127.0.0.1)
+      if (/^\d+$/.test(hostname)) {
+        return false;
+      }
+
+      // Prohibit hex or octal IP representations (e.g. 0x7f000001)
+      if (/^0x[0-9a-f]+$/i.test(hostname) || /^0[0-7]+$/.test(hostname)) {
+        return false;
+      }
+
+      // Check IPv6 loopback / private / link-local / IPv4-mapped
+      if (hostname.includes(':')) {
+        if (
+          hostname === '::1' ||
+          hostname === '::' ||
+          hostname.startsWith('fe80:') ||
+          hostname.startsWith('fc00:') ||
+          hostname.startsWith('fd00:') ||
+          hostname.startsWith('::ffff:')
+        ) {
+          return false;
+        }
+      }
+
+      // Check IPv4 octets for private IP ranges (RFC 1918), loopback, link-local, CGNAT
       const ipParts = hostname.split('.').map(Number);
       if (ipParts.length === 4 && ipParts.every((p) => !isNaN(p) && p >= 0 && p <= 255)) {
         const [a, b] = ipParts;
-        // 10.0.0.0/8
+        // 0.0.0.0/8 (broadcast/this host)
+        if (a === 0) return false;
+        // 10.0.0.0/8 (RFC 1918)
         if (a === 10) return false;
-        // 172.16.0.0/12
-        if (a === 172 && b >= 16 && b <= 31) return false;
-        // 192.168.0.0/16
-        if (a === 192 && b === 168) return false;
+        // 100.64.0.0/10 (Carrier-Grade NAT RFC 6598)
+        if (a === 100 && b >= 64 && b <= 127) return false;
         // 127.0.0.0/8 (loopback)
         if (a === 127) return false;
-        // 169.254.0.0/16 (link-local)
+        // 169.254.0.0/16 (link-local / cloud metadata)
         if (a === 169 && b === 254) return false;
+        // 172.16.0.0/12 (RFC 1918)
+        if (a === 172 && b >= 16 && b <= 31) return false;
+        // 192.168.0.0/16 (RFC 1918)
+        if (a === 192 && b === 168) return false;
+        // 198.18.0.0/15 (Benchmarking)
+        if (a === 198 && (b === 18 || b === 19)) return false;
       }
 
       return true;

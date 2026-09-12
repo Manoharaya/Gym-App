@@ -26,6 +26,23 @@ export class AccessDecisionService {
     private readonly overrideService: AccessOverrideService
   ) {}
 
+  private readonly outletCache = new Map<string, { data: any; expiresAt: number }>();
+
+  private async getCachedOutlet(outletId: string) {
+    const cached = this.outletCache.get(outletId);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
+    const outlet = await this.prisma.outlet.findUnique({
+      where: { id: outletId },
+      select: { id: true, organisationId: true, status: true, timezone: true },
+    });
+    if (outlet) {
+      this.outletCache.set(outletId, { data: outlet, expiresAt: Date.now() + 60000 });
+    }
+    return outlet;
+  }
+
   /**
    * The single authoritative decision engine for all physical access control.
    *
@@ -43,11 +60,8 @@ export class AccessDecisionService {
     const { outletId, accessPointId, deviceId } = params;
 
     try {
-      // 1. OUTLET VALIDATION
-      const outlet = await this.prisma.outlet.findUnique({
-        where: { id: outletId },
-        select: { id: true, organisationId: true, status: true, timezone: true },
-      });
+      // 1. OUTLET VALIDATION (Fast cached lookup)
+      const outlet = await this.getCachedOutlet(outletId);
 
       if (!outlet || outlet.status !== 'ACTIVE') {
         return this.deny('OUTLET_NOT_FOUND', {

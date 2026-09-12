@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitCore Superadmin — Platform Operations Control Plane</title>
+  <meta name="description" content="Production-grade platform superadmin console and operations control plane for FitCore multi-tenant fitness cloud.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/index.css">
+</head>
+<body class="dark-theme">
+  <div id="app" class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">FitCore</span>
+          <span class="brand-badge">CONTROL PLANE</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu" id="nav-menu">
+        <div class="nav-section-title">PLATFORM OBSERVABILITY</div>
+        <a href="#overview" class="nav-item active" data-view="overview" id="nav-overview">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Overview</span>
+        </a>
+        <a href="#organisations" class="nav-item" data-view="organisations" id="nav-organisations">
+          <span class="nav-icon">🏢</span>
+          <span class="nav-label">Organisations</span>
+        </a>
+        <a href="#usage" class="nav-item" data-view="usage" id="nav-usage">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label">Platform Usage</span>
+        </a>
+        <a href="#ai-usage" class="nav-item" data-view="ai-usage" id="nav-ai-usage">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-label">AI Gateway & Cost</span>
+        </a>
+        <a href="#billing" class="nav-item" data-view="billing" id="nav-billing">
+          <span class="nav-icon">💳</span>
+          <span class="nav-label">SaaS Billing & Plans</span>
+        </a>
+        <a href="#support" class="nav-item" data-view="support" id="nav-support">
+          <span class="nav-icon">🎫</span>
+          <span class="nav-label">Support Queue</span>
+          <span class="nav-counter" id="badge-tickets">0</span>
+        </a>
+
+        <div class="nav-section-title">CONTROL & GOVERNANCE</div>
+        <a href="#feature-flags" class="nav-item" data-view="feature-flags" id="nav-feature-flags">
+          <span class="nav-icon">🚩</span>
+          <span class="nav-label">Feature Flags</span>
+        </a>
+        <a href="#integrations" class="nav-item" data-view="integrations" id="nav-integrations">
+          <span class="nav-icon">🔌</span>
+          <span class="nav-label">Integrations Health</span>
+        </a>
+        <a href="#health" class="nav-item" data-view="health" id="nav-health">
+          <span class="nav-icon">❤️‍🩹</span>
+          <span class="nav-label">Platform Health</span>
+          <span class="status-indicator-dot online" id="dot-health"></span>
+        </a>
+        <a href="#incidents" class="nav-item" data-view="incidents" id="nav-incidents">
+          <span class="nav-icon">🚨</span>
+          <span class="nav-label">Incidents</span>
+        </a>
+        <a href="#support-access" class="nav-item" data-view="support-access" id="nav-support-access">
+          <span class="nav-icon">🛡️</span>
+          <span class="nav-label">Support Access</span>
+        </a>
+        <a href="#audit" class="nav-item" data-view="audit" id="nav-audit">
+          <span class="nav-icon">📜</span>
+          <span class="nav-label">Platform Audit</span>
+        </a>
+        <a href="#settings" class="nav-item" data-view="settings" id="nav-settings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">Settings & Config</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="operator-profile">
+          <div class="operator-avatar">SA</div>
+          <div class="operator-info">
+            <span class="operator-name" id="operator-name">Superadmin Console</span>
+            <span class="operator-role" id="operator-role">MFA Verified • Global Scope</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-wrapper">
+      <!-- Top Header Bar -->
+      <header class="top-header">
+        <div class="header-search">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="global-search-input" placeholder="Search organisations, outlets, tickets, incidents..." autocomplete="off">
+          <div id="search-results-dropdown" class="search-dropdown hidden"></div>
+        </div>
+
+        <div class="header-actions">
+          <div class="pill-badge pill-healthy" id="header-status-pill">
+            <span class="pulse-dot"></span>
+            <span>ALL SYSTEMS HEALTHY</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-data" title="Refresh Live Metrics">
+            🔄 Refresh
+          </button>
+          <button class="btn btn-danger-outline btn-sm" id="btn-break-glass-trigger" title="Break-Glass Emergency Access">
+            🚨 Break-Glass
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic View Container -->
+      <section class="content-container" id="view-container">
+        <!-- Injected via TypeScript main.ts -->
+      </section>
+    </main>
+  </div>
+
+  <!-- Step-Up Challenge Modal -->
+  <div id="step-up-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="step-up-title">High-Risk Operation: Step-Up Authentication Required</h3>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="step-up-desc" class="modal-text">
+          This operation mutates platform state and requires elevated step-up token verification.
+        </p>
+        <div class="form-group">
+          <label for="step-up-token-input">Step-Up Challenge Token or MFA Code:</label>
+          <input type="password" id="step-up-token-input" class="form-input" placeholder="Enter challenge token or 6-digit TOTP">
+        </div>
+        <div id="step-up-error" class="error-banner hidden"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="step-up-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="step-up-confirm-btn">Verify & Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

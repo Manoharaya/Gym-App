@@ -14,6 +14,27 @@ export interface ApiResponseEnvelope<T> {
   requestId: string;
 }
 
+// Global BigInt JSON serialization fallback
+if (!(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () {
+    return Number(this);
+  };
+}
+
+function serializeBigInts(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'bigint') return Number(obj);
+  if (Array.isArray(obj)) return obj.map(serializeBigInts);
+  if (typeof obj === 'object' && !(obj instanceof Date)) {
+    const res: any = {};
+    for (const key of Object.keys(obj)) {
+      res[key] = serializeBigInts(obj[key]);
+    }
+    return res;
+  }
+  return obj;
+}
+
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponseEnvelope<T>> {
   intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponseEnvelope<T>> {
@@ -21,7 +42,8 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponseEn
     const requestId = req?.requestId || 'req_unknown';
 
     return next.handle().pipe(
-      map((data) => {
+      map((rawData) => {
+        const data = serializeBigInts(rawData);
         // If data is an RFC 6749 OAuth token response, preserve top-level standard fields
         if (data && typeof data === 'object' && 'access_token' in data) {
           return data;

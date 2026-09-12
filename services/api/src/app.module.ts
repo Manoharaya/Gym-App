@@ -62,7 +62,12 @@ import { AutomationModule } from './automation/automation.module';
 import { HealthModule } from './health/health.module';
 import { WearablesModule } from './wearables/wearables.module';
 import { VoiceModule } from './voice/voice.module';
+import { PlatformAdminModule } from './platform-admin/platform-admin.module';
+import { SaasBillingModule } from './saas-billing/saas-billing.module';
+import { ObservabilityModule } from './observability/observability.module';
+import { DisasterRecoveryModule } from './disaster-recovery/disaster-recovery.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { SecurityHeadersMiddleware } from './common/middleware/security-headers.middleware';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -136,6 +141,10 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
     HealthModule,
     WearablesModule,
     VoiceModule,
+    PlatformAdminModule,
+    SaasBillingModule,
+    ObservabilityModule,
+    DisasterRecoveryModule,
   ],
   providers: [
     {
@@ -166,6 +175,6 @@ import { PermissionsGuard } from './auth/guards/permissions.guard';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware, SecurityHeadersMiddleware).forRoutes('*');
   }
 }

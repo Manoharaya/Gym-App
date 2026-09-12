@@ -222,6 +222,19 @@ model Organisation {
   privacyRetentionHolds        PrivacyRetentionHold[]
   privacyProcessors            PrivacyProcessor[]
   privacyRequestPolicies       PrivacyRequestPolicy[]
+  platformUsageSnapshots       PlatformUsageSnapshot[]
+  supportTickets               SupportTicket[]
+  featureFlagAssignments       FeatureFlagAssignment[]
+  supportAccessRequests        SupportAccessRequest[]
+  saasSubscriptions            SaasSubscription[]
+  saasBillingCustomers         SaasBillingCustomer[]
+  saasInvoices                 SaasInvoice[]
+  saasUsageEvents              SaasUsageEvent[]
+  saasUsageAggregates          SaasUsageAggregate[]
+  saasBillingPeriods           SaasBillingPeriod[]
+  saasCreditBalances           SaasCreditBalance[]
+  saasContracts                SaasContract[]
+  saasBillingPolicies          SaasBillingPolicy[]
 
   @@index([slug])
   @@index([status])
@@ -430,6 +443,11 @@ model User {
   securityAlerts               SecurityAlert[]
   actionChallenges             SecurityActionChallenge[]
   privacyRequests              PrivacyRequest[]        @relation("PrivacyRequestsCreated")
+  supportTicketsCreated        SupportTicket[]         @relation("SupportTicketsCreatedByUser")
+  supportTicketsAssigned       SupportTicket[]         @relation("SupportTicketsAssignedToUser")
+  supportTicketMessagesAuthored SupportTicketMessage[] @relation("SupportTicketMessagesAuthoredByUser")
+  supportAccessRequestsCreated SupportAccessRequest[]  @relation("SupportAccessRequestsCreatedByUser")
+  supportAccessRequestsApproved SupportAccessRequest[] @relation("SupportAccessRequestsApprovedByUser")
 
   @@index([email])
   @@index([phone])
@@ -1153,6 +1171,7 @@ model MemberMembership {
   @@index([status])
   @@index([startDate])
   @@index([endDate])
+  @@index([organisationId, memberProfileId, status])
   @@map("member_memberships")
 }
 
@@ -1353,6 +1372,8 @@ model PaymentTransaction {
   @@index([memberMembershipId])
   @@index([status])
   @@index([createdAt])
+  @@index([organisationId, status, createdAt])
+  @@index([memberProfileId, createdAt])
   @@map("payment_transactions")
 }
 
@@ -1621,6 +1642,8 @@ model CheckIn {
   @@index([status])
   @@index([checkedInAt])
   @@index([checkedOutAt])
+  @@index([organisationId, outletId, checkedInAt])
+  @@index([memberProfileId, checkedInAt])
   @@map("check_ins")
 }
 
@@ -1833,6 +1856,8 @@ model ClassSession {
   @@index([recurringScheduleId])
   @@index([startsAt])
   @@index([status])
+  @@index([organisationId, outletId, startsAt])
+  @@index([outletId, status, startsAt])
   @@map("class_sessions")
 }
 
@@ -1868,6 +1893,9 @@ model Booking {
   @@index([classSessionId])
   @@index([status])
   @@index([idempotencyKey])
+  @@index([classSessionId, status])
+  @@index([organisationId, memberProfileId, status])
+  @@index([classSessionId, memberProfileId])
   @@map("bookings")
 }
 
@@ -8071,5 +8099,870 @@ model PrivacyRequestPolicy {
   @@unique([organisationId, requestType])
   @@index([organisationId])
   @@map("privacy_request_policies")
+}
+
+// ==========================================
+// DAY 54: PLATFORM SUPERADMIN & PLATFORM OPERATIONS MODELS
+// ==========================================
+
+model PlatformUsageSnapshot {
+  id               String        @id @default(cuid())
+  organisationId   String?
+  outletId         String?
+  metricKey        String        // ACTIVE_MEMBERS, ACTIVE_OUTLETS, STAFF_USERS, BOOKINGS, CHECK_INS, WORKOUTS, AI_REQUESTS, AI_TOKENS, VOICE_MINUTES, SMS_MESSAGES, WHATSAPP_MESSAGES, EMAIL_MESSAGES, PUSH_NOTIFICATIONS, API_REQUESTS, WEBHOOK_DELIVERIES, STORAGE_BYTES, EXPORTS, INTEGRATIONS
+  value            Float
+  unit             String        // COUNT, TOKENS, MINUTES, MESSAGES, BYTES, REQUESTS, CENTS
+  periodStart      DateTime
+  periodEnd        DateTime
+  dataVersion      Int           @default(1)
+  createdAt        DateTime      @default(now())
+
+  organisation     Organisation? @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, metricKey])
+  @@index([periodStart, periodEnd])
+  @@index([metricKey])
+  @@map("platform_usage_snapshots")
+}
+
+model SupportTicket {
+  id                   String                   @id @default(cuid())
+  ticketNumber         String                   @unique
+  organisationId       String
+  creatorUserId        String
+  assignedToUserId     String?
+  title                String
+  description          String
+  status               String                   @default("OPEN") // OPEN, ACKNOWLEDGED, IN_PROGRESS, WAITING_FOR_CUSTOMER, WAITING_FOR_PLATFORM, RESOLVED, CLOSED, CANCELLED
+  priority             String                   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT, CRITICAL
+  category             String                   // ACCOUNT, BILLING, PAYMENT, BOOKING, ACCESS, AI, INTEGRATION, COMMUNICATION, SECURITY, PRIVACY, DEVELOPER, MARKETPLACE, PERFORMANCE, BUG, OTHER
+  firstResponseTarget  DateTime
+  resolutionTarget     DateTime
+  firstRespondedAt     DateTime?
+  resolvedAt           DateTime?
+  closedAt             DateTime?
+  metadata             Json?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  organisation         Organisation             @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  creatorUser          User                     @relation("SupportTicketsCreatedByUser", fields: [creatorUserId], references: [id], onDelete: Restrict)
+  assignedToUser       User?                    @relation("SupportTicketsAssignedToUser", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  messages             SupportTicketMessage[]
+  supportAccessRequests SupportAccessRequest[]
+
+  @@index([organisationId, status])
+  @@index([assignedToUserId, status])
+  @@index([status, priority])
+  @@index([category])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id             String                    @id @default(cuid())
+  ticketId       String
+  authorUserId   String
+  visibility     String                    @default("ORGANISATION") // PLATFORM, ORGANISATION, INTERNAL_ONLY
+  content        String
+  metadata       Json?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  ticket         SupportTicket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorUser     User                      @relation("SupportTicketMessagesAuthoredByUser", fields: [authorUserId], references: [id], onDelete: Restrict)
+  attachments    SupportTicketAttachment[]
+
+  @@index([ticketId, createdAt])
+  @@index([authorUserId])
+  @@map("support_ticket_messages")
+}
+
+model SupportTicketAttachment {
+  id             String                @id @default(cuid())
+  messageId      String
+  fileName       String
+  fileSize       Int
+  mimeType       String
+  storageKey     String
+  signedUrl      String?
+  scanStatus     String                @default("CLEAN") // PENDING, CLEAN, QUARANTINED, INFECTED
+  createdAt      DateTime              @default(now())
+
+  message        SupportTicketMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("support_ticket_attachments")
+}
+
+model PlatformFeatureFlag {
+  id             String                   @id @default(cuid())
+  key            String                   @unique
+  name           String
+  description    String?
+  status         String                   @default("DISABLED") // ENABLED, DISABLED
+  rolloutStrategy String                  @default("ALL") // ALL, NONE, SELECTED_ORGANISATIONS, SELECTED_OUTLETS, PERCENTAGE
+  rolloutPercentage Int                   @default(0)
+  isSecurityCritical Boolean              @default(false)
+  defaultValue   Boolean                  @default(false)
+  metadata       Json?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  assignments    FeatureFlagAssignment[]
+
+  @@index([key, status])
+  @@map("platform_feature_flags")
+}
+
+model FeatureFlagAssignment {
+  id             String               @id @default(cuid())
+  flagId         String
+  scope          String               // PLATFORM, ORGANISATION, OUTLET, USER
+  organisationId String?
+  outletId       String?
+  userId         String?
+  enabled        Boolean              @default(true)
+  reason         String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  flag           PlatformFeatureFlag  @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  organisation   Organisation?        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([flagId, scope, organisationId, outletId, userId])
+  @@index([flagId])
+  @@index([organisationId])
+  @@map("feature_flag_assignments")
+}
+
+model PlatformConfiguration {
+  id             String        @id @default(cuid())
+  configKey      String        @unique
+  category       String        // AI_DEFAULTS, COMMUNICATION_DEFAULTS, LANGUAGES, CURRENCIES, MAINTENANCE, LIMITS, PROVIDERS, NOTICES
+  value          Json
+  version        Int           @default(1)
+  isMaintenanceMode Boolean    @default(false)
+  maintenanceScope  String?    // PLATFORM, ORGANISATION, OUTLET, FEATURE
+  targetReferenceId String?
+  description    String?
+  updatedByUserId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([configKey])
+  @@index([category])
+  @@map("platform_configurations")
+}
+
+model PlatformIncident {
+  id             String                   @id @default(cuid())
+  incidentNumber String                   @unique
+  title          String
+  description    String
+  severity       String                   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status         String                   @default("DETECTED") // DETECTED, INVESTIGATING, IDENTIFIED, MITIGATING, MONITORING, RESOLVED, CLOSED
+  affectedServices String[]               @default([])
+  linkedTicketId String?
+  linkedProvider String?
+  detectedAt     DateTime                 @default(now())
+  resolvedAt     DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  events         PlatformIncidentEvent[]
+
+  @@index([status, severity])
+  @@index([detectedAt])
+  @@map("platform_incidents")
+}
+
+model PlatformIncidentEvent {
+  id             String             @id @default(cuid())
+  incidentId     String
+  status         String             // DETECTED, INVESTIGATING, IDENTIFIED, MITIGATING, MONITORING, RESOLVED, CLOSED
+  message        String
+  actorUserId    String?
+  createdAt      DateTime           @default(now())
+
+  incident       PlatformIncident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@map("platform_incident_events")
+}
+
+model SupportAccessRequest {
+  id             String           @id @default(cuid())
+  organisationId String
+  ticketId       String?
+  requesterUserId String
+  approverUserId String?
+  purpose        String
+  scope          String           @default("ORGANISATION") // GLOBAL, ORGANISATION, OUTLET, FUNCTIONAL
+  status         String           @default("PENDING") // PENDING, APPROVED, ACTIVE, EXPIRED, REVOKED, REJECTED
+  isBreakGlass   Boolean          @default(false)
+  stepUpVerified Boolean          @default(false)
+  stepUpTokenHash String?
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  reason         String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organisation   Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  ticket         SupportTicket?   @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  requesterUser  User             @relation("SupportAccessRequestsCreatedByUser", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  approverUser   User?            @relation("SupportAccessRequestsApprovedByUser", fields: [approverUserId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+  @@index([requesterUserId, status])
+  @@index([expiresAt])
+  @@map("support_access_requests")
+}
+
+model PlatformAnnouncement {
+  id             String        @id @default(cuid())
+  title          String
+  content        String
+  category       String        // MAINTENANCE, FEATURE_RELEASE, INTEGRATION_OUTAGE, IMPORTANT_NOTICE
+  targetAudience String        @default("ALL") // ALL, ORGANISATIONS, SELECTED_ORGANISATIONS
+  targetOrgIds   String[]      @default([])
+  publishedAt    DateTime?
+  expiresAt      DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([isActive, publishedAt])
+  @@index([category])
+  @@map("platform_announcements")
+}
+
+// ============================================================================
+// DAY 55: SAAS BILLING & ORGANISATION PLANS
+// ============================================================================
+
+model SaasPlan {
+  id              String                @id @default(cuid())
+  name            String
+  code            String                @unique
+  description     String?
+  status          String                @default("ACTIVE") // DRAFT, ACTIVE, ARCHIVED, RETIRED
+  visibility      String                @default("PUBLIC") // PUBLIC, PRIVATE, INVITE_ONLY
+  billingInterval String                @default("MONTHLY") // MONTHLY, QUARTERLY, SEMI_ANNUALLY, ANNUALLY, CUSTOM
+  basePriceMinor  Int                   @default(0)
+  currency        String                @default("AUD")
+  trialDays       Int                   @default(14)
+  version         Int                   @default(1)
+  effectiveAt     DateTime?
+  retiredAt       DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  versions        SaasPlanVersion[]
+  subscriptions   SaasSubscription[]
+  contracts       SaasContract[]
+
+  @@index([status, visibility])
+  @@index([code])
+  @@map("saas_plans")
+}
+
+model SaasPlanVersion {
+  id              String                @id @default(cuid())
+  planId          String
+  version         Int
+  basePriceMinor  Int
+  currency        String                @default("AUD")
+  billingInterval String                @default("MONTHLY")
+  trialDays       Int                   @default(14)
+  changeNotes     String?
+  effectiveAt     DateTime              @default(now())
+  retiredAt       DateTime?
+  createdAt       DateTime              @default(now())
+
+  plan            SaasPlan              @relation(fields: [planId], references: [id], onDelete: Cascade)
+  entitlements    SaasPlanEntitlement[]
+  subscriptions   SaasSubscription[]
+
+  @@unique([planId, version])
+  @@index([planId, effectiveAt])
+  @@map("saas_plan_versions")
+}
+
+model SaasEntitlement {
+  id              String                @id @default(cuid())
+  code            String                @unique // MEMBER_LIMIT, OUTLET_LIMIT, STAFF_LIMIT, AI_REQUEST_LIMIT, AI_TOKEN_LIMIT, VOICE_MINUTE_LIMIT, SMS_LIMIT, WHATSAPP_LIMIT, EMAIL_LIMIT, API_REQUEST_LIMIT, STORAGE_LIMIT, WEBHOOK_LIMIT, DEVELOPER_APP_LIMIT, INTEGRATION_LIMIT, MARKETPLACE_INSTALL_LIMIT
+  name            String
+  description     String?
+  type            String                @default("COUNT") // BOOLEAN, COUNT, QUOTA, METERED, UNLIMITED
+  meterKey        String?               // References SaasUsageMeter key
+  category        String                @default("CORE") // CORE, AI, COMMUNICATION, DEVELOPER, STORAGE
+  isCustomizable  Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  planEntitlements SaasPlanEntitlement[]
+
+  @@index([type])
+  @@index([category])
+  @@map("saas_entitlements")
+}
+
+model SaasPlanEntitlement {
+  id                        String          @id @default(cuid())
+  planVersionId             String
+  entitlementId             String
+  limitType                 String          @default("COUNT") // BOOLEAN, COUNT, QUOTA, METERED, UNLIMITED
+  includedAllowance         Int             @default(0) // 0 for unlimited or boolean true
+  overageAllowed            Boolean         @default(false)
+  overageUnitMinor          Int             @default(0) // e.g. 5 cents per 1,000 tokens
+  overageBatchSize          Int             @default(1) // e.g. 1000 tokens
+  softLimitThresholdPercent Int             @default(80) // Trigger warning at 80%
+
+  planVersion               SaasPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  entitlement               SaasEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+
+  @@unique([planVersionId, entitlementId])
+  @@index([planVersionId])
+  @@index([entitlementId])
+  @@map("saas_plan_entitlements")
+}
+
+model SaasSubscription {
+  id                            String             @id @default(cuid())
+  organisationId                String
+  planId                        String
+  planVersionId                 String
+  status                        String             @default("ACTIVE") // TRIALING, ACTIVE, PAST_DUE, PAUSED, SUSPENDED, CANCEL_AT_PERIOD_END, CANCELLED, EXPIRED
+  billingInterval               String             @default("MONTHLY")
+  currency                      String             @default("AUD")
+  baseAmountMinor               Int                @default(0)
+  currentPeriodStart            DateTime
+  currentPeriodEnd              DateTime
+  trialStart                    DateTime?
+  trialEnd                      DateTime?
+  cancelAtPeriodEnd             Boolean            @default(false)
+  cancelledAt                   DateTime?
+  endedAt                       DateTime?
+  provider                      String             @default("MOCK_SAAS_PROVIDER") // STRIPE, MOCK_SAAS_PROVIDER, MANUAL
+  providerCustomerReference     String?
+  providerSubscriptionReference String?
+  createdAt                     DateTime           @default(now())
+  updatedAt                     DateTime           @updatedAt
+
+  organisation                  Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  plan                          SaasPlan           @relation(fields: [planId], references: [id], onDelete: Restrict)
+  planVersion                   SaasPlanVersion    @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  invoices                      SaasInvoice[]
+  billingPeriods                SaasBillingPeriod[]
+
+  @@index([organisationId, status])
+  @@index([status])
+  @@index([providerSubscriptionReference])
+  @@map("saas_subscriptions")
+}
+
+model SaasBillingCustomer {
+  id                        String       @id @default(cuid())
+  organisationId            String       @unique
+  provider                  String       @default("MOCK_SAAS_PROVIDER")
+  externalCustomerReference String
+  status                    String       @default("ACTIVE")
+  billingEmail              String
+  billingContactName        String?
+  billingAddress            Json?
+  taxIdentifier             String?
+  country                   String       @default("Australia")
+  currency                  String       @default("AUD")
+  paymentMethodLast4        String?
+  paymentMethodBrand        String?
+  paymentMethodExpiry       String?
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+
+  organisation              Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([externalCustomerReference])
+  @@map("saas_billing_customers")
+}
+
+model SaasInvoice {
+  id              String            @id @default(cuid())
+  organisationId  String
+  subscriptionId  String?
+  invoiceNumber   String            @unique
+  status          String            @default("OPEN") // DRAFT, OPEN, PAID, PARTIALLY_PAID, OVERDUE, VOID, UNCOLLECTIBLE
+  currency        String            @default("AUD")
+  subtotalMinor   Int               @default(0)
+  discountMinor   Int               @default(0)
+  taxMinor        Int               @default(0)
+  totalMinor      Int               @default(0)
+  amountPaidMinor Int               @default(0)
+  amountDueMinor  Int               @default(0)
+  periodStart     DateTime
+  periodEnd       DateTime
+  dueDate         DateTime
+  issuedAt        DateTime          @default(now())
+  paidAt          DateTime?
+  voidedAt        DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organisation    Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  subscription    SaasSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  lines           SaasInvoiceLine[]
+  billingPeriods  SaasBillingPeriod[]
+
+  @@index([organisationId, status])
+  @@index([subscriptionId])
+  @@index([status, dueDate])
+  @@map("saas_invoices")
+}
+
+model SaasInvoiceLine {
+  id              String      @id @default(cuid())
+  invoiceId       String
+  lineType        String      @default("BASE_PLAN") // BASE_PLAN, METERED_USAGE, OVERAGE, ADD_ON, DISCOUNT, CREDIT, TAX, PRORATION, ADJUSTMENT
+  description     String
+  quantity        Int         @default(1)
+  unit            String      @default("month")
+  unitPriceMinor  Int         @default(0)
+  amountMinor     Int         @default(0)
+  currency        String      @default("AUD")
+  meterKey        String?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  metadata        Json?
+
+  invoice         SaasInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([lineType])
+  @@map("saas_invoice_lines")
+}
+
+model SaasUsageMeter {
+  id              String      @id @default(cuid())
+  key             String      @unique // AI_REQUEST, AI_TOKEN, VOICE_MINUTE, SMS_MESSAGE, WHATSAPP_MESSAGE, EMAIL_MESSAGE, API_REQUEST, WEBHOOK_DELIVERY, STORAGE_BYTE, ACTIVE_MEMBER, ACTIVE_OUTLET
+  name            String
+  description     String?
+  unit            String      // tokens, minutes, requests, messages, members, outlets, bytes
+  aggregationType String      @default("SUM") // SUM, MAX, LAST
+  source          String      // AI_USAGE, COMMUNICATION, VOICE_SESSION, DEVELOPER_API, SYSTEM_COUNT
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([key])
+  @@index([isActive])
+  @@map("saas_usage_meters")
+}
+
+model SaasUsageEvent {
+  id                String       @id @default(cuid())
+  organisationId    String
+  outletId          String?
+  meterKey          String
+  quantity          Int
+  unit              String
+  source            String
+  sourceReferenceId String?
+  occurredAt        DateTime     @default(now())
+  idempotencyKey    String       @unique
+  dataVersion       Int          @default(1)
+  createdAt         DateTime     @default(now())
+
+  organisation      Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, meterKey, occurredAt])
+  @@index([idempotencyKey])
+  @@map("saas_usage_events")
+}
+
+model SaasUsageAggregate {
+  id              String       @id @default(cuid())
+  organisationId  String
+  meterKey        String
+  periodStart     DateTime
+  periodEnd       DateTime
+  quantity        Int          @default(0)
+  unit            String
+  isFinalized     Boolean      @default(false)
+  finalizedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, meterKey, periodStart, periodEnd])
+  @@index([organisationId, isFinalized])
+  @@map("saas_usage_aggregates")
+}
+
+model SaasBillingPeriod {
+  id               String            @id @default(cuid())
+  subscriptionId   String
+  organisationId   String
+  periodStart      DateTime
+  periodEnd        DateTime
+  status           String            @default("OPEN") // OPEN, FINALIZING, INVOICED, PAID, PAST_DUE, CLOSED, CANCELLED
+  invoiceId        String?
+  usageFinalizedAt DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  subscription     SaasSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  organisation     Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  invoice          SaasInvoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([subscriptionId, status])
+  @@index([organisationId, periodStart, periodEnd])
+  @@map("saas_billing_periods")
+}
+
+model SaasCreditBalance {
+  id              String                  @id @default(cuid())
+  organisationId  String                  @unique
+  currency        String                  @default("AUD")
+  balanceMinor    Int                     @default(0)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  organisation    Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  transactions    SaasCreditTransaction[]
+
+  @@map("saas_credit_balances")
+}
+
+model SaasCreditTransaction {
+  id              String            @id @default(cuid())
+  creditBalanceId String
+  type            String            // GRANTED, APPLIED, EXPIRED, REVOKED, ADJUSTED
+  amountMinor     Int               // Positive for GRANTED, negative for APPLIED
+  balanceAfterMinor Int
+  reason          String
+  invoiceId       String?
+  performedByUserId String?
+  createdAt       DateTime          @default(now())
+
+  creditBalance   SaasCreditBalance @relation(fields: [creditBalanceId], references: [id], onDelete: Cascade)
+
+  @@index([creditBalanceId, createdAt])
+  @@map("saas_credit_transactions")
+}
+
+model SaasContract {
+  id              String       @id @default(cuid())
+  organisationId  String
+  planId          String
+  contractNumber  String       @unique
+  billingTerms    String       @default("NET_30")
+  currency        String       @default("AUD")
+  customPriceMinor Int?
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  status          String       @default("ACTIVE") // DRAFT, ACTIVE, EXPIRED, TERMINATED
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  plan            SaasPlan     @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([organisationId, status])
+  @@map("saas_contracts")
+}
+
+model SaasBillingPolicy {
+  id                    String       @id @default(cuid())
+  organisationId        String       @unique
+  gracePeriodDays       Int          @default(7)
+  retryScheduleDays     Int[]        @default([0, 2, 5, 8])
+  suspensionPolicy      String       @default("WARNING_THEN_SUSPEND") // IMMEDIATE, WARNING_THEN_SUSPEND, MANUAL_REVIEW
+  usageOveragePolicy    String       @default("ALLOW_AND_BILL") // ALLOW_AND_BILL, HARD_STOP, REQUIRE_UPGRADE
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  organisation          Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@map("saas_billing_policies")
+}
+// ============================================================================
+// DAY 56: OBSERVABILITY, MONITORING & PLATFORM HEALTH
+// ============================================================================
+
+model ObservabilityAlertRule {
+  id              String               @id @default(cuid())
+  ruleKey         String               @unique
+  name            String
+  description     String?
+  service         String               // API_GATEWAY, DATABASE, REDIS, WORKER, AI, PAYMENT, COMMUNICATION
+  metricKey       String
+  condition       String               @default("GT") // GT, LT, EQ, GTE, LTE
+  threshold       Float
+  severity        String               @default("MEDIUM") // INFO, LOW, MEDIUM, HIGH, CRITICAL
+  windowSeconds   Int                  @default(300)
+  cooldownMinutes Int                  @default(15)
+  isEnabled       Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  alerts          ObservabilityAlert[]
+
+  @@index([service, isEnabled])
+  @@map("observability_alert_rules")
+}
+
+model ObservabilityAlert {
+  id                   String                  @id @default(cuid())
+  ruleKey              String
+  title                String
+  message              String
+  severity             String                  @default("MEDIUM") // INFO, LOW, MEDIUM, HIGH, CRITICAL
+  status               String                  @default("OPEN") // OPEN, ACKNOWLEDGED, INVESTIGATING, RESOLVED, DISMISSED
+  fingerprint          String
+  service              String
+  metricKey            String
+  metricValue          Float
+  thresholdValue       Float
+  organisationId       String?
+  acknowledgedByUserId String?
+  acknowledgedAt       DateTime?
+  resolvedAt           DateTime?
+  incidentId           String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  rule                 ObservabilityAlertRule  @relation(fields: [ruleKey], references: [ruleKey], onDelete: Cascade)
+  incident             ObservabilityIncident?  @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([status, severity])
+  @@index([fingerprint, status])
+  @@index([service, createdAt])
+  @@map("observability_alerts")
+}
+
+model ObservabilityIncident {
+  id               String                         @id @default(cuid())
+  incidentNumber   String                         @unique
+  title            String
+  description      String
+  severity         String                         @default("MEDIUM") // INFO, LOW, MEDIUM, HIGH, CRITICAL
+  status           String                         @default("OPEN") // OPEN, INVESTIGATING, MITIGATED, RESOLVED, CLOSED
+  affectedServices String[]                       @default([])
+  mitigationNotes  String?
+  detectedAt       DateTime                       @default(now())
+  mitigatedAt      DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime                       @default(now())
+  updatedAt        DateTime                       @updatedAt
+
+  alerts           ObservabilityAlert[]
+  events           ObservabilityIncidentEvent[]
+
+  @@index([status, severity])
+  @@index([detectedAt])
+  @@map("observability_incidents")
+}
+
+model ObservabilityIncidentEvent {
+  id          String                @id @default(cuid())
+  incidentId  String
+  status      String                // OPEN, INVESTIGATING, MITIGATED, RESOLVED, CLOSED
+  message     String
+  actorUserId String?
+  createdAt   DateTime              @default(now())
+
+  incident    ObservabilityIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@map("observability_incident_events")
+}
+
+model ObservabilitySloDefinition {
+  id                String   @id @default(cuid())
+  key               String   @unique
+  name              String
+  service           String
+  targetPercentage  Float    // e.g. 99.9
+  windowDays        Int      @default(30)
+  metricNumerator   String
+  metricDenominator String
+  isEnabled         Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([service, isEnabled])
+  @@map("observability_slo_definitions")
+}
+
+model ObservabilityProviderHealthSnapshot {
+  id             String   @id @default(cuid())
+  provider       String   // OPENAI, ANTHROPIC, STRIPE, TWILIO, SENDGRID, XERO, FITBIT
+  capability     String   // AI_LLM, PAYMENT_INTENTS, SMS, EMAIL, ACCOUNTING_SYNC, WEARABLE_STREAM
+  status         String   // HEALTHY, DEGRADED, FAILING, UNAVAILABLE
+  latencyMs      Int
+  successRate    Float    @default(100.0)
+  message        String?
+  timestamp      DateTime @default(now())
+
+  @@index([provider, timestamp])
+  @@map("observability_provider_health_snapshots")
+}
+
+model ObservabilityDeployment {
+  id          String   @id @default(cuid())
+  version     String
+  commitSha   String?
+  environment String   @default("production")
+  deployedBy  String?
+  notes       String?
+  deployedAt  DateTime @default(now())
+
+  @@index([environment, deployedAt])
+  @@map("observability_deployments")
+}
+
+// ==========================================
+// DAY 58: DISASTER RECOVERY, BACKUP & BUSINESS CONTINUITY
+// ==========================================
+
+enum BackupType {
+  FULL
+  INCREMENTAL_WAL
+  SNAPSHOT
+}
+
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum BackupStorageTier {
+  PRIMARY
+  REPLICATED_COLD
+}
+
+enum VerificationStatus {
+  PASSED
+  FAILED
+  WARNING
+}
+
+enum RestoreStatus {
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+}
+
+model BackupRecord {
+  id                String             @id @default(cuid())
+  backupType        BackupType         @default(FULL)
+  status            BackupStatus       @default(PENDING)
+  storagePath       String
+  storageTier       BackupStorageTier  @default(PRIMARY)
+  checksumSha256    String?
+  sizeBytes         BigInt?
+  encryptionKeyId   String?
+  startedAt         DateTime           @default(now())
+  completedAt       DateTime?
+  rpoTimestamp      DateTime?
+  retentionDays     Int                @default(30)
+  isImmutable       Boolean            @default(false)
+  immutableUntil    DateTime?
+  metadata          Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  verifications     BackupVerificationRecord[]
+  restoreTests      RestoreTestRecord[]
+
+  @@index([status, startedAt])
+  @@index([backupType, startedAt])
+  @@map("backup_records")
+}
+
+model BackupVerificationRecord {
+  id                 String             @id @default(cuid())
+  backupRecordId     String
+  status             VerificationStatus @default(PASSED)
+  checksumVerified   Boolean            @default(false)
+  decryptionVerified Boolean            @default(false)
+  schemaVerified     Boolean            @default(false)
+  verifiedAt         DateTime           @default(now())
+  durationMs         Int                @default(0)
+  details            String?
+  metadata           Json?
+
+  backupRecord       BackupRecord       @relation(fields: [backupRecordId], references: [id], onDelete: Cascade)
+
+  @@index([backupRecordId, verifiedAt])
+  @@map("backup_verification_records")
+}
+
+model RestoreTestRecord {
+  id                       String        @id @default(cuid())
+  backupRecordId           String
+  targetEnvironment        String        @default("DR_SANDBOX")
+  status                   RestoreStatus @default(IN_PROGRESS)
+  initiatedBy              String?
+  startedAt                DateTime      @default(now())
+  completedAt              DateTime?
+  durationMs               Int           @default(0)
+  observedRtoSeconds       Int           @default(0)
+  observedRpoSeconds       Int           @default(0)
+  dataIntegrityPassed      Boolean       @default(false)
+  businessValidationPassed Boolean       @default(false)
+  recordsValidatedCount    Int           @default(0)
+  validationReport         Json?
+
+  backupRecord             BackupRecord  @relation(fields: [backupRecordId], references: [id], onDelete: Cascade)
+
+  @@index([backupRecordId, startedAt])
+  @@index([status, startedAt])
+  @@map("restore_test_records")
+}
+
+model DisasterRecoveryIncident {
+  id                 String    @id @default(cuid())
+  incidentNumber     String    @unique // e.g. DR-2026-0001
+  title              String
+  severity           String    // SEV0_CRITICAL, SEV1_HIGH, SEV2_MODERATE
+  status             String    // DECLARED, ASSESSING, RECOVERING, VALIDATING, MITIGATED, RESOLVED, CLOSED
+  summary            String
+  targetRtoMinutes   Int       @default(60)
+  targetRpoMinutes   Int       @default(15)
+  observedRtoMinutes Int?
+  observedRpoMinutes Int?
+  declaredAt         DateTime  @default(now())
+  mitigatedAt        DateTime?
+  resolvedAt         DateTime?
+  leadResponder      String?
+  metadata           Json?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  events             DisasterRecoveryIncidentEvent[]
+
+  @@index([status, severity])
+  @@map("disaster_recovery_incidents")
+}
+
+model DisasterRecoveryIncidentEvent {
+  id                 String                   @id @default(cuid())
+  drIncidentId       String
+  action             String
+  message            String
+  author             String?
+  timestamp          DateTime                 @default(now())
+  metadata           Json?
+
+  drIncident         DisasterRecoveryIncident @relation(fields: [drIncidentId], references: [id], onDelete: Cascade)
+
+  @@index([drIncidentId, timestamp])
+  @@map("disaster_recovery_incident_events")
 }
 

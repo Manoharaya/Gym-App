@@ -77,7 +77,8 @@ export type PermissionResource =
   | 'domains'
   | 'security'
   | 'privacy'
-  | 'compliance';
+  | 'compliance'
+  | 'platform';
 
 export type PermissionAction =
   'read' | 'write' | 'create' | 'update' | 'delete' | 'manage' | 'use' | 'configure' | 'export';
