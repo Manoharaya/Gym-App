@@ -38,6 +38,18 @@ export interface StorageProvider {
     buffer: Buffer,
     mimeType: string
   ): Promise<void>;
+
+  /**
+   * Checks if an object exists in storage.
+   */
+  exists(storageKey: string): Promise<boolean>;
+
+  /**
+   * Retrieves metadata of an object in storage.
+   */
+  getMetadata(
+    storageKey: string
+  ): Promise<{ size: number; lastModified: Date; mimeType?: string } | null>;
 }
 
 export const STORAGE_PROVIDER = 'STORAGE_PROVIDER';

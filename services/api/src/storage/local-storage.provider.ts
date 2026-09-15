@@ -79,4 +79,26 @@ export class LocalStorageProvider implements StorageProvider {
     }
     await fs.promises.writeFile(fullPath, buffer);
   }
+
+  async exists(storageKey: string): Promise<boolean> {
+    const cleanKey = this.sanitizeKey(storageKey);
+    const fullPath = path.join(this.storageRoot, cleanKey);
+    return fs.existsSync(fullPath);
+  }
+
+  async getMetadata(
+    storageKey: string
+  ): Promise<{ size: number; lastModified: Date; mimeType?: string } | null> {
+    const cleanKey = this.sanitizeKey(storageKey);
+    const fullPath = path.join(this.storageRoot, cleanKey);
+    try {
+      const stats = await fs.promises.stat(fullPath);
+      return {
+        size: stats.size,
+        lastModified: stats.mtime,
+      };
+    } catch {
+      return null;
+    }
+  }
 }

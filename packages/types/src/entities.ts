@@ -1522,7 +1522,129 @@ export type EquipmentType =
   | 'OTHER'
   | 'NONE';
 
-export type ExerciseMediaType = 'IMAGE' | 'VIDEO' | 'THUMBNAIL';
+export type ExerciseMediaType =
+  | 'IMAGE'
+  | 'VIDEO'
+  | 'ANIMATION'
+  | 'MODEL_3D'
+  | 'GIF'
+  | 'THUMBNAIL'
+  | 'ILLUSTRATION'
+  | 'AUDIO'
+  | 'CAPTION'
+  | 'TRANSCRIPT';
+
+export type ExerciseMediaPurpose =
+  | 'PRIMARY_DEMONSTRATION'
+  | 'SECONDARY_DEMONSTRATION'
+  | 'THUMBNAIL'
+  | 'STEP_IMAGE'
+  | 'STEP_VIDEO'
+  | 'MOVEMENT_PHASE'
+  | 'COMMON_MISTAKE'
+  | 'SAFETY'
+  | 'EQUIPMENT'
+  | 'ANATOMY'
+  | 'INSTRUCTION'
+  | 'PREVIEW'
+  | '3D_MODEL'
+  | 'AUDIO_GUIDANCE'
+  | 'CAPTION';
+
+export type ExerciseMediaStatus =
+  | 'UPLOADING'
+  | 'PROCESSING'
+  | 'READY'
+  | 'FAILED'
+  | 'ARCHIVED';
+
+export type ExerciseContentStatus =
+  | 'DRAFT'
+  | 'REVIEW'
+  | 'APPROVED'
+  | 'PUBLISHED'
+  | 'ARCHIVED';
+
+export type InstructionPhaseType =
+  | 'PREPARATION'
+  | 'SETUP'
+  | 'EXECUTION'
+  | 'BREATHING'
+  | 'COMPLETION'
+  | 'SAFETY';
+
+export type MistakeSeverity = 'MINOR' | 'MODERATE' | 'SEVERE';
+
+export type SafetyCategory =
+  | 'SAFETY_NOTE'
+  | 'GENERAL_PRECAUTION'
+  | 'TECHNIQUE_WARNING'
+  | 'EQUIPMENT_WARNING'
+  | 'BEGINNER_WARNING'
+  | 'PROFESSIONAL_GUIDANCE';
+
+export type SafetySeverity = 'LOW' | 'STANDARD' | 'HIGH' | 'CRITICAL';
+
+export type VariationRelationshipType =
+  | 'VARIATION'
+  | 'REGRESSION'
+  | 'PROGRESSION'
+  | 'ALTERNATIVE';
+
+export interface ExerciseInstructionStep extends BaseEntity {
+  exerciseId: string;
+  stepNumber: number;
+  phase?: InstructionPhaseType | string | null;
+  title: string;
+  description: string;
+  coachingCue?: string | null;
+  mediaUrl?: string | null;
+}
+
+export interface ExerciseMovementPhase extends BaseEntity {
+  exerciseId: string;
+  phaseName: string;
+  orderIndex: number;
+  cueText?: string | null;
+  timestampMs?: number | null;
+  keyCheckpoints?: string[] | null;
+  mediaUrl?: string | null;
+}
+
+export interface ExerciseCommonMistake extends BaseEntity {
+  exerciseId: string;
+  mistake: string;
+  consequence?: string | null;
+  correction: string;
+  severity: MistakeSeverity;
+  mediaUrl?: string | null;
+  sortOrder: number;
+}
+
+export interface ExerciseSafetyGuideline extends BaseEntity {
+  exerciseId: string;
+  category: SafetyCategory;
+  title?: string | null;
+  description: string;
+  severity: SafetySeverity;
+  reviewedBy?: string | null;
+}
+
+export interface ExerciseVariation extends BaseEntity {
+  baseExerciseId: string;
+  targetExerciseId: string;
+  relationshipType: VariationRelationshipType;
+  notes?: string | null;
+  baseExercise?: Exercise;
+  targetExercise?: Exercise;
+}
+
+export interface ExerciseEquipmentRelation extends BaseEntity {
+  exerciseId: string;
+  equipmentName: string;
+  isOptional: boolean;
+  notes?: string | null;
+}
 export type PrescriptionType =
   | 'REPETITIONS'
   | 'TIME'
@@ -1573,21 +1695,52 @@ export interface Exercise extends BaseEntity {
   laterality?: string | null;
   defaultUnit: string;
   status: 'ACTIVE' | 'ARCHIVED';
+  contentStatus?: ExerciseContentStatus;
+  breathingInstructions?: string | null;
+  tempo?: string | null;
+  rangeOfMotion?: string | null;
+  stabilizerMuscles?: MuscleGroup[] | string[] | null;
+  educationalTips?: string[] | null;
+  movementPatternMetadata?: Record<string, any> | null;
   archivedAt?: string | null;
   media?: ExerciseMedia[];
+  instructionSteps?: ExerciseInstructionStep[];
+  movementPhases?: ExerciseMovementPhase[];
+  commonMistakes?: ExerciseCommonMistake[];
+  safetyGuidelines?: ExerciseSafetyGuideline[];
+  variationsFrom?: ExerciseVariation[];
+  variationsTo?: ExerciseVariation[];
+  equipmentRelations?: ExerciseEquipmentRelation[];
   createdByUser?: User;
 }
 
 export interface ExerciseMedia extends BaseEntity {
   exerciseId: string;
+  organisationId?: string | null;
   mediaType: ExerciseMediaType;
+  purpose?: ExerciseMediaPurpose | string;
   storageKey: string;
   mimeType: string;
+  fileExtension?: string | null;
   fileSize: number;
   durationSeconds?: number | null;
+  frameRate?: number | null;
   sortOrder: number;
   isPrimary: boolean;
   signedUrl?: string | null;
+  url?: string | null;
+  thumbnailUrl?: string | null;
+  title?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  width?: number | null;
+  height?: number | null;
+  format3d?: 'GLB' | 'GLTF' | 'USDZ' | string | null;
+  modelLod?: 'LOW' | 'MEDIUM' | 'HIGH' | string | null;
+  status?: ExerciseMediaStatus | string;
+  isPublished?: boolean;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
 }
 
 export interface WorkoutTemplate extends BaseEntity {

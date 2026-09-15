@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen, Card, Badge, Icon } from '../../../components/primitives';
@@ -82,6 +83,8 @@ export const ExerciseLibraryScreen: React.FC = () => {
 
   const renderExerciseItem = ({ item }: { item: Exercise }) => {
     const isSystem = item.ownershipType === 'SYSTEM';
+    const primaryMedia = item.media?.find((m) => m.isPrimary) || item.media?.[0];
+    const thumbnailUrl = primaryMedia?.thumbnailUrl || primaryMedia?.url;
 
     return (
       <TouchableOpacity
@@ -94,6 +97,15 @@ export const ExerciseLibraryScreen: React.FC = () => {
         }
       >
         <Card style={styles.card}>
+          {thumbnailUrl ? (
+            <View style={styles.cardThumbnailContainer}>
+              <Image
+                source={{ uri: thumbnailUrl }}
+                style={styles.cardThumbnail}
+                resizeMode="cover"
+              />
+            </View>
+          ) : null}
           <View style={styles.cardHeader}>
             <View style={styles.titleContainer}>
               <Text style={styles.exerciseName} numberOfLines={1}>
@@ -267,6 +279,17 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: sp.md,
+  },
+  cardThumbnailContainer: {
+    height: 140,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceHighlight,
+    marginBottom: sp.sm,
+  },
+  cardThumbnail: {
+    width: '100%',
+    height: '100%',
   },
   cardHeader: {
     flexDirection: 'row',

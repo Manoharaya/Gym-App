@@ -10,25 +10,46 @@ import {
   ForbiddenException,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermission } from '../../common/decorators/permissions.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
 import { ExercisesService } from '../services/exercises.service';
+import { ExerciseMediaService } from '../services/exercise-media.service';
+import {
+  ExerciseMediaQueryDto,
+  PresignExerciseMediaUploadDto,
+  CreateExerciseMediaDto,
+  DirectUploadMediaMetadataDto,
+  UploadedMediaFile,
+} from '../dto/exercise-media.dto';
 import {
   ExerciseQueryDto,
   CreateExerciseDto,
   UpdateExerciseDto,
   AttachExerciseMediaDto,
   PresignMediaUploadDto,
+  CreateInstructionStepDto,
+  CreateMovementPhaseDto,
+  CreateCommonMistakeDto,
+  CreateSafetyGuidelineDto,
+  CreateExerciseVariationDto,
+  CreateEquipmentRelationDto,
+  UpdateContentStatusDto,
 } from '../dto/exercise.dto';
 
 @ApiTags('Exercises')
 @ApiBearerAuth()
 @Controller('exercises')
 export class ExercisesController {
-  constructor(private readonly exercisesService: ExercisesService) {}
+  constructor(
+    private readonly exercisesService: ExercisesService,
+    private readonly mediaService: ExerciseMediaService,
+  ) {}
 
   private resolveOrgId(user: AuthenticatedUser, headerOrgId?: string): string {
     const orgId = headerOrgId || (user as any).organisationId || user.roles?.[0]?.organisationId;
@@ -50,9 +71,58 @@ export class ExercisesController {
     return this.exercisesService.findAll(organisationId, query);
   }
 
+  @Get(':id/visual')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get comprehensive visual exercise details including media, phases, mistakes, safety, and variations' })
+  async findVisualContent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.findVisualContent(organisationId, id);
+  }
+
+  @Get(':id/instructions')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get step-by-step instructions and movement phases' })
+  async getInstructionSteps(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.getInstructionSteps(organisationId, id);
+  }
+
+  @Get(':id/media')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get visual media gallery for an exercise' })
+  async getMedia(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query() query: ExerciseMediaQueryDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.getExerciseMedia(organisationId, id, query, user);
+  }
+
+  @Get(':id/relationships')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get exercise variations, progressions, regressions, and equipment requirements' })
+  async getRelationships(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.getRelationships(organisationId, id);
+  }
+
   @Get(':id')
   @RequirePermission('exercises', 'read')
-  @ApiOperation({ summary: 'Get exercise details by ID' })
+  @ApiOperation({ summary: 'Get exercise basic details by ID' })
   async findById(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -87,6 +157,97 @@ export class ExercisesController {
     return this.exercisesService.update(organisationId, id, dto, user);
   }
 
+  @Post(':id/instructions')
+  @RequirePermission('exercises', 'update')
+  @ApiOperation({ summary: 'Add instruction step to exercise' })
+  async addInstructionStep(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateInstructionStepDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.addInstructionStep(organisationId, id, dto, user);
+  }
+
+  @Post(':id/phases')
+  @RequirePermission('exercises', 'update')
+  @ApiOperation({ summary: 'Add movement phase to exercise' })
+  async addMovementPhase(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateMovementPhaseDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.addMovementPhase(organisationId, id, dto, user);
+  }
+
+  @Post(':id/mistakes')
+  @RequirePermission('exercises', 'update')
+  @ApiOperation({ summary: 'Add common mistake and correction to exercise' })
+  async addCommonMistake(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateCommonMistakeDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.addCommonMistake(organisationId, id, dto, user);
+  }
+
+  @Post(':id/safety')
+  @RequirePermission('exercises', 'update')
+  @ApiOperation({ summary: 'Add safety guideline or contraindication to exercise' })
+  async addSafetyGuideline(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateSafetyGuidelineDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.addSafetyGuideline(organisationId, id, dto, user);
+  }
+
+  @Post(':id/variations')
+  @RequirePermission('exercises', 'update')
+  @ApiOperation({ summary: 'Add variation/regression/progression relationship' })
+  async addVariation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateExerciseVariationDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.addVariation(organisationId, id, dto, user);
+  }
+
+  @Post(':id/equipment')
+  @RequirePermission('exercises', 'update')
+  @ApiOperation({ summary: 'Add equipment relation to exercise' })
+  async addEquipmentRelation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateEquipmentRelationDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.addEquipmentRelation(organisationId, id, dto, user);
+  }
+
+  @Patch(':id/status')
+  @RequirePermission('exercises', 'manage')
+  @ApiOperation({ summary: 'Update exercise publication/review content status' })
+  async updateContentStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateContentStatusDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.updateContentStatus(organisationId, id, dto.contentStatus, user);
+  }
+
   @Post(':id/archive')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('exercises', 'manage')
@@ -106,23 +267,38 @@ export class ExercisesController {
   async presignMediaUpload(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: PresignMediaUploadDto,
+    @Body() dto: PresignExerciseMediaUploadDto,
     @Headers('x-organisation-id') headerOrgId?: string,
   ) {
     const organisationId = this.resolveOrgId(user, headerOrgId);
-    return this.exercisesService.presignMediaUpload(organisationId, id, dto);
+    return this.mediaService.presignUpload(organisationId, id, dto, user);
   }
 
   @Post(':id/media')
   @RequirePermission('exercises', 'update')
-  @ApiOperation({ summary: 'Attach media record to custom exercise' })
+  @ApiOperation({ summary: 'Attach or create media record for custom exercise' })
   async attachMedia(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: AttachExerciseMediaDto,
+    @Body() dto: CreateExerciseMediaDto,
     @Headers('x-organisation-id') headerOrgId?: string,
   ) {
     const organisationId = this.resolveOrgId(user, headerOrgId);
-    return this.exercisesService.attachMedia(organisationId, id, dto, user);
+    return this.mediaService.createMediaRecord(organisationId, id, dto, user);
+  }
+
+  @Post(':id/media/upload')
+  @RequirePermission('exercises', 'update')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Direct multipart file upload for exercise media' })
+  async uploadMedia(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedMediaFile,
+    @Body() dto: DirectUploadMediaMetadataDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.uploadDirectBuffer(organisationId, id, file, dto, user);
   }
 }

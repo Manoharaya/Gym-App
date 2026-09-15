@@ -16,7 +16,14 @@ import {
   ExerciseQueryDto,
   AttachExerciseMediaDto,
   PresignMediaUploadDto,
+  CreateInstructionStepDto,
+  CreateMovementPhaseDto,
+  CreateCommonMistakeDto,
+  CreateSafetyGuidelineDto,
+  CreateExerciseVariationDto,
+  CreateEquipmentRelationDto,
 } from '../dto/exercise.dto';
+import type { ExerciseContentStatus } from '@fitcore/types';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 
@@ -51,6 +58,10 @@ export class ExercisesService {
       difficulty,
       exerciseType,
       ownership,
+      contentStatus,
+      hasVideo,
+      hasAnimation,
+      hasModel3d,
       includeArchived,
       page = 1,
       limit = 20,
@@ -61,6 +72,11 @@ export class ExercisesService {
     // Archive filter
     if (!includeArchived) {
       where.status = 'ACTIVE';
+    }
+
+    // Content Status filter
+    if (contentStatus) {
+      where.contentStatus = contentStatus;
     }
 
     // Ownership filter & Tenant isolation
@@ -96,6 +112,25 @@ export class ExercisesService {
 
     if (exerciseType) {
       where.exerciseType = exerciseType;
+    }
+
+    // Visual Media filters
+    const mediaConditions: any[] = [];
+    if (hasVideo) {
+      mediaConditions.push({ mediaType: 'VIDEO' });
+    }
+    if (hasAnimation) {
+      mediaConditions.push({ mediaType: 'ANIMATION' });
+    }
+    if (hasModel3d) {
+      mediaConditions.push({ mediaType: 'MODEL_3D' });
+    }
+    if (mediaConditions.length > 0) {
+      where.media = {
+        some: {
+          OR: mediaConditions,
+        },
+      };
     }
 
     // Text search on name or description
@@ -180,6 +215,177 @@ export class ExercisesService {
   }
 
   /**
+   * Find comprehensive visual content for an exercise:
+   * Media, instruction steps, movement phases, common mistakes, safety guidelines, variations, and equipment.
+   */
+  async findVisualContent(organisationId: string, id: string) {
+    const exercise = await this.prisma.exercise.findFirst({
+      where: {
+        id,
+        OR: [
+          { ownershipType: 'SYSTEM', organisationId: null },
+          { ownershipType: 'ORGANISATION', organisationId },
+        ],
+      },
+      include: {
+        media: {
+          orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+        },
+        instructionSteps: {
+          orderBy: { stepNumber: 'asc' },
+        },
+        movementPhases: {
+          orderBy: { orderIndex: 'asc' },
+        },
+        commonMistakes: {
+          orderBy: { sortOrder: 'asc' },
+        },
+        safetyGuidelines: {
+          orderBy: { createdAt: 'asc' },
+        },
+        variationsFrom: {
+          include: {
+            targetExercise: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                difficulty: true,
+                primaryMuscleGroup: true,
+                media: {
+                  where: { isPrimary: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+        variationsTo: {
+          include: {
+            baseExercise: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                difficulty: true,
+                primaryMuscleGroup: true,
+                media: {
+                  where: { isPrimary: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+        equipmentRelations: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!exercise) {
+      throw new NotFoundException({
+        code: 'EXERCISE_NOT_FOUND',
+        message: `Exercise '${id}' not found or not accessible`,
+      });
+    }
+
+    return {
+      ...exercise,
+      media: await this.resolveMediaUrls(exercise.media),
+    };
+  }
+
+  /**
+   * Get instruction steps and movement phases only
+   */
+  async getInstructionSteps(organisationId: string, id: string) {
+    await this.findById(organisationId, id);
+
+    const [steps, phases] = await Promise.all([
+      this.prisma.exerciseInstructionStep.findMany({
+        where: { exerciseId: id },
+        orderBy: { stepNumber: 'asc' },
+      }),
+      this.prisma.exerciseMovementPhase.findMany({
+        where: { exerciseId: id },
+        orderBy: { orderIndex: 'asc' },
+      }),
+    ]);
+
+    return {
+      exerciseId: id,
+      instructionSteps: steps,
+      movementPhases: phases,
+    };
+  }
+
+  /**
+   * Get media collection for exercise
+   */
+  async getMedia(organisationId: string, id: string) {
+    await this.findById(organisationId, id);
+
+    const mediaList = await this.prisma.exerciseMedia.findMany({
+      where: { exerciseId: id },
+      orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+    });
+
+    return this.resolveMediaUrls(mediaList);
+  }
+
+  /**
+   * Get variations and equipment relationships
+   */
+  async getRelationships(organisationId: string, id: string) {
+    await this.findById(organisationId, id);
+
+    const [variationsFrom, variationsTo, equipment] = await Promise.all([
+      this.prisma.exerciseVariation.findMany({
+        where: { baseExerciseId: id },
+        include: {
+          targetExercise: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              difficulty: true,
+              primaryMuscleGroup: true,
+              media: { where: { isPrimary: true }, take: 1 },
+            },
+          },
+        },
+      }),
+      this.prisma.exerciseVariation.findMany({
+        where: { targetExerciseId: id },
+        include: {
+          baseExercise: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              difficulty: true,
+              primaryMuscleGroup: true,
+              media: { where: { isPrimary: true }, take: 1 },
+            },
+          },
+        },
+      }),
+      this.prisma.exerciseEquipmentRelation.findMany({
+        where: { exerciseId: id },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    return {
+      exerciseId: id,
+      variations: variationsFrom,
+      referencedAsVariationIn: variationsTo,
+      equipment,
+    };
+  }
+
+  /**
    * Create custom organisation exercise
    */
   async create(organisationId: string, dto: CreateExerciseDto, actor: AuthenticatedUser) {
@@ -217,6 +423,13 @@ export class ExercisesService {
         instructions: instructionsStr,
         coachingCues: (dto.coachingCues as any) || [],
         safetyNotes: dto.safetyNotes,
+        contentStatus: dto.contentStatus ?? 'PUBLISHED',
+        breathingInstructions: dto.breathingInstructions,
+        tempo: dto.tempo,
+        rangeOfMotion: dto.rangeOfMotion,
+        stabilizerMuscles: dto.stabilizerMuscles ? (dto.stabilizerMuscles as any) : undefined,
+        educationalTips: dto.educationalTips ? (dto.educationalTips as any) : undefined,
+        movementPatternMetadata: dto.movementPatternMetadata ? (dto.movementPatternMetadata as any) : undefined,
         status: 'ACTIVE',
         createdByUserId: actor.id,
       },
@@ -257,19 +470,7 @@ export class ExercisesService {
       });
     }
 
-    if (existing.ownershipType === 'SYSTEM' || !existing.organisationId) {
-      throw new ForbiddenException({
-        code: 'SYSTEM_EXERCISE_IMMUTABLE',
-        message: 'System exercises cannot be modified by organisations',
-      });
-    }
-
-    if (existing.organisationId !== organisationId) {
-      throw new NotFoundException({
-        code: 'EXERCISE_NOT_FOUND',
-        message: `Exercise '${id}' not found in organisation`,
-      });
-    }
+    this.ensureCanModify(existing, organisationId);
 
     const instructionsStr = dto.instructions
       ? Array.isArray(dto.instructions)
@@ -291,6 +492,13 @@ export class ExercisesService {
         instructions: instructionsStr,
         coachingCues: dto.coachingCues ? (dto.coachingCues as any) : existing.coachingCues,
         safetyNotes: dto.safetyNotes ?? existing.safetyNotes,
+        contentStatus: dto.contentStatus ?? existing.contentStatus,
+        breathingInstructions: dto.breathingInstructions ?? existing.breathingInstructions,
+        tempo: dto.tempo ?? existing.tempo,
+        rangeOfMotion: dto.rangeOfMotion ?? existing.rangeOfMotion,
+        stabilizerMuscles: dto.stabilizerMuscles ? (dto.stabilizerMuscles as any) : existing.stabilizerMuscles,
+        educationalTips: dto.educationalTips ? (dto.educationalTips as any) : existing.educationalTips,
+        movementPatternMetadata: dto.movementPatternMetadata ? (dto.movementPatternMetadata as any) : existing.movementPatternMetadata,
       },
       include: {
         media: true,
@@ -312,6 +520,271 @@ export class ExercisesService {
   }
 
   /**
+   * Add step-by-step instruction step to exercise
+   */
+  async addInstructionStep(
+    organisationId: string,
+    exerciseId: string,
+    dto: CreateInstructionStepDto,
+    actor: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+    this.ensureCanModify(exercise, organisationId);
+
+    const step = await this.prisma.exerciseInstructionStep.create({
+      data: {
+        exerciseId,
+        stepNumber: dto.stepNumber,
+        phase: dto.phase,
+        title: dto.title,
+        description: dto.description,
+        coachingCue: dto.coachingCue,
+        mediaUrl: dto.mediaUrl,
+      },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'EXERCISE_INSTRUCTION_ADDED',
+      resource: 'exercises',
+      resourceId: exerciseId,
+      metadata: { stepId: step.id, stepNumber: step.stepNumber },
+    });
+
+    return step;
+  }
+
+  /**
+   * Add movement phase to exercise
+   */
+  async addMovementPhase(
+    organisationId: string,
+    exerciseId: string,
+    dto: CreateMovementPhaseDto,
+    actor: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+    this.ensureCanModify(exercise, organisationId);
+
+    const phase = await this.prisma.exerciseMovementPhase.create({
+      data: {
+        exerciseId,
+        phaseName: dto.phaseName,
+        orderIndex: dto.orderIndex,
+        cueText: dto.cueText,
+        timestampMs: dto.timestampMs,
+        keyCheckpoints: dto.keyCheckpoints ? (dto.keyCheckpoints as any) : undefined,
+        mediaUrl: dto.mediaUrl,
+      },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'EXERCISE_PHASE_ADDED',
+      resource: 'exercises',
+      resourceId: exerciseId,
+      metadata: { phaseId: phase.id, phaseName: phase.phaseName },
+    });
+
+    return phase;
+  }
+
+  /**
+   * Add common mistake to exercise
+   */
+  async addCommonMistake(
+    organisationId: string,
+    exerciseId: string,
+    dto: CreateCommonMistakeDto,
+    actor: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+    this.ensureCanModify(exercise, organisationId);
+
+    const mistake = await this.prisma.exerciseCommonMistake.create({
+      data: {
+        exerciseId,
+        mistake: dto.mistake,
+        consequence: dto.consequence,
+        correction: dto.correction,
+        severity: dto.severity ?? 'MODERATE',
+        mediaUrl: dto.mediaUrl,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'EXERCISE_MISTAKE_ADDED',
+      resource: 'exercises',
+      resourceId: exerciseId,
+      metadata: { mistakeId: mistake.id, severity: mistake.severity },
+    });
+
+    return mistake;
+  }
+
+  /**
+   * Add safety guideline to exercise
+   */
+  async addSafetyGuideline(
+    organisationId: string,
+    exerciseId: string,
+    dto: CreateSafetyGuidelineDto,
+    actor: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+    this.ensureCanModify(exercise, organisationId);
+
+    const guideline = await this.prisma.exerciseSafetyGuideline.create({
+      data: {
+        exerciseId,
+        category: dto.category ?? 'GENERAL_PRECAUTION',
+        title: dto.title,
+        description: dto.description,
+        severity: dto.severity ?? 'STANDARD',
+        reviewedBy: dto.reviewedBy,
+      },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'EXERCISE_SAFETY_ADDED',
+      resource: 'exercises',
+      resourceId: exerciseId,
+      metadata: { guidelineId: guideline.id, severity: guideline.severity },
+    });
+
+    return guideline;
+  }
+
+  /**
+   * Add exercise variation relationship
+   */
+  async addVariation(
+    organisationId: string,
+    exerciseId: string,
+    dto: CreateExerciseVariationDto,
+    actor: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+    this.ensureCanModify(exercise, organisationId);
+
+    const target = await this.prisma.exercise.findUnique({ where: { id: dto.targetExerciseId } });
+    if (!target) {
+      throw new NotFoundException(`Target exercise '${dto.targetExerciseId}' not found`);
+    }
+
+    const variation = await this.prisma.exerciseVariation.upsert({
+      where: {
+        baseExerciseId_targetExerciseId_relationshipType: {
+          baseExerciseId: exerciseId,
+          targetExerciseId: dto.targetExerciseId,
+          relationshipType: dto.relationshipType,
+        },
+      },
+      update: {
+        notes: dto.notes,
+      },
+      create: {
+        baseExerciseId: exerciseId,
+        targetExerciseId: dto.targetExerciseId,
+        relationshipType: dto.relationshipType,
+        notes: dto.notes,
+      },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'EXERCISE_VARIATION_ADDED',
+      resource: 'exercises',
+      resourceId: exerciseId,
+      metadata: { targetExerciseId: dto.targetExerciseId, type: dto.relationshipType },
+    });
+
+    return variation;
+  }
+
+  /**
+   * Add equipment relation
+   */
+  async addEquipmentRelation(
+    organisationId: string,
+    exerciseId: string,
+    dto: CreateEquipmentRelationDto,
+    actor: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+    this.ensureCanModify(exercise, organisationId);
+
+    const relation = await this.prisma.exerciseEquipmentRelation.create({
+      data: {
+        exerciseId,
+        equipmentName: dto.equipmentName,
+        isOptional: dto.isOptional ?? false,
+        notes: dto.notes,
+      },
+    });
+
+    return relation;
+  }
+
+  /**
+   * Update content publishing status
+   */
+  async updateContentStatus(
+    organisationId: string,
+    exerciseId: string,
+    status: ExerciseContentStatus,
+    actor: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+    this.ensureCanModify(exercise, organisationId);
+
+    const updated = await this.prisma.exercise.update({
+      where: { id: exerciseId },
+      data: { contentStatus: status },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'EXERCISE_STATUS_UPDATED',
+      resource: 'exercises',
+      resourceId: exerciseId,
+      metadata: { previousStatus: exercise.contentStatus, newStatus: status },
+    });
+
+    return updated;
+  }
+
+  /**
    * Soft-archive an exercise.
    * System exercises cannot be archived.
    */
@@ -327,19 +800,7 @@ export class ExercisesService {
       });
     }
 
-    if (existing.ownershipType === 'SYSTEM' || !existing.organisationId) {
-      throw new ForbiddenException({
-        code: 'SYSTEM_EXERCISE_IMMUTABLE',
-        message: 'System exercises cannot be archived by organisations',
-      });
-    }
-
-    if (existing.organisationId !== organisationId) {
-      throw new NotFoundException({
-        code: 'EXERCISE_NOT_FOUND',
-        message: `Exercise '${id}' not found in organisation`,
-      });
-    }
+    this.ensureCanModify(existing, organisationId);
 
     const archived = await this.prisma.exercise.update({
       where: { id },
@@ -422,7 +883,16 @@ export class ExercisesService {
         exerciseId,
         mediaType: dto.mediaType,
         storageKey: dto.storageKey || dto.url,
-        mimeType: 'image/jpeg',
+        mimeType: dto.mediaType === 'VIDEO' ? 'video/mp4' : 'image/jpeg',
+        url: dto.url,
+        thumbnailUrl: dto.thumbnailUrl,
+        title: dto.title,
+        description: dto.description,
+        width: dto.width,
+        height: dto.height,
+        format3d: dto.format3d,
+        modelLod: dto.modelLod,
+        isPublished: dto.isPublished ?? true,
         isPrimary: dto.isPrimary ?? false,
         sortOrder: dto.sortOrder ?? 0,
       },
@@ -443,11 +913,27 @@ export class ExercisesService {
     return media;
   }
 
+  private ensureCanModify(exercise: any, organisationId: string) {
+    if (exercise.ownershipType === 'SYSTEM' || !exercise.organisationId) {
+      throw new ForbiddenException({
+        code: 'SYSTEM_EXERCISE_IMMUTABLE',
+        message: 'System exercises cannot be modified by organisations',
+      });
+    }
+
+    if (exercise.organisationId !== organisationId) {
+      throw new NotFoundException({
+        code: 'EXERCISE_NOT_FOUND',
+        message: `Exercise '${exercise.id}' not found in organisation`,
+      });
+    }
+  }
+
   private async resolveMediaUrls(mediaList: any[]) {
     return Promise.all(
       mediaList.map(async (m) => {
-        let viewUrl = m.storageKey;
-        if (m.storageKey) {
+        let viewUrl = m.url || m.storageKey;
+        if (m.storageKey && !m.storageKey.startsWith('http')) {
           try {
             viewUrl = await this.storageProvider.getDownloadSignedUrl(m.storageKey, 3600);
           } catch (err) {

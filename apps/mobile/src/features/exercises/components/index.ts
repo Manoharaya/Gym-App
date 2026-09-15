@@ -3,4 +3,4 @@
  * Reusable domain components for this feature module.
  */
 
-export {};
+export * from './ExerciseMediaManagerModal';
