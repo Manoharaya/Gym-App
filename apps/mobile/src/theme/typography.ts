@@ -1,5 +1,5 @@
 import { fontSizes, lineHeights, fontWeights } from '@fitcore/ui';
-import { TextStyle, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 const fontFamily = Platform.select({
   ios: 'System',
@@ -7,72 +7,123 @@ const fontFamily = Platform.select({
   default: 'System',
 });
 
-export const typography: Record<string, TextStyle> = {
-  h1: {
-    fontFamily,
-    fontSize: fontSizes['3xl'],
-    lineHeight: lineHeights['3xl'],
-    fontWeight: fontWeights.bold,
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+export const typography: Record<string, any> = new Proxy(
+  {
+    h1: {
+      fontFamily,
+      fontSize: fontSizes['3xl'],
+      lineHeight: lineHeights['3xl'],
+      fontWeight: fontWeights.bold,
+      color: '#FFFFFF',
+      letterSpacing: -0.5,
+    },
+    h2: {
+      fontFamily,
+      fontSize: fontSizes['2xl'],
+      lineHeight: lineHeights['2xl'],
+      fontWeight: fontWeights.bold,
+      color: '#FFFFFF',
+      letterSpacing: -0.3,
+    },
+    h3: {
+      fontFamily,
+      fontSize: fontSizes.xl,
+      lineHeight: lineHeights.xl,
+      fontWeight: fontWeights.semibold,
+      color: '#FFFFFF',
+    },
+    h4: {
+      fontFamily,
+      fontSize: fontSizes.lg,
+      lineHeight: lineHeights.lg,
+      fontWeight: fontWeights.semibold,
+      color: '#FFFFFF',
+    },
+    subtitle: {
+      fontFamily,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      fontWeight: fontWeights.medium,
+      color: '#9CA3AF',
+    },
+    body: {
+      fontFamily,
+      fontSize: fontSizes.base,
+      lineHeight: lineHeights.base,
+      fontWeight: fontWeights.regular,
+      color: '#FFFFFF',
+    },
+    bodySmall: {
+      fontFamily,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      fontWeight: fontWeights.regular,
+      color: '#9CA3AF',
+    },
+    caption: {
+      fontFamily,
+      fontSize: fontSizes.xs,
+      lineHeight: lineHeights.xs,
+      fontWeight: fontWeights.medium,
+      color: '#6B7280',
+      letterSpacing: 0.2,
+    },
+    button: {
+      fontFamily,
+      fontSize: fontSizes.base,
+      lineHeight: lineHeights.base,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: 0.3,
+    },
+    metric: {
+      fontFamily,
+      fontSize: fontSizes['4xl'],
+      lineHeight: lineHeights['4xl'],
+      fontWeight: fontWeights.extrabold,
+      color: '#FFFFFF',
+      letterSpacing: -1,
+    },
+    titleLarge: {
+      fontFamily,
+      fontSize: fontSizes.xl,
+      lineHeight: lineHeights.xl,
+      fontWeight: fontWeights.bold,
+      color: '#FFFFFF',
+    },
+    titleMedium: {
+      fontFamily,
+      fontSize: fontSizes.lg,
+      lineHeight: lineHeights.lg,
+      fontWeight: fontWeights.semibold,
+      color: '#FFFFFF',
+    },
+    titleSmall: {
+      fontFamily,
+      fontSize: fontSizes.base,
+      lineHeight: lineHeights.base,
+      fontWeight: fontWeights.medium,
+      color: '#FFFFFF',
+    },
+    fontSize: fontSizes,
+    fontFamily: {
+      regular: fontFamily,
+      medium: fontFamily,
+      semibold: fontFamily,
+      bold: fontFamily,
+    },
   },
-  h2: {
-    fontFamily,
-    fontSize: fontSizes['2xl'],
-    lineHeight: lineHeights['2xl'],
-    fontWeight: fontWeights.bold,
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
+  {
+    get(target: Record<string, any>, prop: string) {
+      if (prop in target) {
+        return target[prop];
+      }
+      return {
+        fontFamily,
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '400',
+        color: '#FFFFFF',
+      };
+    },
   },
-  h3: {
-    fontFamily,
-    fontSize: fontSizes.xl,
-    lineHeight: lineHeights.xl,
-    fontWeight: fontWeights.semibold,
-    color: '#FFFFFF',
-  },
-  subtitle: {
-    fontFamily,
-    fontSize: fontSizes.md,
-    lineHeight: lineHeights.md,
-    fontWeight: fontWeights.medium,
-    color: '#9CA3AF',
-  },
-  body: {
-    fontFamily,
-    fontSize: fontSizes.base,
-    lineHeight: lineHeights.base,
-    fontWeight: fontWeights.regular,
-    color: '#FFFFFF',
-  },
-  bodySmall: {
-    fontFamily,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-    fontWeight: fontWeights.regular,
-    color: '#9CA3AF',
-  },
-  caption: {
-    fontFamily,
-    fontSize: fontSizes.xs,
-    lineHeight: lineHeights.xs,
-    fontWeight: fontWeights.medium,
-    color: '#6B7280',
-    letterSpacing: 0.2,
-  },
-  button: {
-    fontFamily,
-    fontSize: fontSizes.base,
-    lineHeight: lineHeights.base,
-    fontWeight: fontWeights.semibold,
-    letterSpacing: 0.3,
-  },
-  metric: {
-    fontFamily,
-    fontSize: fontSizes['4xl'],
-    lineHeight: lineHeights['4xl'],
-    fontWeight: fontWeights.extrabold,
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-};
+);

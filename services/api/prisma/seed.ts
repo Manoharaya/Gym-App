@@ -2793,6 +2793,94 @@ async function main() {
         defaultUnit: 'KG',
         status: 'ACTIVE',
       },
+      {
+        id: 'ex_sys_goblet_squat',
+        ownershipType: 'SYSTEM',
+        name: 'Dumbbell Goblet Squat',
+        slug: 'dumbbell-goblet-squat',
+        description: 'Squat variation holding a dumbbell or kettlebell vertically against sternum, reinforcing upright posture and core bracing.',
+        instructions: 'Hold dumbbell vertically at chest with elbows tucked. Squat between knees until elbows touch inner thighs, then stand.',
+        coachingCues: ['Elbows inside knees', 'Chest proud', 'Push knees out'],
+        setupInstructions: 'Feet slightly wider than shoulder-width, toes turned 15° out.',
+        executionInstructions: 'Controlled 3-second descent, pause for 1 second at parallel, explosive ascent.',
+        safetyNotes: 'Maintain upright torso throughout; do not let weight pull upper body forward.',
+        difficulty: 'BEGINNER',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'SQUAT',
+        primaryMuscleGroup: 'QUADRICEPS',
+        secondaryMuscleGroups: ['GLUTES', 'CORE'],
+        equipment: 'DUMBBELL',
+        bodyPosition: 'STANDING',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_box_squat',
+        ownershipType: 'SYSTEM',
+        name: 'Barbell Box Squat',
+        slug: 'barbell-box-squat',
+        description: 'Squat regression breaking the stretch-shortening cycle, building explosive hip extension and depth consistency.',
+        instructions: 'Set box at desired depth. Squat back onto box, pause without rocking, and drive powerfully to standing.',
+        coachingCues: ['Sit back onto the box', 'Stay tight on the box', 'Explode off the box'],
+        setupInstructions: 'Box positioned so hip crease aligns horizontally with top of knees.',
+        executionInstructions: 'Sit back under control, pause 1 second with core braced, drive heels through floor.',
+        safetyNotes: 'Do not bounce or crash down onto box; retain full abdominal pressure.',
+        difficulty: 'BEGINNER',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'SQUAT',
+        primaryMuscleGroup: 'QUADRICEPS',
+        secondaryMuscleGroups: ['GLUTES', 'HAMSTRINGS'],
+        equipment: 'BARBELL',
+        bodyPosition: 'STANDING',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_dumbbell_bench_press',
+        ownershipType: 'SYSTEM',
+        name: 'Flat Dumbbell Bench Press',
+        slug: 'flat-dumbbell-bench-press',
+        description: 'Horizontal pressing variation allowing independent arm movement, addressing muscular imbalances.',
+        instructions: 'Lie on flat bench with dumbbells over chest. Lower dumbbells with elbows at 45-60°, press back together overhead.',
+        coachingCues: ['Squeeze chest at top', 'Controlled stretch at bottom', 'Tuck elbows slightly'],
+        setupInstructions: 'Feet planted, upper back arched slightly, shoulders retracted.',
+        executionInstructions: 'Lower over 2-3 seconds, pause briefly at chest depth, press up in slight arc.',
+        safetyNotes: 'Never drop heavy dumbbells from high elevation; kick to knees when finishing.',
+        difficulty: 'BEGINNER',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'PUSH',
+        primaryMuscleGroup: 'CHEST',
+        secondaryMuscleGroups: ['SHOULDERS', 'TRICEPS'],
+        equipment: 'DUMBBELL',
+        bodyPosition: 'SUPINE',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'ex_sys_lat_pulldown',
+        ownershipType: 'SYSTEM',
+        name: 'Cable Lat Pulldown',
+        slug: 'cable-lat-pulldown',
+        description: 'Vertical pulling machine movement developing lat width and scapular depression control.',
+        instructions: 'Sit under pad, grip bar wide. Pull bar down to upper chest while depressing shoulder blades, then control the return.',
+        coachingCues: ['Lead with elbows', 'Chest to bar', 'Slow on the way up'],
+        setupInstructions: 'Adjust thigh pad so legs are locked firmly in place.',
+        executionInstructions: 'Explosive 1-second pull, 2-second negative stretch at top.',
+        safetyNotes: 'Avoid pulling bar behind neck; pull strictly to clavicle.',
+        difficulty: 'BEGINNER',
+        exerciseType: 'STRENGTH',
+        movementPattern: 'PULL',
+        primaryMuscleGroup: 'BACK',
+        secondaryMuscleGroups: ['BICEPS'],
+        equipment: 'CABLE',
+        bodyPosition: 'SEATED',
+        laterality: 'BILATERAL',
+        defaultUnit: 'KG',
+        status: 'ACTIVE',
+      },
     ];
 
     for (const ex of systemExercises) {
@@ -2802,6 +2890,434 @@ async function main() {
         create: ex,
       });
     }
+
+    // ==========================================
+    // DAY 61: VISUAL EXERCISE DEMONSTRATIONS & PHASES
+    // ==========================================
+    console.log('🎨 Seeding Day 61: Visual Exercise Library Demonstrations, Movement Phases & Safety...');
+
+    const coreExerciseIds = [
+      'ex_sys_barbell_back_squat',
+      'ex_sys_barbell_bench_press',
+      'ex_sys_bodyweight_pull_up',
+      'ex_sys_dumbbell_rdl',
+    ];
+
+    // Clean existing relational data for idempotency
+    await prisma.exerciseInstructionStep.deleteMany({ where: { exerciseId: { in: coreExerciseIds } } });
+    await prisma.exerciseMovementPhase.deleteMany({ where: { exerciseId: { in: coreExerciseIds } } });
+    await prisma.exerciseCommonMistake.deleteMany({ where: { exerciseId: { in: coreExerciseIds } } });
+    await prisma.exerciseSafetyGuideline.deleteMany({ where: { exerciseId: { in: coreExerciseIds } } });
+    await prisma.exerciseVariation.deleteMany({ where: { baseExerciseId: { in: coreExerciseIds } } });
+    await prisma.exerciseEquipmentRelation.deleteMany({ where: { exerciseId: { in: coreExerciseIds } } });
+
+    // 1. Barbell Back Squat
+    await prisma.exercise.update({
+      where: { id: 'ex_sys_barbell_back_squat' },
+      data: {
+        contentStatus: 'PUBLISHED',
+        tempo: '3-0-1-0',
+        rangeOfMotion: 'Full depth below parallel hip crease (femur breaks 90° relative to tibia)',
+        breathingInstructions: 'Deep diaphragmatic 360° inhalation at top; full Valsalva brace during descent; explosive exhalation 75% up through ascent.',
+        stabilizerMuscles: ['CORE', 'GLUTES', 'CALVES'],
+        educationalTips: [
+          'Maintain constant foot tripod contact: calcaneus (heel), 1st metatarsal head, and 5th metatarsal head.',
+          'Cue knees out along the path of toes during initial descent to create pelvic room.',
+          'Upper back tightness creates the shelf that prevents bar roll.',
+        ],
+        movementPatternMetadata: {
+          recommendedAngles: ['FRONT_45', 'SIDE_90'],
+          trackingPoints: ['HIP_CREASE', 'PATELLA', 'LATERAL_MALLEOLUS'],
+          tempoAnalysisSupported: true,
+        },
+      },
+    });
+
+    await prisma.exerciseInstructionStep.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          stepNumber: 1,
+          phase: 'SETUP',
+          title: 'Bar Placement & Unrack',
+          description: 'Position barbell across upper trapezius muscles. Grip bar firmly just outside shoulders, stand erect, step back with 2-3 precise steps, and set feet shoulder-width apart angled 15-30° out.',
+          coachingCue: 'Pull bar into traps like bending a horseshoe over your back.',
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          stepNumber: 2,
+          phase: 'PREPARATION',
+          title: 'Diaphragmatic 360° Brace',
+          description: 'Take a deep belly breath expanding abdomen, obliques, and lower back in 360 degrees. Lock ribcage directly over pelvis.',
+          coachingCue: 'Big belly breath, lock your ribs down.',
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          stepNumber: 3,
+          phase: 'EXECUTION',
+          title: 'Hinge & Knee Descent',
+          description: 'Break simultaneously at hips and knees. Sit down into the space between your thighs while knees track outward over toes. Descend under control until hip crease breaks parallel with knees.',
+          coachingCue: 'Sit down between your heels, not back onto your calves.',
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          stepNumber: 4,
+          phase: 'COMPLETION',
+          title: 'Concentric Floor Drive',
+          description: 'Drive feet straight down through the floor. Maintain torso inclination as hips and shoulders rise synchronously to full lockout.',
+          coachingCue: 'Push the floor away from you.',
+        },
+      ],
+    });
+
+    await prisma.exerciseMovementPhase.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          phaseName: 'SETUP',
+          orderIndex: 0,
+          cueText: 'Stable shelf on upper traps, neutral spine, feet rooted',
+          keyCheckpoints: ['Feet shoulder-width apart', 'Bar seated mid-trap', 'Core braced 360°'],
+          timestampMs: 0,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          phaseName: 'DESCENT',
+          orderIndex: 1,
+          cueText: '3-second controlled eccentric descent',
+          keyCheckpoints: ['Knees tracking 2nd-3rd toe', 'Torso angle rigid', 'Neutral cervical spine'],
+          timestampMs: 1200,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          phaseName: 'BOTTOM',
+          orderIndex: 2,
+          cueText: 'Hip crease breaks below patellar peak without lumbar rounding',
+          keyCheckpoints: ['Depth achieved cleanly', 'Weight distributed mid-foot', 'No butt wink'],
+          timestampMs: 2500,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          phaseName: 'ASCENT',
+          orderIndex: 3,
+          cueText: 'Drive hips and shoulders upward at identical velocity',
+          keyCheckpoints: ['No knee cave (valgus)', 'Chest high', 'Torso stays aligned'],
+          timestampMs: 3200,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          phaseName: 'LOCKOUT',
+          orderIndex: 4,
+          cueText: 'Full hip extension and glute squeeze',
+          keyCheckpoints: ['Hips fully open', 'Glutes contracted', 'Bar steady over mid-foot'],
+          timestampMs: 4000,
+        },
+      ],
+    });
+
+    await prisma.exerciseCommonMistake.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          mistake: 'Knee Valgus (Knees Collapsing Inward)',
+          consequence: 'Stresses the ACL, MCL, and patellofemoral joint cartilage while leaking concentric drive power.',
+          correction: 'Actively drive knees outward along the trajectory of your toes; cue "spread the floor with your feet".',
+          severity: 'SEVERE',
+          sortOrder: 1,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          mistake: 'Excessive Forward Torso Pitch (Good Morning Squat)',
+          consequence: 'Places extreme shear stress on the lumbar spine and reduces quad activation.',
+          correction: 'Build upper back stiffness, lead ascent with your chest, and engage the front delts/lats into the bar.',
+          severity: 'MODERATE',
+          sortOrder: 2,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          mistake: 'Heels Lifting Off Floor at Bottom',
+          consequence: 'Shifts center of mass excessively forward, loading patellar tendons instead of posterior chain.',
+          correction: 'Elevate heels with Olympic lifting shoes or squat wedges while improving ankle dorsiflexion mobility.',
+          severity: 'MODERATE',
+          sortOrder: 3,
+        },
+      ],
+    });
+
+    await prisma.exerciseSafetyGuideline.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          category: 'EQUIPMENT_WARNING',
+          title: 'Safety Pin Verification',
+          description: 'Always set power rack safety pins or spotter arms 1-2 inches below your lowest bottom squat depth before loading weight.',
+          severity: 'CRITICAL',
+          reviewedBy: 'Coach Marcus Vance, CSCS',
+        },
+        {
+          exerciseId: 'ex_sys_barbell_back_squat',
+          category: 'TECHNIQUE_WARNING',
+          title: 'Spinal Neutrality',
+          description: 'Avoid excessive butt-wink (posterior pelvic tilt) at maximum depth if your hamstring/hip anatomy does not permit neutral lumbar alignment.',
+          severity: 'HIGH',
+          reviewedBy: 'Sports Physiotherapy Board',
+        },
+      ],
+    });
+
+    await prisma.exerciseVariation.createMany({
+      data: [
+        {
+          baseExerciseId: 'ex_sys_barbell_back_squat',
+          targetExerciseId: 'ex_sys_box_squat',
+          relationshipType: 'REGRESSION',
+          notes: 'Teaches hip hinge depth control and eliminates bottom bounce.',
+        },
+        {
+          baseExerciseId: 'ex_sys_barbell_back_squat',
+          targetExerciseId: 'ex_sys_goblet_squat',
+          relationshipType: 'REGRESSION',
+          notes: 'Excellent beginner progression focusing on upright thoracic posture.',
+        },
+      ],
+    });
+
+    await prisma.exerciseEquipmentRelation.createMany({
+      data: [
+        { exerciseId: 'ex_sys_barbell_back_squat', equipmentName: 'Olympic Barbell (20kg)', isOptional: false },
+        { exerciseId: 'ex_sys_barbell_back_squat', equipmentName: 'Power Rack with Spotter Pins', isOptional: false },
+        { exerciseId: 'ex_sys_barbell_back_squat', equipmentName: 'Bumper or Cast Iron Plates & Collars', isOptional: false },
+        { exerciseId: 'ex_sys_barbell_back_squat', equipmentName: 'Weightlifting Shoes / Squat Wedges', isOptional: true, notes: 'Aids ankle dorsiflexion' },
+      ],
+    });
+
+    // 2. Barbell Bench Press
+    await prisma.exercise.update({
+      where: { id: 'ex_sys_barbell_bench_press' },
+      data: {
+        contentStatus: 'PUBLISHED',
+        tempo: '2-1-1-0',
+        rangeOfMotion: 'Full chest touch on lower sternum with vertical forearms',
+        breathingInstructions: 'Inhale and brace at lockout; hold breath through descent and pause; exhale explosively past midpoint on press.',
+        stabilizerMuscles: ['SHOULDERS', 'BACK', 'CORE'],
+        educationalTips: [
+          'Retract and depress scapulae to form a firm base of support on the bench.',
+          'Maintain 5 points of contact: head, upper back, buttocks, left foot, right foot.',
+        ],
+        movementPatternMetadata: {
+          recommendedAngles: ['SIDE_90', 'HEAD_ON'],
+          trackingPoints: ['WRIST', 'ELBOW', 'STERNALLY_MIDPOINT'],
+          tempoAnalysisSupported: true,
+        },
+      },
+    });
+
+    await prisma.exerciseInstructionStep.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          stepNumber: 1,
+          phase: 'SETUP',
+          title: 'Scapular Retraction & Arch',
+          description: 'Lie flat with eyes directly below bar. Retract shoulder blades into back pockets, plant feet flat, and grasp bar with thumbs wrapped securely.',
+          coachingCue: 'Pinch your shoulder blades together like holding a pencil.',
+        },
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          stepNumber: 2,
+          phase: 'EXECUTION',
+          title: 'Controlled Bar Descent',
+          description: 'Unrack bar, stabilize over shoulders, and lower slowly to lower sternum. Keep elbows tucked at 45 to 60 degrees relative to torso.',
+          coachingCue: 'Bend the bar in half to engage lats.',
+        },
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          stepNumber: 3,
+          phase: 'COMPLETION',
+          title: 'Concentric Press & Leg Drive',
+          description: 'Pause briefly at chest without bouncing. Drive feet into floor and press bar up and slightly back over shoulders to full lockout.',
+          coachingCue: 'Push yourself away from the bar into the bench.',
+        },
+      ],
+    });
+
+    await prisma.exerciseMovementPhase.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          phaseName: 'SETUP',
+          orderIndex: 0,
+          cueText: 'Scapulae pinned, feet grounded, thumbs wrapped',
+          keyCheckpoints: ['Retracted shoulder blades', 'Firm grip', 'Feet flat'],
+        },
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          phaseName: 'DESCENT',
+          orderIndex: 1,
+          cueText: '2-second controlled lowering',
+          keyCheckpoints: ['Elbows at 45-60°', 'Forearms vertical'],
+        },
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          phaseName: 'CHEST_TOUCH',
+          orderIndex: 2,
+          cueText: 'Soft sternum contact without bounce',
+          keyCheckpoints: ['Brief pause', 'Constant lat tension'],
+        },
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          phaseName: 'ASCENT',
+          orderIndex: 3,
+          cueText: 'Explosive drive with leg drive assistance',
+          keyCheckpoints: ['Bar trajectory arcs back over face', 'Buttocks remain on bench'],
+        },
+      ],
+    });
+
+    await prisma.exerciseCommonMistake.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          mistake: 'Elbows Flared Out 90 Degrees',
+          consequence: 'Causes subacromial shoulder impingement and excessive rotator cuff stress.',
+          correction: 'Tuck elbows to roughly 45 degrees, cueing "bend the bar in half".',
+          severity: 'SEVERE',
+          sortOrder: 1,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          mistake: 'Bouncing Bar Off Ribcage',
+          consequence: 'Risk of sternal bruising, rib fracture, and momentum masks true strength.',
+          correction: 'Touch chest like resting on a pane of glass before driving up.',
+          severity: 'MODERATE',
+          sortOrder: 2,
+        },
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          mistake: 'Glutes Lifting Off Bench',
+          consequence: 'Disqualifies lift in competition and places hyperextension load on lumbar spine.',
+          correction: 'Keep glutes glued to the bench; use leg drive to push body horizontally toward head.',
+          severity: 'MODERATE',
+          sortOrder: 3,
+        },
+      ],
+    });
+
+    await prisma.exerciseSafetyGuideline.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_barbell_bench_press',
+          category: 'SAFETY_NOTE',
+          title: 'Suicide Grip Prohibition',
+          description: 'Never use a thumbless (suicide) grip. Always wrap thumbs firmly around bar to prevent catastrophic slippage.',
+          severity: 'CRITICAL',
+          reviewedBy: 'FitCore Safety Certification',
+        },
+      ],
+    });
+
+    await prisma.exerciseVariation.createMany({
+      data: [
+        {
+          baseExerciseId: 'ex_sys_barbell_bench_press',
+          targetExerciseId: 'ex_sys_dumbbell_bench_press',
+          relationshipType: 'ALTERNATIVE',
+          notes: 'Allows natural wrist rotation and independently tests each arm.',
+        },
+      ],
+    });
+
+    await prisma.exerciseEquipmentRelation.createMany({
+      data: [
+        { exerciseId: 'ex_sys_barbell_bench_press', equipmentName: 'Olympic Barbell', isOptional: false },
+        { exerciseId: 'ex_sys_barbell_bench_press', equipmentName: 'Flat Bench Press Station', isOptional: false },
+        { exerciseId: 'ex_sys_barbell_bench_press', equipmentName: 'Safety Spotter Arms', isOptional: true, notes: 'Required when lifting without a human spotter' },
+      ],
+    });
+
+    // 3. Bodyweight Pull-Up
+    await prisma.exercise.update({
+      where: { id: 'ex_sys_bodyweight_pull_up' },
+      data: {
+        contentStatus: 'PUBLISHED',
+        tempo: '2-0-1-1',
+        rangeOfMotion: 'Full hang at bottom until chin clears the bar at top',
+        breathingInstructions: 'Exhale while pulling upward to bar; inhale on controlled descent to dead hang.',
+        stabilizerMuscles: ['CORE', 'FOREARMS', 'SHOULDERS'],
+        educationalTips: [
+          'Initiate the movement with scapular depression (pulling shoulder blades down) before bending elbows.',
+          'Keep core braced and legs slightly in front (hollow body posture) to prevent swinging.',
+        ],
+      },
+    });
+
+    await prisma.exerciseInstructionStep.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_bodyweight_pull_up',
+          stepNumber: 1,
+          phase: 'SETUP',
+          title: 'Overhand Dead Hang',
+          description: 'Grip bar with overhand grip slightly wider than shoulders. Hang with arms fully extended and shoulders relaxed.',
+          coachingCue: 'Full dead hang, wrap thumbs around bar.',
+        },
+        {
+          exerciseId: 'ex_sys_bodyweight_pull_up',
+          stepNumber: 2,
+          phase: 'EXECUTION',
+          title: 'Scapular Pull to Chest',
+          description: 'Depress shoulder blades down, pull elbows into ribcage, and draw upper chest toward the bar until chin crosses plane.',
+          coachingCue: 'Drive elbows into your back pockets.',
+        },
+        {
+          exerciseId: 'ex_sys_bodyweight_pull_up',
+          stepNumber: 3,
+          phase: 'COMPLETION',
+          title: 'Controlled Negative',
+          description: 'Lower yourself under smooth 2-second control all the way back into the full dead hang.',
+          coachingCue: 'Earn every inch on the way down.',
+        },
+      ],
+    });
+
+    await prisma.exerciseCommonMistake.createMany({
+      data: [
+        {
+          exerciseId: 'ex_sys_bodyweight_pull_up',
+          mistake: 'Kipping or Leg Flailing',
+          consequence: 'Uses momentum rather than lat strength, increasing shoulder labrum strain.',
+          correction: 'Maintain a hollow-body position with legs glued together and pointed slightly forward.',
+          severity: 'MODERATE',
+          sortOrder: 1,
+        },
+        {
+          exerciseId: 'ex_sys_bodyweight_pull_up',
+          mistake: 'Half Reps (Not Reaching Dead Hang)',
+          consequence: 'Misses full stretch and peak hypertrophy stimulus on the lower latissimus fibers.',
+          correction: 'Reset to arms straight on every single repetition.',
+          severity: 'MODERATE',
+          sortOrder: 2,
+        },
+      ],
+    });
+
+    await prisma.exerciseVariation.createMany({
+      data: [
+        {
+          baseExerciseId: 'ex_sys_bodyweight_pull_up',
+          targetExerciseId: 'ex_sys_lat_pulldown',
+          relationshipType: 'REGRESSION',
+          notes: 'Allows progressive overload for athletes building up to bodyweight pull-ups.',
+        },
+      ],
+    });
+
+    await prisma.exerciseEquipmentRelation.createMany({
+      data: [
+        { exerciseId: 'ex_sys_bodyweight_pull_up', equipmentName: 'Rigid Pull-Up Bar', isOptional: false },
+        { exerciseId: 'ex_sys_bodyweight_pull_up', equipmentName: 'Resistance Band for Assistance', isOptional: true, notes: 'Used for banded progression' },
+      ],
+    });
 
     // 2. Custom Organisation Exercise (Second Wind Athletic Club)
     const customExercise = await prisma.exercise.upsert({
@@ -3161,10 +3677,171 @@ async function main() {
           notes: 'Increase working weight by 2.5kg each week upon successful completion of all sets at target reps.',
         },
       });
+    // ==========================================
+    // DAY 65: MUSCLES, EQUIPMENT & EXERCISE METADATA INTELLIGENCE
+    // ==========================================
+    console.log('🧬 Seeding Day 65: Muscles, Equipment & Exercise Metadata Intelligence...');
+
+    const systemTaxonomies = [
+      // Muscles
+      { type: 'MUSCLE', code: 'CHEST', name: 'Chest (Pectorals)', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'UPPER_BACK', name: 'Upper Back (Rhomboids)', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'LATS', name: 'Lats (Latissimus Dorsi)', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'TRAPS', name: 'Traps (Trapezius)', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'SHOULDERS', name: 'Shoulders (Deltoids)', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'BICEPS', name: 'Biceps Brachii', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'TRICEPS', name: 'Triceps Brachii', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'FOREARMS', name: 'Forearms (Brachioradialis)', group: 'UPPER_BODY' },
+      { type: 'MUSCLE', code: 'ABDOMINALS', name: 'Abdominals (Rectus Abdominis)', group: 'CORE' },
+      { type: 'MUSCLE', code: 'OBLIQUES', name: 'Obliques', group: 'CORE' },
+      { type: 'MUSCLE', code: 'LOWER_BACK', name: 'Lower Back (Erector Spinae)', group: 'CORE' },
+      { type: 'MUSCLE', code: 'GLUTES', name: 'Glutes (Gluteus Maximus / Medius)', group: 'LOWER_BODY' },
+      { type: 'MUSCLE', code: 'QUADRICEPS', name: 'Quadriceps', group: 'LOWER_BODY' },
+      { type: 'MUSCLE', code: 'HAMSTRINGS', name: 'Hamstrings', group: 'LOWER_BODY' },
+      { type: 'MUSCLE', code: 'CALVES', name: 'Calves (Gastrocnemius & Soleus)', group: 'LOWER_BODY' },
+      // Equipment
+      { type: 'EQUIPMENT', code: 'BARBELL', name: 'Olympic Barbell', group: 'FREE_WEIGHTS' },
+      { type: 'EQUIPMENT', code: 'DUMBBELL', name: 'Dumbbells', group: 'FREE_WEIGHTS' },
+      { type: 'EQUIPMENT', code: 'PULLUP_BAR', name: 'Pull-Up Bar', group: 'BODYWEIGHT' },
+      { type: 'EQUIPMENT', code: 'BENCH', name: 'Workout Bench', group: 'BENCHES_SUPPORTS' },
+      { type: 'EQUIPMENT', code: 'SQUAT_RACK', name: 'Squat Rack / Power Cage', group: 'BENCHES_SUPPORTS' },
+      // Categories & Goals
+      { type: 'CATEGORY', code: 'STRENGTH', name: 'Strength Training', group: 'FITNESS' },
+      { type: 'CATEGORY', code: 'HYPERTROPHY', name: 'Muscle Building & Hypertrophy', group: 'FITNESS' },
+      { type: 'GOAL', code: 'STRENGTH', name: 'Absolute Strength', group: 'PERFORMANCE' },
+      { type: 'GOAL', code: 'MUSCLE_BUILDING', name: 'Muscle Hypertrophy', group: 'AESTHETICS' },
+    ];
+
+    for (const tax of systemTaxonomies) {
+      const existing = await prisma.exerciseMetadataItem.findFirst({
+        where: { organisationId: null, type: tax.type, code: tax.code },
+      });
+      if (!existing) {
+        await prisma.exerciseMetadataItem.create({
+          data: {
+            organisationId: null,
+            type: tax.type,
+            code: tax.code,
+            name: tax.name,
+            group: tax.group,
+            status: 'ACTIVE',
+          },
+        });
+      }
+    }
+
+    // Update core exercises with Day 65 rich classification metadata
+    await prisma.exercise.update({
+      where: { id: 'ex_sys_barbell_back_squat' },
+      data: {
+        exerciseCategory: 'STRENGTH',
+        exerciseMechanics: 'COMPOUND',
+        equipmentRequirement: 'REQUIRED',
+        availableEnvironments: ['GYM'],
+        trainingGoals: ['STRENGTH', 'MUSCLE_BUILDING', 'PERFORMANCE'],
+        tags: ['Compound', 'Lower Body', 'Squat', 'Barbell'],
+      },
+    });
+
+    await prisma.exercise.update({
+      where: { id: 'ex_sys_barbell_bench_press' },
+      data: {
+        exerciseCategory: 'STRENGTH',
+        exerciseMechanics: 'COMPOUND',
+        equipmentRequirement: 'REQUIRED',
+        availableEnvironments: ['GYM'],
+        trainingGoals: ['STRENGTH', 'MUSCLE_BUILDING'],
+        tags: ['Compound', 'Upper Body', 'Push', 'Barbell'],
+      },
+    });
+
+    await prisma.exercise.update({
+      where: { id: 'ex_sys_bodyweight_pull_up' },
+      data: {
+        exerciseCategory: 'BODYWEIGHT',
+        exerciseMechanics: 'COMPOUND',
+        equipmentRequirement: 'REQUIRED',
+        availableEnvironments: ['GYM', 'HOME', 'OUTDOOR'],
+        trainingGoals: ['STRENGTH', 'MUSCLE_BUILDING', 'GENERAL_FITNESS'],
+        tags: ['Bodyweight', 'Upper Body', 'Pull', 'Calisthenics'],
+      },
+    });
+
+    await prisma.exercise.update({
+      where: { id: 'ex_sys_dumbbell_rdl' },
+      data: {
+        exerciseCategory: 'STRENGTH',
+        exerciseMechanics: 'COMPOUND',
+        equipmentRequirement: 'REQUIRED',
+        availableEnvironments: ['GYM', 'HOME'],
+        trainingGoals: ['STRENGTH', 'MUSCLE_BUILDING', 'POSTURE'],
+        tags: ['Compound', 'Posterior Chain', 'Hinge', 'Dumbbells'],
+      },
+    });
+
+    // Seed structured muscle relations
+    const seedMuscleRelations = [
+      // Squat
+      { exerciseId: 'ex_sys_barbell_back_squat', muscle: 'QUADRICEPS', muscleGroup: 'LOWER_BODY', role: 'PRIMARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_barbell_back_squat', muscle: 'GLUTES', muscleGroup: 'LOWER_BODY', role: 'PRIMARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_barbell_back_squat', muscle: 'HAMSTRINGS', muscleGroup: 'LOWER_BODY', role: 'SECONDARY', activationLevel: 'MODERATE' },
+      { exerciseId: 'ex_sys_barbell_back_squat', muscle: 'CORE', muscleGroup: 'CORE', role: 'STABILIZER', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_barbell_back_squat', muscle: 'CALVES', muscleGroup: 'LOWER_BODY', role: 'STABILIZER', activationLevel: 'LOW' },
+      // Bench Press
+      { exerciseId: 'ex_sys_barbell_bench_press', muscle: 'CHEST', muscleGroup: 'UPPER_BODY', role: 'PRIMARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_barbell_bench_press', muscle: 'TRICEPS', muscleGroup: 'UPPER_BODY', role: 'SECONDARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_barbell_bench_press', muscle: 'SHOULDERS', muscleGroup: 'UPPER_BODY', role: 'SECONDARY', activationLevel: 'MODERATE' },
+      { exerciseId: 'ex_sys_barbell_bench_press', muscle: 'LATS', muscleGroup: 'UPPER_BODY', role: 'STABILIZER', activationLevel: 'LOW' },
+      // Pull-Up
+      { exerciseId: 'ex_sys_bodyweight_pull_up', muscle: 'LATS', muscleGroup: 'UPPER_BODY', role: 'PRIMARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_bodyweight_pull_up', muscle: 'BICEPS', muscleGroup: 'UPPER_BODY', role: 'SECONDARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_bodyweight_pull_up', muscle: 'UPPER_BACK', muscleGroup: 'UPPER_BODY', role: 'SECONDARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_bodyweight_pull_up', muscle: 'CORE', muscleGroup: 'CORE', role: 'STABILIZER', activationLevel: 'MODERATE' },
+      // RDL
+      { exerciseId: 'ex_sys_dumbbell_rdl', muscle: 'HAMSTRINGS', muscleGroup: 'LOWER_BODY', role: 'PRIMARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_dumbbell_rdl', muscle: 'GLUTES', muscleGroup: 'LOWER_BODY', role: 'PRIMARY', activationLevel: 'HIGH' },
+      { exerciseId: 'ex_sys_dumbbell_rdl', muscle: 'LOWER_BACK', muscleGroup: 'CORE', role: 'SECONDARY', activationLevel: 'MODERATE' },
+      { exerciseId: 'ex_sys_dumbbell_rdl', muscle: 'FOREARMS', muscleGroup: 'UPPER_BODY', role: 'STABILIZER', activationLevel: 'HIGH' },
+    ];
+
+    for (const mr of seedMuscleRelations) {
+      await prisma.exerciseMuscleRelation.upsert({
+        where: {
+          exerciseId_muscle_role: {
+            exerciseId: mr.exerciseId,
+            muscle: mr.muscle,
+            role: mr.role,
+          },
+        },
+        update: {
+          muscleGroup: mr.muscleGroup,
+          activationLevel: mr.activationLevel,
+        },
+        create: mr,
+      });
+    }
+
+    // Seed structured equipment relations
+    const seedEquipmentRelations = [
+      { exerciseId: 'ex_sys_barbell_back_squat', equipmentName: 'Olympic Barbell', requirementType: 'REQUIRED', equipmentCategory: 'FREE_WEIGHTS', availabilityContexts: ['GYM'], isOptional: false },
+      { exerciseId: 'ex_sys_barbell_back_squat', equipmentName: 'Squat Rack', requirementType: 'REQUIRED', equipmentCategory: 'BENCHES_SUPPORTS', availabilityContexts: ['GYM'], isOptional: false },
+      { exerciseId: 'ex_sys_barbell_bench_press', equipmentName: 'Olympic Barbell', requirementType: 'REQUIRED', equipmentCategory: 'FREE_WEIGHTS', alternatives: ['Dumbbells'], availabilityContexts: ['GYM'], isOptional: false },
+      { exerciseId: 'ex_sys_barbell_bench_press', equipmentName: 'Workout Bench', requirementType: 'REQUIRED', equipmentCategory: 'BENCHES_SUPPORTS', availabilityContexts: ['GYM'], isOptional: false },
+      { exerciseId: 'ex_sys_bodyweight_pull_up', equipmentName: 'Pull-Up Bar', requirementType: 'REQUIRED', equipmentCategory: 'BODYWEIGHT', alternatives: ['Gymnastic Rings', 'Lat Pulldown Machine'], availabilityContexts: ['GYM', 'HOME', 'OUTDOOR'], isOptional: false },
+      { exerciseId: 'ex_sys_dumbbell_rdl', equipmentName: 'Dumbbells', requirementType: 'REQUIRED', equipmentCategory: 'FREE_WEIGHTS', alternatives: ['Barbell', 'Kettlebells'], availabilityContexts: ['GYM', 'HOME'], isOptional: false },
+    ];
+
+    for (const er of seedEquipmentRelations) {
+      const existing = await prisma.exerciseEquipmentRelation.findFirst({
+        where: { exerciseId: er.exerciseId, equipmentName: er.equipmentName },
+      });
+      if (!existing) {
+        await prisma.exerciseEquipmentRelation.create({ data: er });
+      }
     }
   }
 
-  console.log('✅ FitCore Database Seeding Completed (Days 1-14: Advanced Workout Programming & Training Plans).');
+  console.log('✅ FitCore Database Seeding Completed (Days 1-14: Advanced Workout Programming & Day 65 Metadata Intelligence).');
 }
 
 main()

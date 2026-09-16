@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Image } from 'react-native';
 import { Text } from '../../../components/primitives/Text';
 import { Button } from '../../../components/primitives/Button';
 import { Card } from '../../../components/primitives/Card';
@@ -12,11 +12,16 @@ interface CompleteScreenProps {
 export const CompleteScreen: React.FC<CompleteScreenProps> = ({ onFinish }) => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Image
+        source={require('../../../assets/logo.png')}
+        style={styles.brandLogo}
+        resizeMode="contain"
+      />
       <View style={styles.badgeWrap}>
         <Text style={styles.badgeIcon}>🎉</Text>
       </View>
 
-      <Text style={styles.title}>Welcome to FitCore</Text>
+      <Text style={styles.title}>Welcome to FitBeat</Text>
       <Text style={styles.subtitle}>
         Second Wind Athletic Club onboarding is officially complete! Your profile is verified and active.
       </Text>
@@ -87,6 +92,12 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     paddingBottom: 40,
+  },
+  brandLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    marginTop: 16,
   },
   badgeWrap: {
     width: 72,

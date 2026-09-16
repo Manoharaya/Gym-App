@@ -86,7 +86,7 @@ export const MarketplaceScreen: React.FC = () => {
       title: 'CloudGate Turnstile Pro',
       tagline: 'Automated QR and RFID turnstile hardware controller with tailgating detection',
       description:
-        'Connects directly to Day 48 hardware platform and high-speed optical turnstiles. Enforces sub-50ms barcode, NFC, and QR check-in validations.',
+        'Connects directly to high-speed optical turnstiles and hardware controllers. Enforces sub-50ms barcode, NFC, and QR check-in validations.',
       listingType: 'INTEGRATION',
       category: 'Hardware & Integrations',
       categorySlug: 'integrations',
@@ -110,13 +110,13 @@ export const MarketplaceScreen: React.FC = () => {
       id: 'mkt-2',
       slug: 'ai-receptionist-ultra',
       title: 'Aura AI Voice Receptionist',
-      tagline: 'Autonomous 24/7 inbound phone receptionist powered by Day 19 AI Orchestrator',
+      tagline: 'Autonomous 24/7 inbound phone receptionist powered by AI Orchestrator',
       description:
         'Answers gym calls instantly, provides class schedules, books trial passes, answers pricing inquiries, and escalates emergencies directly to front-desk staff.',
       listingType: 'AI_AGENT',
       category: 'AI Agents & Assistants',
       categorySlug: 'ai-agents',
-      publisherName: 'FitCore Labs (First-Party)',
+      publisherName: 'FitBeat Labs (First-Party)',
       verified: true,
       featured: true,
       version: '3.1.2',
@@ -160,7 +160,7 @@ export const MarketplaceScreen: React.FC = () => {
       title: 'Xero Real-Time Sync Bridge',
       tagline: 'Instant ledger synchronization, chart-of-accounts mapping, and invoice settlement',
       description:
-        'Builds upon Day 43 Accounting Integration to deliver automated end-of-day bank reconciliations, GST classification, and journal entry exports.',
+        'Builds upon Accounting Integration to deliver automated end-of-day bank reconciliations, GST classification, and journal entry exports.',
       listingType: 'INTEGRATION',
       category: 'Hardware & Integrations',
       categorySlug: 'integrations',
@@ -249,7 +249,7 @@ export const MarketplaceScreen: React.FC = () => {
       listingId: 'mkt-2',
       title: 'Aura AI Voice Receptionist',
       listingType: 'AI_AGENT',
-      publisherName: 'FitCore Labs (First-Party)',
+      publisherName: 'FitBeat Labs (First-Party)',
       version: '3.1.0',
       latestVersion: '3.1.2',
       status: 'ACTIVE',
@@ -370,7 +370,7 @@ export const MarketplaceScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>FitCore Marketplace</Text>
+          <Text style={styles.title}>FitBeat Marketplace</Text>
           <Badge variant="primary" label="Ecosystem" />
         </View>
         <Text style={styles.subtitle}>
@@ -451,7 +451,7 @@ export const MarketplaceScreen: React.FC = () => {
               </View>
               <Text style={styles.featuredTitle}>Aura AI Voice Receptionist</Text>
               <Text style={styles.featuredDesc}>
-                Zero missed sales calls. Powered by Day 19 AI Orchestrator to autonomously handle trial bookings, class times, and receptionist queries 24/7.
+                Zero missed sales calls. Powered by AI Orchestrator to autonomously handle trial bookings, class times, and receptionist queries 24/7.
               </Text>
               <View style={styles.featuredFooter}>
                 <Text style={styles.featuredPricing}>Usage-based ($0.08/min)</Text>
@@ -697,7 +697,7 @@ export const MarketplaceScreen: React.FC = () => {
                     <Card style={styles.healthPiiWarningCard}>
                       <Badge variant="danger" label="HEALTH PII ISOLATION REQUIREMENT" />
                       <Text style={styles.healthPiiNoticeText}>
-                        This app requests member biometric data. FitCore maintains strict medical data isolation. This grant does NOT grant biometric access until individual members grant consent.
+                        This app requests member biometric data. FitBeat maintains strict medical data isolation. This grant does NOT grant biometric access until individual members grant consent.
                       </Text>
                       <TouchableOpacity
                         style={styles.consentCheckboxRow}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Image } from 'react-native';
 import { Text } from '../../../components/primitives/Text';
 import { Button } from '../../../components/primitives/Button';
 import { Card } from '../../../components/primitives/Card';
@@ -29,8 +29,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNext }) => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.logoWrap}>
+        <Image
+          source={require('../../../assets/logo.png')}
+          style={styles.brandLogo}
+          resizeMode="contain"
+        />
+      </View>
+
       <StepHeader
-        badge="FitCore Onboarding"
+        badge="FitBeat Onboarding"
         title="Welcome to Second Wind Athletic Club"
         subtitle="Before you hit the training floor, we need to complete your profile, safety screening, and club agreements."
       />
@@ -94,6 +102,15 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 40,
+  },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  brandLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
   },
   infoCard: {
     backgroundColor: '#1E1E1E',

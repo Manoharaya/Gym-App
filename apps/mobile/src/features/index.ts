@@ -29,3 +29,5 @@ export * from './ai';
 export * from './automation';
 export * from './security';
 export * from './privacy';
+export { WearablePrivacyScreen } from './privacy';
+

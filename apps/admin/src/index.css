@@ -74,13 +74,19 @@ h1, h2, h3, h4, .brand-name, .kpi-value {
 .brand-logo {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  box-shadow: 0 4px 14px var(--primary-glow);
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+}
+
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-md);
 }
 
 .brand-text {

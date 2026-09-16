@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform, Image } from 'react-native';
 import { getAppConfig } from '@fitcore/config';
 import { Screen } from '../components/primitives/Screen';
 import { Text } from '../components/primitives/Text';
@@ -41,19 +41,21 @@ export const AppShell: React.FC = () => {
         {/* Header Branding */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
-            <View style={styles.brandBadge}>
-              <Text style={styles.brandIconText}>FC</Text>
-            </View>
+            <Image
+              source={require('../assets/logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
             <View>
               <Text variant="h1" style={styles.appName}>
-                FitCore
+                FitBeat
               </Text>
               <Text variant="caption" style={styles.tagline}>
-                Cross-Platform Fitness SaaS Architecture
+                Intelligent Athletic Performance Platform
               </Text>
             </View>
           </View>
-          <Badge label="DAY 1 FOUNDATION" variant="primary" />
+          <Badge label="ENTERPRISE" variant="primary" />
         </View>
 
         <Divider spacingSize={3} />
@@ -75,7 +77,7 @@ export const AppShell: React.FC = () => {
 
           <View style={styles.launcherGrid}>
             <Button
-              title="🏃‍♂️ Enter as Member (Days 1–10)"
+              title="🏃‍♂️ Enter as Member"
               variant="accent"
               size="sm"
               onPress={() => {
@@ -94,7 +96,7 @@ export const AppShell: React.FC = () => {
               style={styles.launcherBtn}
             />
             <Button
-              title="📋 Member Onboarding Flow (Day 4)"
+              title="📋 Member Onboarding Flow"
               variant="outline"
               size="sm"
               onPress={() => {
@@ -153,7 +155,7 @@ export const AppShell: React.FC = () => {
               style={styles.launcherBtn}
             />
             <Button
-              title="👥 Staff Directory (Day 11)"
+              title="👥 Staff Directory"
               variant="primary"
               size="sm"
               onPress={() => {
@@ -163,7 +165,7 @@ export const AppShell: React.FC = () => {
               style={styles.launcherBtn}
             />
             <Button
-              title="🏋️ Trainer Directory (Day 11)"
+              title="🏋️ Trainer Directory"
               variant="primary"
               size="sm"
               onPress={() => {
@@ -173,7 +175,7 @@ export const AppShell: React.FC = () => {
               style={styles.launcherBtn}
             />
             <Button
-              title="🤝 Client Roster & Assignment (Day 11)"
+              title="🤝 Client Roster & Assignment"
               variant="accent"
               size="sm"
               onPress={() => {
@@ -191,7 +193,7 @@ export const AppShell: React.FC = () => {
             Platform Foundation
           </Text>
           <Text variant="bodySmall" style={styles.summaryDesc}>
-            Production-grade, scalable multi-tenant architecture verifying all Day 1 subsystems.
+            Production-grade, scalable multi-tenant architecture verifying all core platform subsystems.
           </Text>
 
           <View style={styles.metaGrid}>
@@ -339,7 +341,7 @@ export const AppShell: React.FC = () => {
         </Card>
 
         <Text variant="caption" align="center" style={styles.footerNote}>
-          FitCore Monorepo · Architecture Foundation v0.1.0 · Ready for Day 2
+          FitBeat Monorepo · High-Performance Athletic Club Platform v0.1.0
         </Text>
       </ScrollView>
     </Screen>
@@ -380,19 +382,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
   },
-  brandBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: themeColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandIconText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 20,
-    letterSpacing: -1,
+  brandLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
   appName: {
     color: '#FFFFFF',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { Screen, Card, Badge, Icon, MetricCard } from '../../../components/primitives';
 import { themeColors, typography, spacing, radius } from '../../../theme';
 
@@ -23,9 +23,16 @@ export const SuperadminHomeScreen: React.FC = () => {
   return (
     <Screen safeAreaEdges={['top', 'bottom']} statusBarStyle="light">
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>GLOBAL PLATFORM TELEMETRY · SUPERADMIN</Text>
-          <Text style={styles.adminTitle}>FitCore Multi-Tenant Cloud</Text>
+        <View style={styles.headerTitleRow}>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>GLOBAL PLATFORM TELEMETRY · SUPERADMIN</Text>
+            <Text style={styles.adminTitle}>FitBeat Multi-Tenant Cloud</Text>
+          </View>
         </View>
         <Badge label="SYSTEM HEALTH: 99.98%" variant="success" />
       </View>
@@ -138,6 +145,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: themeColors.border,
     backgroundColor: themeColors.surface,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2.5],
+  },
+  headerLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
   headerLeft: {
     gap: 2,

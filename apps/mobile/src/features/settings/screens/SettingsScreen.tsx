@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen, Card, Icon } from '../../../components/primitives';
 import { themeColors, typography, spacing } from '../../../theme';
@@ -53,7 +53,7 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.settingRow}>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Biometric App Lock</Text>
-              <Text style={styles.settingDescription}>Require FaceID / TouchID to open FitCore</Text>
+              <Text style={styles.settingDescription}>Require FaceID / TouchID to open FitBeat</Text>
             </View>
             <Switch
               value={biometrics}
@@ -105,7 +105,12 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Build & Version Info */}
         <View style={styles.footerInfo}>
-          <Text style={styles.versionText}>FitCore Mobile Platform v0.1.0</Text>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.footerLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.versionText}>FitBeat Mobile Platform v0.1.0</Text>
           <Text style={styles.tenantInfo}>Multi-Tenant Architecture · Second Wind Athletic Club</Text>
         </View>
       </ScrollView>
@@ -177,8 +182,14 @@ const styles = StyleSheet.create({
   },
   footerInfo: {
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingVertical: spacing[4],
+  },
+  footerLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    marginBottom: 4,
   },
   versionText: {
     ...typography.caption,

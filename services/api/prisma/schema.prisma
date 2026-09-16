@@ -68,6 +68,7 @@ model Organisation {
   trainerNotes         TrainerNote[]
   personalTrainingSessions PersonalTrainingSession[]
   exercises            Exercise[]
+  exerciseMetadataItems ExerciseMetadataItem[]
   workoutTemplates     WorkoutTemplate[]
   workouts             Workout[]
   trainingPlans        TrainingPlan[]
@@ -2395,7 +2396,16 @@ model Exercise {
   rangeOfMotion         String?                   // e.g., "Full depth below parallel hip crease"
   stabilizerMuscles     Json?                     // string[]
   educationalTips       Json?                     // string[]
+  secondaryMovementPatterns Json?                   // string[]
+  repetitionType        String?                   @default("REPETITION") // REPETITION, ISOMETRIC_HOLD, DISTANCE_INTERVAL, TIME_INTERVAL, COMPLEX
+  tempoStructure        Json?                     // { eccentricSeconds: number, bottomHoldSeconds: number, concentricSeconds: number, topHoldSeconds: number, notes?: string }
   movementPatternMetadata Json?                   // cameraRequirements, expectedBodyPositions, supportedAnalysis, etc.
+  exerciseCategory      String?                   @default("STRENGTH") // STRENGTH, CARDIO, MOBILITY, FLEXIBILITY, BALANCE, CORE, REHABILITATION_SUPPORT, RECOVERY, BODYWEIGHT
+  exerciseMechanics     String?                   // COMPOUND, ISOLATION, COMBINATION, ISOMETRIC, PLYOMETRIC, CARDIO, MOBILITY, STRETCH
+  equipmentRequirement  String?                   @default("REQUIRED") // REQUIRED, OPTIONAL, NONE
+  availableEnvironments Json?                     // string[] e.g. ["HOME", "GYM", "OUTDOOR", "STUDIO"]
+  trainingGoals         Json?                     // string[] e.g. ["STRENGTH", "MUSCLE_BUILDING", "ENDURANCE", "FAT_LOSS", "MOBILITY", "GENERAL_FITNESS"]
+  tags                  Json?                     // string[] e.g. ["Beginner Friendly", "No Equipment", "Home Workout"]
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
   archivedAt            DateTime?
@@ -2403,6 +2413,7 @@ model Exercise {
   organisation          Organisation?             @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   createdByUser         User?                     @relation("ExercisesCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
   media                 ExerciseMedia[]
+  instruction           ExerciseInstruction?
   instructionSteps      ExerciseInstructionStep[]
   movementPhases        ExerciseMovementPhase[]
   commonMistakes        ExerciseCommonMistake[]
@@ -2410,6 +2421,7 @@ model Exercise {
   variationsFrom        ExerciseVariation[]       @relation("BaseExerciseVariations")
   variationsTo          ExerciseVariation[]       @relation("TargetExerciseVariations")
   equipmentRelations    ExerciseEquipmentRelation[]
+  muscleRelations       ExerciseMuscleRelation[]
   templateExercises     WorkoutTemplateExercise[]
   workoutExercises      WorkoutExercise[]
   progressionRules      WorkoutProgressionRule[]
@@ -2424,6 +2436,9 @@ model Exercise {
   @@index([movementPattern])
   @@index([primaryMuscleGroup])
   @@index([equipment])
+  @@index([exerciseCategory])
+  @@index([exerciseMechanics])
+  @@index([equipmentRequirement])
   @@index([slug])
   @@map("exercises")
 }
@@ -2459,6 +2474,8 @@ model ExerciseMedia {
   updatedAt             DateTime                  @default(now()) @updatedAt
 
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  instructionSteps      ExerciseInstructionStep[]
+  movementPhases        ExerciseMovementPhase[]
 
   @@index([exerciseId])
   @@index([mediaType])
@@ -2468,21 +2485,75 @@ model ExerciseMedia {
   @@map("exercise_media")
 }
 
-model ExerciseInstructionStep {
+model ExerciseInstruction {
   id                    String                    @id @default(cuid())
-  exerciseId            String
-  stepNumber            Int                       @default(1)
-  phase                 String?                   // PREPARATION, SETUP, EXECUTION, BREATHING, COMPLETION, SAFETY
-  title                 String
-  description           String
-  coachingCue           String?
-  mediaUrl              String?
+  exerciseId            String                    @unique
+  organisationId        String?
+  title                 String?
+  overview              String?
+  preparationGuide      String?
+  startingPosition      String?
+  executionSummary      String?
+  breathingSummary      String?
+  completionSummary     String?
+  safetySummary         String?
+  status                String                    @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  version               Int                       @default(1)
+  createdByUserId       String?
+  updatedByUserId       String?
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @default(now()) @updatedAt
 
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  steps                 ExerciseInstructionStep[]
+
+  @@index([organisationId])
+  @@index([status])
+  @@map("exercise_instructions")
+}
+
+model ExerciseInstructionStep {
+  id                    String                    @id @default(cuid())
+  exerciseId            String
+  instructionId         String?
+  stepNumber            Int                       @default(1)
+  stepType              String                    @default("EXECUTION") // PREPARATION, START_POSITION, EXECUTION, HOLD, RETURN, BREATHING, COMPLETION
+  phase                 String?                   // PREPARATION, SETUP, EXECUTION, BREATHING, COMPLETION, SAFETY
+  movementPhase         String?                   // SETUP, START, ECCENTRIC, TRANSITION, CONCENTRIC, HOLD, FINISH
+  title                 String
+  description           String
+  detailedInstruction   String?
+  coachingCue           String?
+  bodyPosition          String?
+  breathing             String?
+  tempo                 String?
+  durationSeconds       Int?
+  holdDurationSeconds   Int?
+  repetitions           Int?
+  visualCue             String?
+  visualCueCategory     String?                   // POSTURE, ALIGNMENT, BREATHING, TEMPO, RANGE_OF_MOTION, SAFETY, FOCUS
+  trainerTip            String?
+  safetyNote            String?
+  mediaId               String?
+  mediaUrl              String?
+  videoStartTimeSeconds Float?
+  videoEndTimeSeconds   Float?
+  status                String                    @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @default(now()) @updatedAt
+
+  exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  instruction           ExerciseInstruction?      @relation(fields: [instructionId], references: [id], onDelete: SetNull)
+  media                 ExerciseMedia?            @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  phaseId               String?
+  movementPhaseRelation ExerciseMovementPhase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
 
   @@index([exerciseId, stepNumber])
+  @@index([instructionId])
+  @@index([mediaId])
+  @@index([phaseId])
+  @@index([stepType])
+  @@index([status])
   @@map("exercise_instruction_steps")
 }
 
@@ -2490,17 +2561,43 @@ model ExerciseMovementPhase {
   id                    String                    @id @default(cuid())
   exerciseId            String
   phaseName             String                    // SETUP, DESCENT, BOTTOM, ASCENT, LOCKOUT
+  phaseType             String                    @default("ECCENTRIC") // SETUP, START_POSITION, ECCENTRIC, TRANSITION_BOTTOM, ISOMETRIC_HOLD, CONCENTRIC, TRANSITION_TOP, LOCKOUT_FINISH, RESET_RETURN
+  title                 String?
+  description           String?
   orderIndex            Int                       @default(0)
   cueText               String?
   timestampMs           Int?
   keyCheckpoints        Json?                     // string[]
+  bodyPosition          String?                   // STANDING, SQUATTING, HINGED, SUPINE, PRONE, KNEELING, HANGING, SEATED, PLANK, QUADRUPED, INVERTED
+  bodyOrientation       String?                   // UPRIGHT, HORIZONTAL, INCLINED, DECLINED, SIDEWAYS
+  jointAlignments       Json?                     // JointAlignmentGuidance[]
+  rangeOfMotionType     String?                   // FULL, PARTIAL, DEEP, PARALLEL, TERMINAL, ISOMETRIC
+  rangeOfMotionNotes    String?
+  breathingPattern      String?                   // INHALE_DESCENT, EXHALE_EFFORT, HOLD_VALSALVA, CONTINUOUS_RHYTHMIC, EXHALE_RECOVERY
+  breathingNotes        String?
+  tempoSeconds          Float?
+  holdDurationSeconds   Float?
+  visualCues            Json?                     // ExercisePhaseVisualCue[]
+  commonMistakes        Json?                     // ExercisePhaseMistake[]
+  safetyNotes           String?
+  mediaId               String?
   mediaUrl              String?
+  videoStartTimeSeconds Float?
+  videoEndTimeSeconds   Float?
+  status                String                    @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @default(now()) @updatedAt
 
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  media                 ExerciseMedia?            @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  instructionSteps      ExerciseInstructionStep[]
+  commonMistakeRecords  ExerciseCommonMistake[]
+  safetyGuidelineRecords ExerciseSafetyGuideline[]
 
   @@index([exerciseId, orderIndex])
+  @@index([mediaId])
+  @@index([phaseType])
+  @@index([status])
   @@map("exercise_movement_phases")
 }
 
@@ -2513,12 +2610,15 @@ model ExerciseCommonMistake {
   severity              String                    @default("MODERATE") // MINOR, MODERATE, SEVERE
   mediaUrl              String?
   sortOrder             Int                       @default(0)
+  phaseId               String?
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @default(now()) @updatedAt
 
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  movementPhase         ExerciseMovementPhase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
 
   @@index([exerciseId])
+  @@index([phaseId])
   @@map("exercise_common_mistakes")
 }
 
@@ -2530,12 +2630,15 @@ model ExerciseSafetyGuideline {
   description           String
   severity              String                    @default("STANDARD") // LOW, STANDARD, HIGH, CRITICAL
   reviewedBy            String?
+  phaseId               String?
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @default(now()) @updatedAt
 
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  movementPhase         ExerciseMovementPhase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
 
   @@index([exerciseId])
+  @@index([phaseId])
   @@map("exercise_safety_guidelines")
 }
 
@@ -2560,6 +2663,10 @@ model ExerciseEquipmentRelation {
   id                    String                    @id @default(cuid())
   exerciseId            String
   equipmentName         String
+  requirementType       String                    @default("REQUIRED") // REQUIRED, OPTIONAL, ALTERNATIVE, NONE
+  equipmentCategory     String?                   // FREE_WEIGHTS, MACHINES, BENCHES_SUPPORTS, BODYWEIGHT, ACCESSORIES, CABLE, OTHER
+  alternatives          Json?                     // string[] e.g. ["Resistance Band", "Dumbbells"]
+  availabilityContexts  Json?                     // string[] e.g. ["GYM", "HOME", "OUTDOOR"]
   isOptional            Boolean                   @default(false)
   notes                 String?
   createdAt             DateTime                  @default(now())
@@ -2567,7 +2674,51 @@ model ExerciseEquipmentRelation {
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@index([exerciseId])
+  @@index([equipmentName])
   @@map("exercise_equipment_relations")
+}
+
+model ExerciseMuscleRelation {
+  id                    String                    @id @default(cuid())
+  exerciseId            String
+  muscle                String                    // CHEST, UPPER_BACK, LATS, TRAPS, SHOULDERS, BICEPS, TRICEPS, FOREARMS, ABDOMINALS, OBLIQUES, LOWER_BACK, GLUTES, QUADRICEPS, HAMSTRINGS, CALVES, HIP_FLEXORS, ADDUCTORS, ABDUCTORS, etc.
+  muscleGroup           String                    // UPPER_BODY, LOWER_BODY, CORE, FULL_BODY
+  role                  String                    @default("PRIMARY") // PRIMARY, SECONDARY, STABILIZER
+  activationLevel       String?                   @default("HIGH") // HIGH, MODERATE, LOW
+  notes                 String?
+  createdAt             DateTime                  @default(now())
+
+  exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, muscle, role])
+  @@index([exerciseId])
+  @@index([muscle])
+  @@index([muscleGroup])
+  @@index([role])
+  @@map("exercise_muscle_relations")
+}
+
+model ExerciseMetadataItem {
+  id                    String                    @id @default(cuid())
+  organisationId        String?
+  type                  String                    // MUSCLE, EQUIPMENT, CATEGORY, GOAL, TAG
+  code                  String                    // e.g. CHEST, DUMBBELL, STRENGTH, MUSCLE_BUILDING
+  name                  String                    // Human readable label e.g. "Chest (Pectorals)", "Dumbbell"
+  group                 String?                   // e.g. "UPPER_BODY", "FREE_WEIGHTS"
+  description           String?
+  icon                  String?
+  sortOrder             Int                       @default(0)
+  status                String                    @default("ACTIVE") // ACTIVE, ARCHIVED
+  metadata              Json?                     // Qualitative extra config
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @default(now()) @updatedAt
+
+  organisation          Organisation?             @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, type, code])
+  @@index([type, status])
+  @@index([organisationId])
+  @@map("exercise_metadata_items")
 }
 
 model WorkoutTemplate {

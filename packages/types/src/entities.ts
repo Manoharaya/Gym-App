@@ -1589,26 +1589,218 @@ export type VariationRelationshipType =
   | 'VARIATION'
   | 'REGRESSION'
   | 'PROGRESSION'
-  | 'ALTERNATIVE';
+  | 'ALTERNATIVE'
+  | 'EQUIPMENT_SUBSTITUTE';
+
+export type InstructionStepType =
+  | 'PREPARATION'
+  | 'START_POSITION'
+  | 'EXECUTION'
+  | 'HOLD'
+  | 'RETURN'
+  | 'BREATHING'
+  | 'COMPLETION';
+
+export type InstructionMovementPhase =
+  | 'SETUP'
+  | 'START'
+  | 'ECCENTRIC'
+  | 'TRANSITION'
+  | 'CONCENTRIC'
+  | 'HOLD'
+  | 'FINISH';
+
+export type VisualCueCategory =
+  | 'POSTURE'
+  | 'ALIGNMENT'
+  | 'BREATHING'
+  | 'TEMPO'
+  | 'RANGE_OF_MOTION'
+  | 'SAFETY'
+  | 'FOCUS';
+
+export type InstructionStatus =
+  | 'DRAFT'
+  | 'REVIEW'
+  | 'PUBLISHED'
+  | 'ARCHIVED';
+
+export type MovementPhaseType =
+  | 'SETUP'
+  | 'START_POSITION'
+  | 'ECCENTRIC'
+  | 'TRANSITION_BOTTOM'
+  | 'ISOMETRIC_HOLD'
+  | 'CONCENTRIC'
+  | 'TRANSITION_TOP'
+  | 'LOCKOUT_FINISH'
+  | 'RESET_RETURN';
+
+export type BodyPositionType =
+  | 'STANDING'
+  | 'SQUATTING'
+  | 'HINGED'
+  | 'SUPINE'
+  | 'PRONE'
+  | 'KNEELING'
+  | 'HANGING'
+  | 'SEATED'
+  | 'PLANK'
+  | 'QUADRUPED'
+  | 'INVERTED'
+  | 'OTHER';
+
+export type BodyOrientationType =
+  | 'UPRIGHT'
+  | 'HORIZONTAL'
+  | 'INCLINED'
+  | 'DECLINED'
+  | 'SIDEWAYS';
+
+export type JointRegion =
+  | 'ANKLES'
+  | 'KNEES'
+  | 'HIPS'
+  | 'LUMBAR_SPINE'
+  | 'THORACIC_SPINE'
+  | 'CERVICAL_SPINE'
+  | 'SCAPULAE'
+  | 'SHOULDERS'
+  | 'ELBOWS'
+  | 'WRISTS'
+  | 'CORE_PELVIS';
+
+export type RangeOfMotionType =
+  | 'FULL'
+  | 'PARTIAL'
+  | 'DEEP'
+  | 'PARALLEL'
+  | 'TERMINAL'
+  | 'ISOMETRIC';
+
+export type BreathingPatternType =
+  | 'INHALE_DESCENT'
+  | 'EXHALE_EFFORT'
+  | 'HOLD_VALSALVA'
+  | 'CONTINUOUS_RHYTHMIC'
+  | 'EXHALE_RECOVERY';
+
+export type ExerciseRepetitionType =
+  | 'REPETITION'
+  | 'ISOMETRIC_HOLD'
+  | 'DISTANCE_INTERVAL'
+  | 'TIME_INTERVAL'
+  | 'COMPLEX';
+
+export interface JointAlignmentGuidance {
+  joint: JointRegion | string;
+  alignment: string;
+  status?: 'OPTIMAL' | 'ACCEPTABLE' | 'FAULT';
+  cue?: string;
+  angleDegrees?: number;
+}
+
+export interface ExercisePhaseVisualCue {
+  text: string;
+  category?: VisualCueCategory | string;
+  emphasis?: 'STANDARD' | 'CRITICAL';
+}
+
+export interface ExercisePhaseMistake {
+  mistake: string;
+  consequence?: string;
+  correction: string;
+  severity?: MistakeSeverity;
+}
+
+export interface TempoStructure {
+  eccentricSeconds?: number;
+  bottomHoldSeconds?: number;
+  concentricSeconds?: number;
+  topHoldSeconds?: number;
+  notes?: string;
+}
+
+export interface ExerciseInstruction extends BaseEntity {
+  exerciseId: string;
+  organisationId?: string | null;
+  title?: string | null;
+  overview?: string | null;
+  preparationGuide?: string | null;
+  startingPosition?: string | null;
+  executionSummary?: string | null;
+  breathingSummary?: string | null;
+  completionSummary?: string | null;
+  safetySummary?: string | null;
+  status: InstructionStatus | string;
+  version: number;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
+  steps?: ExerciseInstructionStep[];
+}
 
 export interface ExerciseInstructionStep extends BaseEntity {
   exerciseId: string;
+  instructionId?: string | null;
   stepNumber: number;
+  stepType?: InstructionStepType | string | null;
   phase?: InstructionPhaseType | string | null;
   title: string;
   description: string;
+  detailedInstruction?: string | null;
   coachingCue?: string | null;
+  movementPhase?: InstructionMovementPhase | string | null;
+  phaseId?: string | null;
+  bodyPosition?: string | null;
+  breathing?: string | null;
+  tempo?: string | null;
+  durationSeconds?: number | null;
+  holdDurationSeconds?: number | null;
+  repetitions?: number | null;
+  visualCue?: string | null;
+  visualCueCategory?: VisualCueCategory | string | null;
+  trainerTip?: string | null;
+  safetyNote?: string | null;
+  mediaId?: string | null;
   mediaUrl?: string | null;
+  videoStartTimeSeconds?: number | null;
+  videoEndTimeSeconds?: number | null;
+  status?: InstructionStatus | string;
+  media?: ExerciseMedia | null;
+  movementPhaseRelation?: ExerciseMovementPhase | null;
 }
 
 export interface ExerciseMovementPhase extends BaseEntity {
   exerciseId: string;
   phaseName: string;
+  phaseType?: MovementPhaseType | string;
+  title?: string | null;
+  description?: string | null;
   orderIndex: number;
   cueText?: string | null;
   timestampMs?: number | null;
   keyCheckpoints?: string[] | null;
+  bodyPosition?: BodyPositionType | string | null;
+  bodyOrientation?: BodyOrientationType | string | null;
+  jointAlignments?: JointAlignmentGuidance[] | null;
+  rangeOfMotionType?: RangeOfMotionType | string | null;
+  rangeOfMotionNotes?: string | null;
+  breathingPattern?: BreathingPatternType | string | null;
+  breathingNotes?: string | null;
+  tempoSeconds?: number | null;
+  holdDurationSeconds?: number | null;
+  visualCues?: ExercisePhaseVisualCue[] | null;
+  commonMistakes?: ExercisePhaseMistake[] | null;
+  safetyNotes?: string | null;
+  mediaId?: string | null;
   mediaUrl?: string | null;
+  videoStartTimeSeconds?: number | null;
+  videoEndTimeSeconds?: number | null;
+  status?: string;
+  media?: ExerciseMedia | null;
+  instructionSteps?: ExerciseInstructionStep[];
+  commonMistakeRecords?: ExerciseCommonMistake[];
+  safetyGuidelineRecords?: ExerciseSafetyGuideline[];
 }
 
 export interface ExerciseCommonMistake extends BaseEntity {
@@ -1619,6 +1811,8 @@ export interface ExerciseCommonMistake extends BaseEntity {
   severity: MistakeSeverity;
   mediaUrl?: string | null;
   sortOrder: number;
+  phaseId?: string | null;
+  movementPhase?: ExerciseMovementPhase | null;
 }
 
 export interface ExerciseSafetyGuideline extends BaseEntity {
@@ -1628,6 +1822,8 @@ export interface ExerciseSafetyGuideline extends BaseEntity {
   description: string;
   severity: SafetySeverity;
   reviewedBy?: string | null;
+  phaseId?: string | null;
+  movementPhase?: ExerciseMovementPhase | null;
 }
 
 export interface ExerciseVariation extends BaseEntity {
@@ -1639,11 +1835,112 @@ export interface ExerciseVariation extends BaseEntity {
   targetExercise?: Exercise;
 }
 
+// ==========================================
+// DAY 65: MUSCLES, EQUIPMENT & EXERCISE METADATA INTELLIGENCE
+// ==========================================
+
+export type MuscleRole = 'PRIMARY' | 'SECONDARY' | 'STABILIZER';
+
+export type MuscleActivationLevel = 'LOW' | 'MODERATE' | 'HIGH';
+
+export type MuscleTaxonomyGroup = 'UPPER_BODY' | 'LOWER_BODY' | 'CORE' | 'FULL_BODY';
+
+export type EquipmentRequirementType = 'REQUIRED' | 'OPTIONAL' | 'ALTERNATIVE' | 'NONE';
+
+export type EquipmentCategoryType =
+  | 'FREE_WEIGHTS'
+  | 'MACHINES'
+  | 'BENCHES_SUPPORTS'
+  | 'BODYWEIGHT'
+  | 'ACCESSORIES'
+  | 'CABLE'
+  | 'OTHER';
+
+export type EquipmentAvailabilityContext = 'HOME' | 'GYM' | 'OUTDOOR' | 'STUDIO' | 'NONE';
+
+export type ExerciseCategoryType =
+  | 'STRENGTH'
+  | 'CARDIO'
+  | 'MOBILITY'
+  | 'FLEXIBILITY'
+  | 'BALANCE'
+  | 'CORE'
+  | 'REHABILITATION_SUPPORT'
+  | 'RECOVERY'
+  | 'BODYWEIGHT';
+
+export type ExerciseMechanics =
+  | 'COMPOUND'
+  | 'ISOLATION'
+  | 'COMBINATION'
+  | 'ISOMETRIC'
+  | 'PLYOMETRIC'
+  | 'CARDIO'
+  | 'MOBILITY'
+  | 'STRETCH';
+
+export type TrainingGoalType =
+  | 'STRENGTH'
+  | 'MUSCLE_BUILDING'
+  | 'ENDURANCE'
+  | 'FAT_LOSS'
+  | 'MOBILITY'
+  | 'FLEXIBILITY'
+  | 'BALANCE'
+  | 'GENERAL_FITNESS'
+  | 'PERFORMANCE';
+
+export type MetadataItemType = 'MUSCLE' | 'EQUIPMENT' | 'CATEGORY' | 'GOAL' | 'TAG';
+
+export interface ExerciseMuscleRelation extends BaseEntity {
+  exerciseId: string;
+  muscle: string;
+  muscleGroup: MuscleTaxonomyGroup | string;
+  role: MuscleRole;
+  activationLevel?: MuscleActivationLevel | null;
+  notes?: string | null;
+  exercise?: Exercise;
+}
+
 export interface ExerciseEquipmentRelation extends BaseEntity {
   exerciseId: string;
   equipmentName: string;
+  requirementType?: EquipmentRequirementType | string;
+  equipmentCategory?: EquipmentCategoryType | string | null;
+  alternatives?: string[] | null;
+  availabilityContexts?: EquipmentAvailabilityContext[] | string[] | null;
   isOptional: boolean;
   notes?: string | null;
+  exercise?: Exercise;
+}
+
+export interface ExerciseMetadataItem extends BaseEntity {
+  organisationId?: string | null;
+  type: MetadataItemType | string;
+  code: string;
+  name: string;
+  group?: string | null;
+  description?: string | null;
+  icon?: string | null;
+  sortOrder: number;
+  status: 'ACTIVE' | 'ARCHIVED';
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface ExerciseMetadataCompleteness {
+  overallPercentage: number;
+  isComplete: boolean;
+  missingFields: string[];
+  scoreBreakdown: {
+    primaryMuscle: boolean;
+    equipment: boolean;
+    movementPattern: boolean;
+    exerciseCategory: boolean;
+    exerciseMechanics: boolean;
+    trainingGoals: boolean;
+    instructions: boolean;
+    media: boolean;
+  };
 }
 export type PrescriptionType =
   | 'REPETITIONS'
@@ -1701,7 +1998,16 @@ export interface Exercise extends BaseEntity {
   rangeOfMotion?: string | null;
   stabilizerMuscles?: MuscleGroup[] | string[] | null;
   educationalTips?: string[] | null;
+  secondaryMovementPatterns?: string[] | null;
+  repetitionType?: ExerciseRepetitionType | string | null;
+  tempoStructure?: TempoStructure | null;
   movementPatternMetadata?: Record<string, any> | null;
+  exerciseCategory?: ExerciseCategoryType | string | null;
+  exerciseMechanics?: ExerciseMechanics | string | null;
+  equipmentRequirement?: EquipmentRequirementType | string | null;
+  availableEnvironments?: EquipmentAvailabilityContext[] | string[] | null;
+  trainingGoals?: TrainingGoalType[] | string[] | null;
+  tags?: string[] | null;
   archivedAt?: string | null;
   media?: ExerciseMedia[];
   instructionSteps?: ExerciseInstructionStep[];
@@ -1711,6 +2017,8 @@ export interface Exercise extends BaseEntity {
   variationsFrom?: ExerciseVariation[];
   variationsTo?: ExerciseVariation[];
   equipmentRelations?: ExerciseEquipmentRelation[];
+  muscleRelations?: ExerciseMuscleRelation[];
+  instruction?: ExerciseInstruction | null;
   createdByUser?: User;
 }
 

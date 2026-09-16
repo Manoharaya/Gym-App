@@ -13,10 +13,32 @@ export interface ExerciseKnowledgePayload {
   stabilizerMuscles: string[];
   equipment: string;
   equipmentRequirements: string[];
+  exerciseCategory?: string | null;
+  exerciseMechanics?: string | null;
+  equipmentRequirement?: string | null;
+  availableEnvironments?: string[];
+  trainingGoals?: string[];
+  tags?: string[];
+  musclesWorked?: Array<{
+    muscle: string;
+    muscleGroup: string;
+    role: string;
+    activationLevel: string | null;
+  }>;
+  structuredEquipment?: Array<{
+    equipmentName: string;
+    requirementType: string;
+    equipmentCategory: string | null;
+    alternatives: string[];
+    availabilityContexts: string[];
+  }>;
   tempo: string | null;
+  tempoStructure?: Record<string, any> | null;
   rangeOfMotion: string | null;
+  repetitionType?: string;
   breathingInstructions: string | null;
   educationalTips: string[];
+  secondaryMovementPatterns?: string[];
   instructionSteps: Array<{
     stepNumber: number;
     phase: string | null;
@@ -26,9 +48,18 @@ export interface ExerciseKnowledgePayload {
   }>;
   movementPhases: Array<{
     phaseName: string;
+    phaseType: string;
+    title: string | null;
     orderIndex: number;
     cueText: string | null;
+    bodyPosition: string | null;
+    rangeOfMotionType: string | null;
+    breathingPattern: string | null;
+    tempoSeconds: number | null;
+    holdDurationSeconds: number | null;
+    jointAlignments: any[];
     keyCheckpoints: string[];
+    visualCues: any[];
   }>;
   commonMistakes: Array<{
     mistake: string;
@@ -81,6 +112,9 @@ export class ExerciseKnowledgeService {
         equipmentRelations: {
           orderBy: { createdAt: 'asc' },
         },
+        muscleRelations: {
+          orderBy: [{ role: 'asc' }, { muscle: 'asc' }],
+        },
         variationsFrom: {
           include: {
             targetExercise: {
@@ -111,6 +145,10 @@ export class ExerciseKnowledgeService {
       exercise.equipment,
     ];
 
+    const secondaryPatterns = Array.isArray(exercise.secondaryMovementPatterns)
+      ? (exercise.secondaryMovementPatterns as string[])
+      : [];
+
     return {
       exerciseId: exercise.id,
       name: exercise.name,
@@ -118,13 +156,41 @@ export class ExerciseKnowledgeService {
       difficulty: exercise.difficulty,
       exerciseType: exercise.exerciseType,
       movementPattern: exercise.movementPattern,
+      secondaryMovementPatterns: secondaryPatterns,
       primaryMuscleGroup: exercise.primaryMuscleGroup,
       secondaryMuscleGroups: secondaryMuscles,
       stabilizerMuscles: stabilizers,
       equipment: exercise.equipment,
       equipmentRequirements: equipmentList,
+      exerciseCategory: exercise.exerciseCategory,
+      exerciseMechanics: exercise.exerciseMechanics,
+      equipmentRequirement: exercise.equipmentRequirement,
+      availableEnvironments: Array.isArray(exercise.availableEnvironments)
+        ? (exercise.availableEnvironments as string[])
+        : [],
+      trainingGoals: Array.isArray(exercise.trainingGoals)
+        ? (exercise.trainingGoals as string[])
+        : [],
+      tags: Array.isArray(exercise.tags) ? (exercise.tags as string[]) : [],
+      musclesWorked: exercise.muscleRelations.map((m) => ({
+        muscle: m.muscle,
+        muscleGroup: m.muscleGroup,
+        role: m.role,
+        activationLevel: m.activationLevel,
+      })),
+      structuredEquipment: exercise.equipmentRelations.map((e) => ({
+        equipmentName: e.equipmentName,
+        requirementType: e.requirementType,
+        equipmentCategory: e.equipmentCategory,
+        alternatives: Array.isArray(e.alternatives) ? (e.alternatives as string[]) : [],
+        availabilityContexts: Array.isArray(e.availabilityContexts)
+          ? (e.availabilityContexts as string[])
+          : [],
+      })),
       tempo: exercise.tempo,
+      tempoStructure: (exercise.tempoStructure as Record<string, any>) || null,
       rangeOfMotion: exercise.rangeOfMotion,
+      repetitionType: exercise.repetitionType || 'REPETITION',
       breathingInstructions: exercise.breathingInstructions,
       educationalTips: educational,
       instructionSteps: exercise.instructionSteps.map((s) => ({
@@ -136,9 +202,18 @@ export class ExerciseKnowledgeService {
       })),
       movementPhases: exercise.movementPhases.map((p) => ({
         phaseName: p.phaseName,
+        phaseType: p.phaseType || 'ECCENTRIC',
+        title: p.title || null,
         orderIndex: p.orderIndex,
         cueText: p.cueText,
+        bodyPosition: p.bodyPosition || null,
+        rangeOfMotionType: p.rangeOfMotionType || null,
+        breathingPattern: p.breathingPattern || null,
+        tempoSeconds: p.tempoSeconds ?? null,
+        holdDurationSeconds: p.holdDurationSeconds ?? null,
+        jointAlignments: Array.isArray(p.jointAlignments) ? (p.jointAlignments as any[]) : [],
         keyCheckpoints: Array.isArray(p.keyCheckpoints) ? (p.keyCheckpoints as string[]) : [],
+        visualCues: Array.isArray(p.visualCues) ? (p.visualCues as any[]) : [],
       })),
       commonMistakes: exercise.commonMistakes.map((m) => ({
         mistake: m.mistake,

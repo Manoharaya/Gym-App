@@ -324,10 +324,10 @@ export const EnterpriseDashboardScreen: React.FC = () => {
         <View style={styles.header}>
           <View>
             <View style={styles.tagRow}>
-              <Badge variant="primary" label="DAY 51 — ENTERPRISE ADMINISTRATION" />
+              <Badge variant="primary" label="ENTERPRISE ADMINISTRATION" />
               <Badge variant="success" label="96% GOVERNANCE HEALTH" />
             </View>
-            <Text style={styles.title}>FitCore Enterprise Hub</Text>
+            <Text style={styles.title}>FitBeat Enterprise Hub</Text>
             <Text style={styles.subtitle}>
               Multi-brand administration, deterministic policy inheritance & hard security ceilings
             </Text>

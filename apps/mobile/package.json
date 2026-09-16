@@ -24,6 +24,7 @@
     "@fitcore/ui": "workspace:*",
     "@fitcore/utils": "workspace:*",
     "@fitcore/validation": "workspace:*",
+    "@react-native/assets-registry": "^0.74.87",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.10.1",
     "@tanstack/react-query": "^5.51.1",

@@ -519,8 +519,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   headerCategory: {
-    fontSize: typography.fontSize.xs,
-    fontFamily: typography.fontFamily.bold,
+    fontSize: 12,
+    fontWeight: '700',
     color: themeColors.primary,
     letterSpacing: 1.2,
   },

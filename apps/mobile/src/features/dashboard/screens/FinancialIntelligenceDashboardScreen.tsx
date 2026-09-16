@@ -221,7 +221,7 @@ export const FinancialIntelligenceDashboardScreen: React.FC = () => {
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Reconciliation & Integrity</Text>
-              <Text style={styles.sectionSubtitle}>Synchronized against Day 6 Authoritative Ledgers</Text>
+              <Text style={styles.sectionSubtitle}>Synchronized against Core Authoritative Ledgers</Text>
             </View>
             <Badge label="EXCELLENT (100%)" variant="success" />
           </View>

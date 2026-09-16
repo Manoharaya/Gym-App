@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text } from '../../../components/primitives/Text';
 import { Card } from '../../../components/primitives/Card';
 import { Badge } from '../../../components/primitives/Badge';

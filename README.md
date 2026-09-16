@@ -157,7 +157,7 @@ pnpm --filter @fitcore/mobile start
 
 ## 🔑 Development Seed Accounts & Credentials
 
-Default development password for all seed accounts: `Password123!`
+Default development password for all seed accounts: `FitCoreDev2026!`
 
 | Role | Email | Tenant Scoping |
 |---|---|---|

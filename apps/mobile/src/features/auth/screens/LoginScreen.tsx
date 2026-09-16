@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -174,10 +175,12 @@ export const LoginScreen: React.FC = () => {
         >
           {/* Brand Monogram & Header */}
           <View style={styles.brandHeader}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoText}>FC</Text>
-            </View>
-            <Text style={styles.brandTitle}>FitCore</Text>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.brandTitle}>FitBeat</Text>
             <Text style={styles.brandSubtitle}>Intelligent Athletic Performance Platform</Text>
           </View>
 
@@ -300,25 +303,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: spacing[3],
   },
-  logoBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.xl,
-    backgroundColor: themeColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandLogo: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.lg,
     marginBottom: spacing[2],
-    shadowColor: themeColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  logoText: {
-    ...typography.h1,
-    color: '#FFFFFF',
-    fontWeight: '900',
-    letterSpacing: -1,
   },
   brandTitle: {
     ...typography.h1,

@@ -15,6 +15,16 @@ import { Screen, Card, Badge, Icon } from '../../../components/primitives';
 import { themeColors, typography, spacing, radius } from '../../../theme';
 import { ExerciseService } from '../services/exerciseService';
 import { ExerciseMediaManagerModal } from '../components/ExerciseMediaManagerModal';
+import { ExerciseStepPlayer } from '../components/ExerciseStepPlayer';
+import { ExerciseInstructionEditorModal } from '../components/ExerciseInstructionEditorModal';
+import { ExerciseMovementTimeline } from '../components/ExerciseMovementTimeline';
+import { ExerciseMovementBuilderModal } from '../components/ExerciseMovementBuilderModal';
+import {
+  ExerciseMuscleCard,
+  ExerciseEquipmentModal,
+  ExerciseCompletenessScoreCard,
+  ExerciseSubstituteModal,
+} from '../components';
 import type { Exercise } from '@fitcore/types';
 
 const sp = {
@@ -34,7 +44,7 @@ const colors = {
   surfaceHighlight: themeColors.surfaceElevated,
 };
 
-type TabKey = 'overview' | 'howto' | 'media' | 'mistakes' | 'safety' | 'variations';
+type TabKey = 'overview' | 'muscles' | 'movement' | 'howto' | 'media' | 'mistakes' | 'safety' | 'variations';
 
 type RouteProps = RouteProp<MemberStackParamList, 'ExerciseDetail'>;
 
@@ -47,6 +57,11 @@ export const ExerciseDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [mediaModalVisible, setMediaModalVisible] = useState(false);
+  const [instructionEditorVisible, setInstructionEditorVisible] = useState(false);
+  const [movementBuilderVisible, setMovementBuilderVisible] = useState(false);
+  const [equipmentModalVisible, setEquipmentModalVisible] = useState(false);
+  const [substituteModalVisible, setSubstituteModalVisible] = useState(false);
+  const [selectedPhaseForEdit, setSelectedPhaseForEdit] = useState<any>(null);
 
   const fetchVisualDetails = useCallback(async () => {
     if (!exerciseId) {
@@ -82,12 +97,26 @@ export const ExerciseDetailScreen: React.FC = () => {
     ? (exercise.coachingCues as string[])
     : [];
 
-  const instructionSteps = exercise?.instructionSteps || [];
+  const instructionSteps =
+    exercise?.instruction?.steps && exercise.instruction.steps.length > 0
+      ? exercise.instruction.steps
+      : exercise?.instructionSteps && exercise.instructionSteps.length > 0
+      ? exercise.instructionSteps
+      : instructionsList.map((text, idx) => ({
+          id: `legacy-${idx}`,
+          exerciseId: exercise?.id || exerciseId,
+          stepNumber: idx + 1,
+          title: `Step ${idx + 1}`,
+          description: text,
+          createdAt: '',
+          updatedAt: '',
+        } as any));
   const movementPhases = exercise?.movementPhases || [];
   const commonMistakes = exercise?.commonMistakes || [];
   const safetyGuidelines = exercise?.safetyGuidelines || [];
   const variationsFrom = exercise?.variationsFrom || [];
   const equipmentRelations = exercise?.equipmentRelations || [];
+  const muscleRelations = exercise?.muscleRelations || [];
   const mediaList = exercise?.media || [];
 
   const navigateToExercise = (targetId: string, targetName: string) => {
@@ -162,11 +191,29 @@ export const ExerciseDetailScreen: React.FC = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
+                onPress={() => setActiveTab('muscles')}
+                style={[styles.tabButton, activeTab === 'muscles' && styles.tabButtonActive]}
+              >
+                <Text style={[styles.tabText, activeTab === 'muscles' && styles.tabTextActive]}>
+                  Muscles {muscleRelations.length > 0 ? `(${muscleRelations.length})` : ''}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setActiveTab('movement')}
+                style={[styles.tabButton, activeTab === 'movement' && styles.tabButtonActive]}
+              >
+                <Text style={[styles.tabText, activeTab === 'movement' && styles.tabTextActive]}>
+                  Movement {movementPhases.length > 0 ? `(${movementPhases.length})` : ''}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 onPress={() => setActiveTab('howto')}
                 style={[styles.tabButton, activeTab === 'howto' && styles.tabButtonActive]}
               >
                 <Text style={[styles.tabText, activeTab === 'howto' && styles.tabTextActive]}>
-                  How-To & Phases {movementPhases.length > 0 ? `(${movementPhases.length})` : ''}
+                  How-To Steps {instructionSteps.length > 0 ? `(${instructionSteps.length})` : ''}
                 </Text>
               </TouchableOpacity>
 
@@ -220,6 +267,36 @@ export const ExerciseDetailScreen: React.FC = () => {
             {/* TAB 1: OVERVIEW */}
             {activeTab === 'overview' && (
               <>
+                {/* Day 65: Quality Completeness Audit */}
+                <ExerciseCompletenessScoreCard exerciseId={exercise?.id || exerciseId} />
+
+                {/* Day 65: Quick Substitution & Equipment Action Bar */}
+                <View style={styles.quickActionRow}>
+                  <TouchableOpacity
+                    style={styles.quickActionBtn}
+                    onPress={() => setSubstituteModalVisible(true)}
+                  >
+                    <Icon name="refresh" size={16} color={colors.accent} />
+                    <Text style={styles.quickActionBtnText}>Find Substitutes</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.quickActionBtn}
+                    onPress={() => setEquipmentModalVisible(true)}
+                  >
+                    <Icon name="dumbbell" size={16} color={colors.primary} />
+                    <Text style={styles.quickActionBtnText}>Equipment Setup</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Day 65: Target Muscle Engagement Card */}
+                <ExerciseMuscleCard
+                  muscleRelations={muscleRelations}
+                  primaryMuscleGroup={exercise?.primaryMuscleGroup}
+                  onManageMuscles={() => setActiveTab('muscles')}
+                  canEdit={false}
+                />
+
                 {/* Biomechanics Metric Strip */}
                 <View style={styles.metricsRow}>
                   {exercise?.tempo && (
@@ -251,6 +328,39 @@ export const ExerciseDetailScreen: React.FC = () => {
                     <Text style={styles.bodyText}>{exercise.description}</Text>
                   </Card>
                 ) : null}
+
+                {/* Movement Lifecycle Preview */}
+                <Card style={styles.card}>
+                  <View style={styles.rowBetween}>
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="activity" size={16} color={colors.primary} />
+                      <Text style={styles.sectionHeadingIcon}>MOVEMENT LIFECYCLE & PHASES</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.inlineActionBtn}
+                      onPress={() => setActiveTab('movement')}
+                    >
+                      <Text style={styles.inlineActionBtnText}>Deep Dive</Text>
+                      <Icon name="chevron-right" size={12} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.bodyText}>
+                    {movementPhases.length > 0
+                      ? `${name} is structured into ${movementPhases.length} biomechanical movement phases: ${movementPhases.map((p) => p.phaseName).join(' → ')}.`
+                      : `${name} has not had its movement phases structured yet.`}
+                  </Text>
+                  {Boolean((exercise as any)?.tempoStructure) && (
+                    <View style={styles.tempoPreviewRow}>
+                      <Icon name="timer" size={12} color={colors.accent} />
+                      <Text style={styles.tempoPreviewText}>
+                        Tempo Blueprint: {(exercise as any).tempoStructure?.eccentricSeconds ?? 0}-
+                        {(exercise as any).tempoStructure?.bottomHoldSeconds ?? 0}-
+                        {(exercise as any).tempoStructure?.concentricSeconds ?? 0}-
+                        {(exercise as any).tempoStructure?.topHoldSeconds ?? 0}s
+                      </Text>
+                    </View>
+                  )}
+                </Card>
 
                 {/* Muscle Targeting */}
                 <Card style={styles.card}>
@@ -341,10 +451,89 @@ export const ExerciseDetailScreen: React.FC = () => {
               </>
             )}
 
-            {/* TAB 2: HOW-TO & PHASES */}
+            {/* TAB: MOVEMENT INTELLIGENCE & PHASES */}
+            {activeTab === 'movement' && (
+              <>
+                <View style={styles.mediaHeaderRow}>
+                  <Text style={styles.sectionHeading}>
+                    MOVEMENT BIOMECHANICS & PHASES ({movementPhases.length})
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.manageMediaBtn}
+                    onPress={() => {
+                      setSelectedPhaseForEdit(null);
+                      setMovementBuilderVisible(true);
+                    }}
+                  >
+                    <Icon name="bolt" size={14} color={colors.primary} />
+                    <Text style={styles.manageMediaBtnText}>Movement Studio</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ExerciseMovementTimeline
+                  phases={movementPhases}
+                  exerciseName={name}
+                  tempoStructure={(exercise as any)?.tempoStructure}
+                  repetitionType={(exercise as any)?.repetitionType}
+                  canEdit={true}
+                  onEditPhase={(phase: any) => {
+                    setSelectedPhaseForEdit(phase);
+                    setMovementBuilderVisible(true);
+                  }}
+                />
+              </>
+            )}
+
+            {/* TAB 2: HOW-TO & STEPS */}
             {activeTab === 'howto' && (
               <>
-                {/* Movement Phases */}
+                {/* Header Row with Studio Access */}
+                <View style={styles.mediaHeaderRow}>
+                  <Text style={styles.sectionHeading}>
+                    STEP-BY-STEP LEARNING ({instructionSteps.length})
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.manageMediaBtn}
+                    onPress={() => setInstructionEditorVisible(true)}
+                  >
+                    <Icon name="bolt" size={14} color={colors.primary} />
+                    <Text style={styles.manageMediaBtnText}>Instruction Studio</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Preparation Guide */}
+                {(exercise?.instruction?.preparationGuide || exercise?.setupInstructions) && (
+                  <Card style={styles.card}>
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="dumbbell" size={16} color={colors.accent} />
+                      <Text style={styles.sectionHeadingIcon}>BEFORE YOU START: PREPARATION</Text>
+                    </View>
+                    <Text style={styles.bodyText}>
+                      {exercise?.instruction?.preparationGuide || exercise?.setupInstructions}
+                    </Text>
+                  </Card>
+                )}
+
+                {/* Starting Position */}
+                {(exercise?.instruction?.startingPosition || exercise?.bodyPosition) && (
+                  <Card style={styles.card}>
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="activity" size={16} color={colors.primary} />
+                      <Text style={styles.sectionHeadingIcon}>STARTING POSITION & STANCE</Text>
+                    </View>
+                    <Text style={styles.bodyText}>
+                      {exercise?.instruction?.startingPosition || exercise?.bodyPosition}
+                    </Text>
+                  </Card>
+                )}
+
+                {/* Interactive Step-by-Step Learning Player */}
+                <ExerciseStepPlayer
+                  steps={instructionSteps}
+                  exerciseName={name}
+                />
+
+                {/* Movement Phases & Checkpoints */}
                 {movementPhases.length > 0 && (
                   <Card style={styles.card}>
                     <Text style={styles.sectionHeading}>MOVEMENT PHASES & CHECKPOINTS</Text>
@@ -379,51 +568,31 @@ export const ExerciseDetailScreen: React.FC = () => {
                   </Card>
                 )}
 
-                {/* Instruction Steps */}
-                {instructionSteps.length > 0 ? (
+                {/* Breathing Cadence Summary */}
+                {(exercise?.instruction?.breathingSummary || exercise?.breathingInstructions) && (
                   <Card style={styles.card}>
-                    <Text style={styles.sectionHeading}>STEP-BY-STEP EXECUTION</Text>
-                    <View style={styles.stepsList}>
-                      {instructionSteps.map((step, index) => (
-                        <View key={index} style={styles.stepItem}>
-                          <View style={styles.stepNumber}>
-                            <Text style={styles.stepNumberText}>{step.stepNumber}</Text>
-                          </View>
-                          <View style={styles.stepContent}>
-                            <View style={styles.rowBetween}>
-                              <Text style={styles.stepTitle}>{step.title}</Text>
-                              {step.phase && <Badge label={step.phase} variant="neutral" />}
-                            </View>
-                            <Text style={styles.stepText}>{step.description}</Text>
-                            {step.coachingCue && (
-                              <View style={styles.stepCueBox}>
-                                <Text style={styles.stepCueText}>Cue: {step.coachingCue}</Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                      ))}
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="sparkles" size={16} color={colors.accent} />
+                      <Text style={styles.sectionHeadingIcon}>BREATHING CADENCE SUMMARY</Text>
                     </View>
+                    <Text style={styles.bodyText}>
+                      {exercise?.instruction?.breathingSummary || exercise?.breathingInstructions}
+                    </Text>
                   </Card>
-                ) : instructionsList.length > 0 ? (
+                )}
+
+                {/* Safety & Contraindication Summary */}
+                {(exercise?.instruction?.safetySummary || exercise?.safetyNotes) && (
                   <Card style={styles.card}>
-                    <Text style={styles.sectionHeading}>EXECUTION STEPS</Text>
-                    <View style={styles.stepsList}>
-                      {instructionsList.map((step, index) => (
-                        <View key={index} style={styles.stepItem}>
-                          <View style={styles.stepNumber}>
-                            <Text style={styles.stepNumberText}>{index + 1}</Text>
-                          </View>
-                          <View style={styles.stepContent}>
-                            <Text style={styles.stepText}>{step}</Text>
-                          </View>
-                        </View>
-                      ))}
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="alert-circle" size={16} color="#EF4444" />
+                      <Text style={[styles.sectionHeadingIcon, { color: '#EF4444' }]}>
+                        SAFETY & CONTRAINDICATIONS
+                      </Text>
                     </View>
-                  </Card>
-                ) : (
-                  <Card style={styles.card}>
-                    <Text style={styles.bodyMuted}>No detailed step instructions recorded.</Text>
+                    <Text style={styles.bodyText}>
+                      {exercise?.instruction?.safetySummary || exercise?.safetyNotes}
+                    </Text>
                   </Card>
                 )}
               </>
@@ -680,6 +849,57 @@ export const ExerciseDetailScreen: React.FC = () => {
                 )}
               </>
             )}
+
+            {/* TAB: MUSCLES & EQUIPMENT */}
+            {activeTab === 'muscles' && (
+              <>
+                <ExerciseMuscleCard
+                  muscleRelations={muscleRelations}
+                  primaryMuscleGroup={exercise?.primaryMuscleGroup}
+                  canEdit={false}
+                />
+
+                <Card style={styles.card}>
+                  <View style={styles.rowBetween}>
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="dumbbell" size={16} color={colors.primary} />
+                      <Text style={styles.sectionHeadingIcon}>EQUIPMENT SPECIFICATIONS</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.inlineActionBtn}
+                      onPress={() => setEquipmentModalVisible(true)}
+                    >
+                      <Text style={styles.inlineActionBtnText}>View & Edit</Text>
+                      <Icon name="chevron-right" size={12} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.bodyText}>
+                    {equipmentRelations.length > 0
+                      ? `${equipmentRelations.length} structured equipment item(s) mapped with environment availability contexts.`
+                      : `Default requirement: ${exercise?.equipment || 'BODYWEIGHT'}. Tap View & Edit to configure requirements and alternatives.`}
+                  </Text>
+                </Card>
+
+                <Card style={styles.card}>
+                  <View style={styles.rowBetween}>
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="refresh" size={16} color={colors.accent} />
+                      <Text style={styles.sectionHeadingIcon}>INTELLIGENT SUBSTITUTIONS</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.inlineActionBtn}
+                      onPress={() => setSubstituteModalVisible(true)}
+                    >
+                      <Text style={styles.inlineActionBtnText}>Find Substitutes</Text>
+                      <Icon name="chevron-right" size={12} color={colors.accent} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.bodyText}>
+                    Need an alternative due to gym equipment availability or injury modification? Launch our biomechanical substitution engine.
+                  </Text>
+                </Card>
+              </>
+            )}
           </ScrollView>
         </View>
       )}
@@ -690,6 +910,47 @@ export const ExerciseDetailScreen: React.FC = () => {
         exerciseName={name}
         onClose={() => setMediaModalVisible(false)}
         onMediaChanged={fetchVisualDetails}
+      />
+
+      <ExerciseInstructionEditorModal
+        visible={instructionEditorVisible}
+        exerciseId={exerciseId}
+        exerciseName={name}
+        onClose={() => setInstructionEditorVisible(false)}
+        onSaved={fetchVisualDetails}
+      />
+
+      <ExerciseMovementBuilderModal
+        visible={movementBuilderVisible}
+        exerciseId={exerciseId}
+        exerciseName={name}
+        initialPhase={selectedPhaseForEdit}
+        onClose={() => {
+          setMovementBuilderVisible(false);
+          setSelectedPhaseForEdit(null);
+        }}
+        onSaved={fetchVisualDetails}
+      />
+
+      <ExerciseEquipmentModal
+        visible={equipmentModalVisible}
+        exerciseId={exerciseId}
+        exerciseName={name}
+        equipmentRelations={equipmentRelations}
+        onClose={() => setEquipmentModalVisible(false)}
+        onSaved={fetchVisualDetails}
+        canEdit={true}
+      />
+
+      <ExerciseSubstituteModal
+        visible={substituteModalVisible}
+        exerciseId={exerciseId}
+        exerciseName={name}
+        onClose={() => setSubstituteModalVisible(false)}
+        onSelectSubstitute={(targetId, targetName) => {
+          setSubstituteModalVisible(false);
+          navigateToExercise(targetId, targetName);
+        }}
       />
     </Screen>
   );
@@ -1248,5 +1509,52 @@ const styles = StyleSheet.create({
   rowAlign: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  inlineActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  inlineActionBtnText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  tempoPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderRadius: radius.sm,
+    padding: sp.sm,
+    marginTop: sp.sm,
+    gap: 6,
+  },
+  tempoPreviewText: {
+    ...typography.caption,
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  quickActionRow: {
+    flexDirection: 'row',
+    gap: sp.sm,
+    marginBottom: sp.xs,
+  },
+  quickActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: sp.sm,
+    paddingHorizontal: sp.md,
+  },
+  quickActionBtnText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '700',
   },
 });

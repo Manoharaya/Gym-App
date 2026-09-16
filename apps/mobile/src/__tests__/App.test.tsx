@@ -7,7 +7,7 @@ describe('FitCore Mobile Application Startup', () => {
     const { getByText } = render(<App />);
 
     await waitFor(() => {
-      expect(getByText('FitCore')).toBeTruthy();
+      expect(getByText('FitBeat')).toBeTruthy();
       expect(getByText('Platform Foundation')).toBeTruthy();
       expect(getByText('DEV SEED DATA')).toBeTruthy();
       expect(getByText('Second Wind Athletic Club')).toBeTruthy();

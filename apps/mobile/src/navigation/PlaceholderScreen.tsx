@@ -15,7 +15,7 @@ export const NavigationPlaceholderScreen: React.FC<Props> = ({ title, module, ro
       <Badge label={module} variant="neutral" style={styles.badge} />
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>Role Scope: {roleScope}</Text>
-      <Text style={styles.caption}>Architectural Navigation Boundary (Day 1)</Text>
+      <Text style={styles.caption}>Enterprise Navigation Boundary</Text>
     </View>
   );
 };

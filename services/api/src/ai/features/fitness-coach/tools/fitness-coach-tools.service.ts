@@ -260,6 +260,97 @@ export class FitnessCoachToolsService implements OnModuleInit {
       },
     });
 
+    // 9. get_exercise_knowledge
+    this.toolRegistry.registerTool({
+      name: 'get_exercise_knowledge',
+      description: 'Fetches verified biomechanics, movement phases, cues, common mistakes, and safety guidelines for an exercise.',
+      toolType: 'READ_TOOL',
+      requiresConfirmation: false,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          exerciseId: { type: 'string', description: 'ID of the exercise to look up' },
+          exerciseName: { type: 'string', description: 'Optional exercise name search if ID is unknown' },
+        },
+      },
+      execute: async (input: any) => {
+        let exercise: any = null;
+        if (input.exerciseId) {
+          exercise = await this.prisma.exercise.findUnique({
+            where: { id: input.exerciseId },
+            include: {
+              instructionSteps: { orderBy: { stepNumber: 'asc' } },
+              movementPhases: { orderBy: { orderIndex: 'asc' } },
+              commonMistakes: { orderBy: { sortOrder: 'asc' } },
+              safetyGuidelines: { orderBy: { createdAt: 'asc' } },
+              variationsFrom: {
+                include: { targetExercise: { select: { name: true } } },
+              },
+            },
+          });
+        } else if (input.exerciseName) {
+          exercise = await this.prisma.exercise.findFirst({
+            where: {
+              name: { contains: input.exerciseName, mode: 'insensitive' },
+              status: 'ACTIVE',
+            },
+            include: {
+              instructionSteps: { orderBy: { stepNumber: 'asc' } },
+              movementPhases: { orderBy: { orderIndex: 'asc' } },
+              commonMistakes: { orderBy: { sortOrder: 'asc' } },
+              safetyGuidelines: { orderBy: { createdAt: 'asc' } },
+              variationsFrom: {
+                include: { targetExercise: { select: { name: true } } },
+              },
+            },
+          });
+        }
+
+        if (!exercise) {
+          return { found: false, message: 'Exercise not found in verified knowledge base' };
+        }
+
+        return {
+          found: true,
+          exerciseId: exercise.id,
+          name: exercise.name,
+          difficulty: exercise.difficulty,
+          movementPattern: exercise.movementPattern,
+          primaryMuscleGroup: exercise.primaryMuscleGroup,
+          secondaryMuscleGroups: exercise.secondaryMuscleGroups,
+          stabilizerMuscles: exercise.stabilizerMuscles,
+          tempo: exercise.tempo,
+          rangeOfMotion: exercise.rangeOfMotion,
+          breathingInstructions: exercise.breathingInstructions,
+          educationalTips: exercise.educationalTips,
+          steps: exercise.instructionSteps?.map((s: any) => ({
+            step: s.stepNumber,
+            title: s.title,
+            cue: s.coachingCue,
+          })),
+          phases: exercise.movementPhases?.map((p: any) => ({
+            phase: p.phaseName,
+            cue: p.cueText,
+            checkpoints: p.keyCheckpoints,
+          })),
+          mistakes: exercise.commonMistakes?.map((m: any) => ({
+            mistake: m.mistake,
+            correction: m.correction,
+            severity: m.severity,
+          })),
+          safetyGuidelines: exercise.safetyGuidelines?.map((g: any) => ({
+            category: g.category,
+            warning: g.description,
+            severity: g.severity,
+          })),
+          variations: exercise.variationsFrom?.map((v: any) => ({
+            type: v.relationshipType,
+            name: v.targetExercise?.name,
+          })),
+        };
+      },
+    });
+
     this.logger.log('AI Fitness Coach read-only tools registered successfully.');
   }
 

@@ -199,6 +199,62 @@ export class ExerciseQueryDto {
   @IsBoolean()
   includeArchived?: boolean;
 
+  @ApiPropertyOptional({ description: 'Filter by specific primary muscle' })
+  @IsOptional()
+  @IsString()
+  primaryMuscle?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by specific secondary muscle' })
+  @IsOptional()
+  @IsString()
+  secondaryMuscle?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by muscle anywhere (primary, secondary, or stabilizer)' })
+  @IsOptional()
+  @IsString()
+  muscle?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Filter exercises requiring only available equipment items' })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').map((s) => s.trim());
+    return value;
+  })
+  @IsArray()
+  @IsString({ each: true })
+  availableEquipment?: string[];
+
+  @ApiPropertyOptional({ description: 'Filter exercises requiring no equipment' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  noEquipment?: boolean;
+
+  @ApiPropertyOptional({ description: 'Filter by training goal e.g. STRENGTH, MUSCLE_BUILDING, ENDURANCE' })
+  @IsOptional()
+  @IsString()
+  trainingGoal?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by exercise category e.g. STRENGTH, CARDIO, MOBILITY, CORE' })
+  @IsOptional()
+  @IsString()
+  exerciseCategory?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by exercise mechanics e.g. COMPOUND, ISOLATION' })
+  @IsOptional()
+  @IsString()
+  exerciseMechanics?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by environment e.g. HOME, GYM, OUTDOOR' })
+  @IsOptional()
+  @IsString()
+  environment?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by tag' })
+  @IsOptional()
+  @IsString()
+  tag?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -307,6 +363,39 @@ export class CreateExerciseDto {
   @IsString({ each: true })
   educationalTips?: string[];
 
+  @ApiPropertyOptional({ description: 'Exercise Category e.g. STRENGTH, CARDIO, MOBILITY, CORE' })
+  @IsOptional()
+  @IsString()
+  exerciseCategory?: string;
+
+  @ApiPropertyOptional({ description: 'Exercise Mechanics e.g. COMPOUND, ISOLATION' })
+  @IsOptional()
+  @IsString()
+  exerciseMechanics?: string;
+
+  @ApiPropertyOptional({ description: 'Equipment Requirement e.g. REQUIRED, OPTIONAL, NONE' })
+  @IsOptional()
+  @IsString()
+  equipmentRequirement?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Environments e.g. HOME, GYM, OUTDOOR' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  availableEnvironments?: string[];
+
+  @ApiPropertyOptional({ type: [String], description: 'Training Goals e.g. STRENGTH, MUSCLE_BUILDING' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  trainingGoals?: string[];
+
+  @ApiPropertyOptional({ type: [String], description: 'Search and discovery tags' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
   @ApiPropertyOptional({ description: 'Metadata for computer vision and form tracking' })
   @IsOptional()
   movementPatternMetadata?: Record<string, any>;
@@ -408,6 +497,39 @@ export class UpdateExerciseDto {
   @IsArray()
   @IsString({ each: true })
   educationalTips?: string[];
+
+  @ApiPropertyOptional({ description: 'Exercise Category' })
+  @IsOptional()
+  @IsString()
+  exerciseCategory?: string;
+
+  @ApiPropertyOptional({ description: 'Exercise Mechanics' })
+  @IsOptional()
+  @IsString()
+  exerciseMechanics?: string;
+
+  @ApiPropertyOptional({ description: 'Equipment Requirement' })
+  @IsOptional()
+  @IsString()
+  equipmentRequirement?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  availableEnvironments?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  trainingGoals?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 
   @ApiPropertyOptional()
   @IsOptional()

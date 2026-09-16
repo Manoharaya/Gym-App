@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -95,6 +96,11 @@ export const MemberHomeScreen: React.FC = () => {
         {/* Top App Bar */}
         <View style={styles.topBar}>
           <View style={styles.userSection}>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.brandLogoHeader}
+              resizeMode="contain"
+            />
             <TouchableOpacity
               onPress={() => navigation.navigate('MemberProfile')}
               style={styles.avatar}
@@ -150,7 +156,7 @@ export const MemberHomeScreen: React.FC = () => {
               <View style={styles.aiSparkleIcon}>
                 <Icon name="sparkles" size={14} color="#FFFFFF" />
               </View>
-              <Text style={styles.aiBadgeText}>FITCORE AI INSIGHT</Text>
+              <Text style={styles.aiBadgeText}>FITBEAT AI INSIGHT</Text>
             </View>
             <TouchableOpacity
               onPress={() =>
@@ -480,10 +486,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing[1],
   },
+  brandLogoHeader: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
   userSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
+    gap: spacing[2],
   },
   avatar: {
     width: 44,

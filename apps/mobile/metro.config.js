@@ -18,4 +18,16 @@ config.resolver.nodeModulesPaths = [
 // 3. Force Metro to resolve (sub)dependencies from the workspace root or project root
 config.resolver.disableHierarchicalLookup = false;
 
+// 4. Ensure asset registry resolves in pnpm monorepo
+try {
+  config.resolver.extraNodeModules = {
+    ...config.resolver.extraNodeModules,
+    '@react-native/assets-registry': path.dirname(
+      require.resolve('@react-native/assets-registry/package.json', { paths: [projectRoot] })
+    ),
+  };
+} catch (e) {
+  // fallback if not yet resolved
+}
+
 module.exports = config;

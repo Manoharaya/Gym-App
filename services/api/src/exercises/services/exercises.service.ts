@@ -133,18 +133,128 @@ export class ExercisesService {
       };
     }
 
-    // Text search on name or description
-    if (search && search.trim().length > 0) {
-      const term = search.trim();
+    // Specific muscle filters
+    if (query.primaryMuscle) {
+      const pmUpper = query.primaryMuscle.trim().toUpperCase();
+      where.OR = [
+        ...(where.OR || []),
+        { primaryMuscleGroup: { contains: pmUpper, mode: 'insensitive' } },
+        {
+          muscleRelations: {
+            some: {
+              role: 'PRIMARY',
+              muscle: { contains: pmUpper, mode: 'insensitive' },
+            },
+          },
+        },
+      ];
+    }
+
+    if (query.secondaryMuscle) {
+      const smUpper = query.secondaryMuscle.trim().toUpperCase();
+      where.muscleRelations = {
+        some: {
+          role: 'SECONDARY',
+          muscle: { contains: smUpper, mode: 'insensitive' },
+        },
+      };
+    }
+
+    if (query.muscle) {
+      const mUpper = query.muscle.trim().toUpperCase();
       where.AND = [
         ...(where.AND || []),
         {
           OR: [
-            { name: { contains: term, mode: 'insensitive' } },
-            { description: { contains: term, mode: 'insensitive' } },
+            { primaryMuscleGroup: { contains: mUpper, mode: 'insensitive' } },
+            {
+              muscleRelations: {
+                some: {
+                  muscle: { contains: mUpper, mode: 'insensitive' },
+                },
+              },
+            },
           ],
         },
       ];
+    }
+
+    // Equipment-aware filtering
+    if (query.noEquipment) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { equipment: { in: ['BODYWEIGHT', 'NONE'] } },
+            { equipmentRequirement: 'NONE' },
+            {
+              equipmentRelations: {
+                some: {
+                  requirementType: 'NONE',
+                },
+              },
+            },
+          ],
+        },
+      ];
+    } else if (query.availableEquipment && query.availableEquipment.length > 0) {
+      const allowed = query.availableEquipment.map((e) => e.toUpperCase().trim());
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { equipment: { in: [...allowed, 'BODYWEIGHT', 'NONE'] } },
+            { equipmentRequirement: 'NONE' },
+            {
+              equipmentRelations: {
+                some: {
+                  equipmentName: { in: allowed, mode: 'insensitive' },
+                },
+              },
+            },
+          ],
+        },
+      ];
+    }
+
+    // Category and Mechanics
+    if (query.exerciseCategory) {
+      where.exerciseCategory = { contains: query.exerciseCategory, mode: 'insensitive' };
+    }
+
+    if (query.exerciseMechanics) {
+      where.exerciseMechanics = { contains: query.exerciseMechanics, mode: 'insensitive' };
+    }
+
+    // Multi-keyword Search on name, description, category, equipment, and muscles
+    if (search && search.trim().length > 0) {
+      const terms = search.trim().split(/\s+/).filter(Boolean);
+      const termConditions = terms.map((term) => ({
+        OR: [
+          { name: { contains: term, mode: 'insensitive' } },
+          { description: { contains: term, mode: 'insensitive' } },
+          { primaryMuscleGroup: { contains: term, mode: 'insensitive' } },
+          { equipment: { contains: term, mode: 'insensitive' } },
+          { exerciseCategory: { contains: term, mode: 'insensitive' } },
+          { exerciseMechanics: { contains: term, mode: 'insensitive' } },
+          {
+            muscleRelations: {
+              some: {
+                muscle: { contains: term, mode: 'insensitive' },
+              },
+            },
+          },
+          {
+            equipmentRelations: {
+              some: {
+                equipmentName: { contains: term, mode: 'insensitive' },
+              },
+            },
+          },
+        ],
+      }));
+
+      where.AND = [...(where.AND || []), ...termConditions];
     }
 
     const skip = (page - 1) * limit;
@@ -155,6 +265,12 @@ export class ExercisesService {
         include: {
           media: {
             orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+          },
+          muscleRelations: {
+            orderBy: [{ role: 'asc' }, { muscle: 'asc' }],
+          },
+          equipmentRelations: {
+            orderBy: { createdAt: 'asc' },
           },
         },
         orderBy: [{ ownershipType: 'asc' }, { name: 'asc' }],
@@ -197,6 +313,12 @@ export class ExercisesService {
       include: {
         media: {
           orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+        },
+        muscleRelations: {
+          orderBy: [{ role: 'asc' }, { muscle: 'asc' }],
+        },
+        equipmentRelations: {
+          orderBy: { createdAt: 'asc' },
         },
       },
     });
@@ -279,6 +401,17 @@ export class ExercisesService {
         },
         equipmentRelations: {
           orderBy: { createdAt: 'asc' },
+        },
+        muscleRelations: {
+          orderBy: [{ role: 'asc' }, { muscle: 'asc' }],
+        },
+        instruction: {
+          include: {
+            steps: {
+              orderBy: { stepNumber: 'asc' },
+              include: { media: true },
+            },
+          },
         },
       },
     });
@@ -430,11 +563,19 @@ export class ExercisesService {
         stabilizerMuscles: dto.stabilizerMuscles ? (dto.stabilizerMuscles as any) : undefined,
         educationalTips: dto.educationalTips ? (dto.educationalTips as any) : undefined,
         movementPatternMetadata: dto.movementPatternMetadata ? (dto.movementPatternMetadata as any) : undefined,
+        exerciseCategory: dto.exerciseCategory ?? 'STRENGTH',
+        exerciseMechanics: dto.exerciseMechanics,
+        equipmentRequirement: dto.equipmentRequirement ?? 'REQUIRED',
+        availableEnvironments: dto.availableEnvironments ? (dto.availableEnvironments as any) : undefined,
+        trainingGoals: dto.trainingGoals ? (dto.trainingGoals as any) : undefined,
+        tags: dto.tags ? (dto.tags as any) : undefined,
         status: 'ACTIVE',
         createdByUserId: actor.id,
       },
       include: {
         media: true,
+        muscleRelations: true,
+        equipmentRelations: true,
       },
     });
 
@@ -499,9 +640,17 @@ export class ExercisesService {
         stabilizerMuscles: dto.stabilizerMuscles ? (dto.stabilizerMuscles as any) : existing.stabilizerMuscles,
         educationalTips: dto.educationalTips ? (dto.educationalTips as any) : existing.educationalTips,
         movementPatternMetadata: dto.movementPatternMetadata ? (dto.movementPatternMetadata as any) : existing.movementPatternMetadata,
+        exerciseCategory: dto.exerciseCategory ?? existing.exerciseCategory,
+        exerciseMechanics: dto.exerciseMechanics ?? existing.exerciseMechanics,
+        equipmentRequirement: dto.equipmentRequirement ?? existing.equipmentRequirement,
+        availableEnvironments: dto.availableEnvironments ? (dto.availableEnvironments as any) : existing.availableEnvironments,
+        trainingGoals: dto.trainingGoals ? (dto.trainingGoals as any) : existing.trainingGoals,
+        tags: dto.tags ? (dto.tags as any) : existing.tags,
       },
       include: {
         media: true,
+        muscleRelations: true,
+        equipmentRelations: true,
       },
     });
 
@@ -683,15 +832,30 @@ export class ExercisesService {
     dto: CreateExerciseVariationDto,
     actor: AuthenticatedUser,
   ) {
+    if (exerciseId === dto.targetExerciseId) {
+      throw new BadRequestException({
+        code: 'SELF_REFERENCING_RELATIONSHIP_PROHIBITED',
+        message: 'An exercise cannot establish a relationship with itself',
+      });
+    }
+
     const exercise = await this.prisma.exercise.findUnique({ where: { id: exerciseId } });
     if (!exercise) {
       throw new NotFoundException(`Exercise '${exerciseId}' not found`);
     }
     this.ensureCanModify(exercise, organisationId);
 
-    const target = await this.prisma.exercise.findUnique({ where: { id: dto.targetExerciseId } });
+    const target = await this.prisma.exercise.findFirst({
+      where: {
+        id: dto.targetExerciseId,
+        OR: [
+          { ownershipType: 'SYSTEM', organisationId: null },
+          { ownershipType: 'ORGANISATION', organisationId },
+        ],
+      },
+    });
     if (!target) {
-      throw new NotFoundException(`Target exercise '${dto.targetExerciseId}' not found`);
+      throw new NotFoundException(`Target exercise '${dto.targetExerciseId}' not found or not accessible`);
     }
 
     const variation = await this.prisma.exerciseVariation.upsert({
