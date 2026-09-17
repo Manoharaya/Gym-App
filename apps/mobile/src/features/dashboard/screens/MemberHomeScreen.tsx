@@ -27,6 +27,8 @@ import { dailyCheckInService } from '../../check-ins/services/dailyCheckInServic
 import { WearablesService } from '../../wearables/services/wearablesService';
 import { FitnessMomentumCard } from '../../retention';
 import { MemberRecoveryHubCard, reactivationService } from '../../reactivation';
+import { ExerciseService, type ResumePosition } from '../../exercises/services/exerciseService';
+import { ContinueLearningHero } from '../../exercises/components/ContinueLearningHero';
 import type { DailyCheckInDto } from '@fitcore/types';
 
 type NavigationProp = NativeStackNavigationProp<MemberStackParamList, 'MemberHome'>;
@@ -42,17 +44,20 @@ export const MemberHomeScreen: React.FC = () => {
     steps?: number;
   } | null>(null);
   const [recoveryState, setRecoveryState] = React.useState<any>(null);
+  const [resumeLearning, setResumeLearning] = React.useState<ResumePosition | null>(null);
 
   const fetchDashboardData = React.useCallback(async () => {
     try {
-      const [checkInRes, connectionsRes, summaryRes, recoveryRes] = await Promise.all([
+      const [checkInRes, connectionsRes, summaryRes, recoveryRes, resumeRes] = await Promise.all([
         dailyCheckInService.getTodayCheckIn().catch(() => null),
         WearablesService.getConnections().catch(() => []),
         WearablesService.getHealthSummary().catch(() => null),
         reactivationService.getMemberRecoveryState().catch(() => null),
+        ExerciseService.getResumeLearningPosition().catch(() => null),
       ]);
       setTodayCheckIn(checkInRes);
       setRecoveryState(recoveryRes);
+      setResumeLearning(resumeRes);
 
       const activeConn = connectionsRes?.find((c: any) => c.status === 'CONNECTED');
       if (activeConn) {
@@ -361,6 +366,70 @@ export const MemberHomeScreen: React.FC = () => {
               onPress={() => navigation.navigate('Bookings')}
               variant="ghost"
               size="sm"
+              style={styles.flexButton}
+            />
+          </View>
+        </Card>
+
+        {/* Day 71: Continue Learning Hero (Active Educational Path) */}
+        {resumeLearning && (
+          <ContinueLearningHero
+            resume={resumeLearning}
+            onContinue={(pathId, lessonId, lessonTitle) =>
+              navigation.navigate('LearningLesson', { pathId, lessonId, title: lessonTitle })
+            }
+            onViewPath={(pathId, pathTitle) =>
+              navigation.navigate('LearningPathOverview', { pathId, title: pathTitle })
+            }
+          />
+        )}
+
+        {/* Day 68 & Day 71: Personalized Exercise Discovery & Smart Learning Hub Card */}
+        <Card style={styles.discoveryHeroCard}>
+          <View style={styles.discoveryHeader}>
+            <View style={styles.discoveryHeaderContent}>
+              <View style={styles.discoveryBadgeRow}>
+                <Badge label="FOR YOU" variant="primary" />
+                <Badge label="SMART LEARNING" variant="accent" />
+              </View>
+              <Text style={styles.discoveryTitle}>Personalized Exercise & Learning Hub</Text>
+              <Text style={styles.discoverySubtitle}>
+                Master techniques step-by-step with guided learning paths, video cues, and curriculum intelligence.
+              </Text>
+            </View>
+            <View style={styles.discoveryIconHalo}>
+              <Icon name="sparkles" size={24} color={themeColors.primary} />
+            </View>
+          </View>
+          <View style={styles.discoveryFeaturesRow}>
+            <View style={styles.discoveryFeatureItem}>
+              <Icon name="sparkles" size={13} color={themeColors.accent} />
+              <Text style={styles.discoveryFeatureText}>Goal Matched</Text>
+            </View>
+            <View style={styles.discoveryFeatureItem}>
+              <Icon name="dumbbell" size={13} color={themeColors.primary} />
+              <Text style={styles.discoveryFeatureText}>Gear Adapted</Text>
+            </View>
+            <View style={styles.discoveryFeatureItem}>
+              <Icon name="bolt" size={13} color={themeColors.primary} />
+              <Text style={styles.discoveryFeatureText}>Step Learning</Text>
+            </View>
+          </View>
+          <View style={styles.discoveryButtonRow}>
+            <Button
+              title="Learning Dashboard"
+              onPress={() => navigation.navigate('LearningHome')}
+              variant="primary"
+              size="sm"
+              leftIcon={<Icon name="bolt" size={15} color="#FFFFFF" />}
+              style={styles.flexButton}
+            />
+            <Button
+              title="Exercise Library"
+              onPress={() => navigation.navigate('ExerciseLibrary')}
+              variant="outline"
+              size="sm"
+              rightIcon={<Icon name="chevron-right" size={15} color={themeColors.textPrimary} />}
               style={styles.flexButton}
             />
           </View>
@@ -866,5 +935,80 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: themeColors.textSecondary,
     marginTop: 2,
+  },
+  discoveryHeroCard: {
+    backgroundColor: '#0F1524',
+    borderColor: 'rgba(255, 107, 0, 0.25)',
+    borderWidth: 1,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+  },
+  discoveryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+    marginBottom: spacing[3],
+  },
+  discoveryHeaderContent: {
+    flex: 1,
+  },
+  discoveryBadgeRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    marginBottom: spacing[2],
+  },
+  discoveryTitle: {
+    ...typography.h3,
+    fontSize: 17,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+    marginBottom: 4,
+  },
+  discoverySubtitle: {
+    ...typography.body,
+    fontSize: 12,
+    color: themeColors.textMuted,
+    lineHeight: 17,
+  },
+  discoveryIconHalo: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.3)',
+  },
+  discoveryFeaturesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.md,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    marginBottom: spacing[3],
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  discoveryFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  discoveryFeatureText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '600',
+    color: themeColors.textSecondary,
+  },
+  exploreLibraryButton: {
+    borderColor: themeColors.border,
+  },
+  discoveryButtonRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
   },
 });

@@ -449,6 +449,19 @@ model User {
   supportTicketMessagesAuthored SupportTicketMessage[] @relation("SupportTicketMessagesAuthoredByUser")
   supportAccessRequestsCreated SupportAccessRequest[]  @relation("SupportAccessRequestsCreatedByUser")
   supportAccessRequestsApproved SupportAccessRequest[] @relation("SupportAccessRequestsApprovedByUser")
+  exerciseFavorites            UserExerciseFavorite[]
+  exerciseRecentViews          UserExerciseRecentView[]
+  exercisePreferences          MemberExercisePreference?
+  exerciseLearningProgress     ExerciseLearningProgress[]
+  createdCollections           ExerciseCollection[]     @relation("CollectionsCreatedByUser")
+  createdLearningPaths         LearningPath[]           @relation("LearningPathsCreatedByUser")
+  learningPathProgress         UserLearningPathProgress[]
+  lessonCompletions            UserLessonCompletion[]
+  collectionProgress           UserCollectionProgress[]
+  createdKnowledgeChecks       KnowledgeCheck[]         @relation("KnowledgeChecksCreatedByUser")
+  knowledgeAttempts            KnowledgeAttempt[]
+  createdCurricula             Curriculum[]             @relation("CurriculaCreatedByUser")
+  createdGlossaryTerms         GlossaryTerm[]           @relation("GlossaryTermsCreatedByUser")
 
   @@index([email])
   @@index([phone])
@@ -2426,6 +2439,12 @@ model Exercise {
   workoutExercises      WorkoutExercise[]
   progressionRules      WorkoutProgressionRule[]
   personalRecords       PersonalRecord[]
+  userFavorites         UserExerciseFavorite[]
+  userRecentViews       UserExerciseRecentView[]
+  learningProgress      ExerciseLearningProgress[]
+  collectionItems       ExerciseCollectionItem[]
+  learningLessons       LearningPathLesson[]
+  knowledgeChecks       KnowledgeCheck[]
 
   @@index([organisationId])
   @@index([ownershipType])
@@ -2719,6 +2738,524 @@ model ExerciseMetadataItem {
   @@index([type, status])
   @@index([organisationId])
   @@map("exercise_metadata_items")
+}
+
+model UserExerciseFavorite {
+  id              String       @id @default(cuid())
+  userId          String
+  exerciseId      String
+  organisationId  String?
+  createdAt       DateTime     @default(now())
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise        Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId])
+  @@index([userId])
+  @@index([exerciseId])
+  @@index([organisationId])
+  @@map("user_exercise_favorites")
+}
+
+model UserExerciseRecentView {
+  id              String       @id @default(cuid())
+  userId          String
+  exerciseId      String
+  organisationId  String?
+  viewedAt        DateTime     @default(now())
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise        Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId])
+  @@index([userId, viewedAt])
+  @@index([exerciseId])
+  @@index([organisationId])
+  @@map("user_exercise_recent_views")
+}
+
+model MemberExercisePreference {
+  id                      String       @id @default(cuid())
+  userId                  String       @unique
+  organisationId          String
+  fitnessGoals            String[]     @default([]) // e.g. STRENGTH, MUSCLE_GAIN, MOBILITY, ENDURANCE
+  preferredDifficulty     String?      // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  preferredCategories     String[]     @default([]) // e.g. STRENGTH, CARDIO, MOBILITY, CORE
+  availableEquipment      String[]     @default([]) // e.g. DUMBBELL, BARBELL, RESISTANCE_BAND
+  workoutLocation         String?      // GYM, HOME, OUTDOOR
+  preferredTrainingStyles String[]     @default([])
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  user                    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organisationId])
+  @@map("member_exercise_preferences")
+}
+
+model ExerciseLearningProgress {
+  id                  String       @id @default(cuid())
+  userId              String
+  exerciseId          String
+  organisationId      String?
+  status              String       @default("IN_PROGRESS") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  completedSteps      Int          @default(0)
+  totalSteps          Int          @default(0)
+  lastStepNumber      Int?
+  mediaViewed         Boolean      @default(false)
+  instructionsViewed  Boolean      @default(false)
+  phasesExplored      Boolean      @default(false)
+  completedAt         DateTime?
+  lastInteractedAt    DateTime     @default(now())
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise            Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId])
+  @@index([userId, status])
+  @@index([exerciseId])
+  @@index([organisationId])
+  @@map("exercise_learning_progress")
+}
+
+// ==========================================
+// DAY 70: EXERCISE COLLECTIONS & GUIDED LEARNING PATHS
+// ==========================================
+
+model ExerciseCollection {
+  id                    String                    @id @default(cuid())
+  organisationId        String?
+  createdById           String?
+  ownershipType         String                    @default("SYSTEM") // SYSTEM, ORGANISATION, TRAINER
+  title                 String
+  slug                  String
+  description           String?
+  coverMediaUrl         String?
+  category              String?                   // ESSENTIALS, POSTURE, STRENGTH, MOBILITY, REHAB, HYPERTROPHY, ATHLETIC
+  difficulty            String                    @default("ALL_LEVELS") // BEGINNER, INTERMEDIATE, ADVANCED, ALL_LEVELS
+  primaryMuscleGroup    String?                   // CHEST, BACK, LEGS, SHOULDERS, ARMS, CORE, FULL_BODY
+  equipmentType         String?                   // BARBELL, DUMBBELL, BODYWEIGHT, MACHINE, CABLE, KETTLEBELL
+  contentStatus         String                    @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  featured              Boolean                   @default(false)
+  sortOrder             Int                       @default(0)
+  exerciseCount         Int                       @default(0)
+  metadata              Json?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  createdBy             User?                     @relation("CollectionsCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  items                 ExerciseCollectionItem[]
+  userProgress          UserCollectionProgress[]
+
+  @@index([organisationId])
+  @@index([ownershipType])
+  @@index([contentStatus])
+  @@index([category])
+  @@index([difficulty])
+  @@index([primaryMuscleGroup])
+  @@index([equipmentType])
+  @@index([featured])
+  @@index([slug])
+  @@map("exercise_collections")
+}
+
+model ExerciseCollectionItem {
+  id                    String              @id @default(cuid())
+  collectionId          String
+  exerciseId            String
+  sectionTitle          String?             // e.g. "Primary Compound", "Accessory Movements", "Finisher"
+  sortOrder             Int                 @default(0)
+  customTitle           String?
+  learningObjective     String?
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  collection            ExerciseCollection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  exercise              Exercise            @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, exerciseId])
+  @@index([collectionId, sortOrder])
+  @@index([exerciseId])
+  @@map("exercise_collection_items")
+}
+
+model LearningPath {
+  id                        String                        @id @default(cuid())
+  organisationId            String?
+  createdById               String?
+  ownershipType             String                        @default("SYSTEM") // SYSTEM, ORGANISATION, TRAINER
+  title                     String
+  slug                      String
+  description               String?
+  coverMediaUrl             String?
+  category                  String?                       // FUNDAMENTALS, SKILL_MASTERY, MOBILITY, REHAB, HYPERTROPHY, POSTURE
+  difficulty                String                        @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  primaryGoal               String?                       // TECHNIQUE, STRENGTH, INJURY_PREVENTION, HYPERTROPHY
+  estimatedDurationMinutes  Int                           @default(30)
+  contentStatus             String                        @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  featured                  Boolean                       @default(false)
+  sortOrder                 Int                           @default(0)
+  lessonCount               Int                           @default(0)
+  exerciseCount             Int                           @default(0)
+  curriculumId              String?
+  metadata                  Json?
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+
+  curriculum                Curriculum?                   @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  createdBy                 User?                         @relation("LearningPathsCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  sections                  LearningPathSection[]
+  lessons                   LearningPathLesson[]
+  userProgress              UserLearningPathProgress[]
+  lessonCompletions         UserLessonCompletion[]
+  trainerAssignments        TrainerLearningPathAssignment[]
+
+  @@index([organisationId])
+  @@index([ownershipType])
+  @@index([contentStatus])
+  @@index([category])
+  @@index([difficulty])
+  @@index([primaryGoal])
+  @@index([featured])
+  @@index([slug])
+  @@index([curriculumId])
+  @@map("learning_paths")
+}
+
+model LearningPathSection {
+  id                    String                @id @default(cuid())
+  pathId                String
+  title                 String
+  description           String?
+  sortOrder             Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  path                  LearningPath          @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  lessons               LearningPathLesson[]
+
+  @@index([pathId, sortOrder])
+  @@map("learning_path_sections")
+}
+
+model LearningPathLesson {
+  id                    String                @id @default(cuid())
+  pathId                String
+  sectionId             String?
+  title                 String
+  description           String?
+  sortOrder             Int                   @default(0)
+  lessonType            String                @default("EXERCISE_LESSON") // EXERCISE_LESSON, MOVEMENT_LESSON, EQUIPMENT_LESSON, CONCEPT_LESSON, REVIEW
+  exerciseId            String?
+  mediaUrl              String?
+  learningObjective     String?
+  content               String?
+  contentBlocks         Json?                         // Modular content blocks: [{ id, type, title, content, calloutType, mediaUrl, ... }]
+  keyTakeaways          String[]              @default([])
+  estimatedMinutes      Int                   @default(5)
+  isRequired            Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  path                  LearningPath          @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  section               LearningPathSection?  @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  exercise              Exercise?             @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  completions           UserLessonCompletion[]
+  knowledgeChecks       KnowledgeCheck[]
+
+  @@index([pathId, sortOrder])
+  @@index([sectionId])
+  @@index([exerciseId])
+  @@map("learning_path_lessons")
+}
+
+model UserLearningPathProgress {
+  id                    String                @id @default(cuid())
+  userId                String
+  pathId                String
+  organisationId        String?
+  status                String                @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  completedLessons      Int                   @default(0)
+  totalLessons          Int                   @default(0)
+  currentLessonId       String?
+  percentComplete       Float                 @default(0.0)
+  completedAt           DateTime?
+  lastInteractedAt      DateTime              @default(now())
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  path                  LearningPath          @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pathId])
+  @@index([userId, status])
+  @@index([pathId])
+  @@index([organisationId])
+  @@map("user_learning_path_progress")
+}
+
+model UserLessonCompletion {
+  id                    String                @id @default(cuid())
+  userId                String
+  pathId                String
+  lessonId              String
+  completedAt           DateTime              @default(now())
+
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  path                  LearningPath          @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  lesson                LearningPathLesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, pathId])
+  @@index([lessonId])
+  @@map("user_lesson_completions")
+}
+
+model TrainerLearningPathAssignment {
+  id                   String         @id @default(cuid())
+  organisationId       String
+  trainerProfileId     String
+  memberProfileId      String
+  pathId               String
+  notes                String?
+  status               String         @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, COMPLETED
+  assignedAt           DateTime       @default(now())
+  completedAt          DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  path                 LearningPath   @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([trainerProfileId])
+  @@index([memberProfileId])
+  @@index([pathId])
+  @@index([status])
+  @@map("trainer_learning_path_assignments")
+}
+
+model UserCollectionProgress {
+  id                    String                @id @default(cuid())
+  userId                String
+  collectionId          String
+  organisationId        String?
+  status                String                @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED
+  lastInteractedAt      DateTime              @default(now())
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collection            ExerciseCollection    @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, collectionId])
+  @@index([userId, status])
+  @@index([collectionId])
+  @@index([organisationId])
+  @@map("user_collection_progress")
+}
+
+// ==========================================
+// DAY 72: INTERACTIVE FITNESS EDUCATION, KNOWLEDGE CHECKS & ASSESSMENTS
+// ==========================================
+
+model KnowledgeCheck {
+  id                    String              @id @default(cuid())
+  tenantId              String?
+  lessonId              String?
+  exerciseId            String?
+  title                 String
+  description           String?
+  instructions          String?
+  passingScore          Int                 @default(70) // Percentage threshold (e.g. 70%)
+  questionCount         Int                 @default(0)
+  attemptLimit          Int?                // Null = unlimited
+  timeLimitMinutes      Int?                // Null = untimed
+  contentStatus         String              @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  version               Int                 @default(1)
+  isRequiredForLesson   Boolean             @default(false)
+  createdById           String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  lesson                LearningPathLesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  exercise              Exercise?           @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  createdBy             User?               @relation("KnowledgeChecksCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  questions             KnowledgeQuestion[]
+  attempts              KnowledgeAttempt[]
+
+  @@index([tenantId])
+  @@index([lessonId])
+  @@index([exerciseId])
+  @@index([contentStatus])
+  @@map("knowledge_checks")
+}
+
+model KnowledgeQuestion {
+  id                    String              @id @default(cuid())
+  checkId               String
+  questionText          String
+  questionType          String              @default("MULTIPLE_CHOICE") // MULTIPLE_CHOICE, MULTI_SELECT, TRUE_FALSE, IMAGE_CHOICE, ORDERING, MATCHING
+  difficulty            String              @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  sortOrder             Int                 @default(0)
+  explanation           String?             // Contextual rationale shown after submission
+  correctFeedback       String?             // E.g. "Correct! You identified..."
+  incorrectFeedback     String?             // E.g. "Not quite. Review..."
+  hint                  String?             // Optional educational hint
+  mediaId               String?             // ExerciseMedia reference
+  mediaUrl              String?             // Direct visual URL
+  mediaAltText          String?             // Accessible alt description
+  exercisePhaseId       String?             // Movement phase link if testing phase
+  metadata              Json?               // Ordering / matching structured items if needed
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  knowledgeCheck        KnowledgeCheck      @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  answers               KnowledgeAnswer[]
+  responses             KnowledgeResponse[]
+
+  @@index([checkId, sortOrder])
+  @@index([questionType])
+  @@index([difficulty])
+  @@map("knowledge_questions")
+}
+
+model KnowledgeAnswer {
+  id                    String              @id @default(cuid())
+  questionId            String
+  answerText            String
+  isCorrect             Boolean             @default(false) // Strictly server-side only; hidden from client before submission
+  explanation           String?             // Option-specific explanation
+  mediaUrl              String?             // Option visual thumbnail
+  mediaId               String?
+  sortOrder             Int                 @default(0)
+  matchTarget           String?             // Target term for MATCHING questions
+  correctOrderIndex     Int?                // Expected 1-based sequence for ORDERING questions
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  question              KnowledgeQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, sortOrder])
+  @@map("knowledge_answers")
+}
+
+model KnowledgeAttempt {
+  id                    String              @id @default(cuid())
+  userId                String
+  tenantId              String?
+  checkId               String
+  lessonId              String?
+  pathId                String?
+  status                String              @default("IN_PROGRESS") // IN_PROGRESS, PASSED, FAILED, COMPLETED
+  score                 Float               @default(0.0) // Score % (0-100)
+  correctCount          Int                 @default(0)
+  questionCount         Int                 @default(0)
+  passed                Boolean             @default(false)
+  attemptNumber         Int                 @default(1)
+  timeSpentSeconds      Int                 @default(0)
+  hintsUsedCount        Int                 @default(0)
+  startedAt             DateTime            @default(now())
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeCheck        KnowledgeCheck      @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  responses             KnowledgeResponse[]
+
+  @@index([userId, status])
+  @@index([checkId])
+  @@index([tenantId])
+  @@index([lessonId])
+  @@map("knowledge_attempts")
+}
+
+model KnowledgeResponse {
+  id                    String              @id @default(cuid())
+  attemptId             String
+  questionId            String
+  selectedAnswerIds     String[]            @default([])
+  orderedItemIds        String[]            @default([])
+  matchingPairs         Json?               // Submitted term-to-target map
+  isCorrect             Boolean             @default(false)
+  hintsUsed             Boolean             @default(false)
+  answeredAt            DateTime            @default(now())
+
+  attempt               KnowledgeAttempt    @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question              KnowledgeQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("knowledge_responses")
+}
+
+// ==========================================
+// DAY 73: FITNESS EDUCATION CURRICULUM, EXERCISE FUNDAMENTALS & STRUCTURED LEARNING ACADEMY
+// ==========================================
+
+model Curriculum {
+  id                    String              @id @default(cuid())
+  organisationId        String?
+  createdById           String?
+  ownershipType         String              @default("SYSTEM") // SYSTEM, ORGANISATION, TRAINER
+  title                 String
+  slug                  String
+  description           String?
+  category              String              // FITNESS_FUNDAMENTALS, MOVEMENT_FUNDAMENTALS, EXERCISE_FUNDAMENTALS, GYM_EQUIPMENT, TRAINING_PRINCIPLES, WARMUP_COOLDOWN, STRENGTH_TRAINING, CARDIO, MOBILITY, FLEXIBILITY, RECOVERY, WELLNESS
+  difficulty            String              @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  iconName              String?
+  coverMediaUrl         String?
+  contentStatus         String              @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  sortOrder             Int                 @default(0)
+  pathCount             Int                 @default(0)
+  lessonCount           Int                 @default(0)
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  createdBy             User?               @relation("CurriculaCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  learningPaths         LearningPath[]
+
+  @@index([organisationId])
+  @@index([ownershipType])
+  @@index([category])
+  @@index([slug])
+  @@index([contentStatus])
+  @@map("curricula")
+}
+
+model GlossaryTerm {
+  id                    String              @id @default(cuid())
+  organisationId        String?
+  createdById           String?
+  term                  String
+  slug                  String
+  definition            String
+  shortExplanation      String?
+  category              String?             // GENERAL, BIOMECHANICS, EQUIPMENT, PROGRAMMING, RECOVERY, NUTRITION
+  difficulty            String?             @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  relatedExerciseIds    String[]            @default([])
+  relatedMovementPatterns String[]          @default([])
+  relatedLessonIds      String[]            @default([])
+  mediaUrl              String?
+  isSystem              Boolean             @default(true)
+  sortOrder             Int                 @default(0)
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  createdBy             User?               @relation("GlossaryTermsCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([slug])
+  @@index([category])
+  @@index([term])
+  @@map("glossary_terms")
 }
 
 model WorkoutTemplate {

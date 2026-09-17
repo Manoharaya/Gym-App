@@ -81,6 +81,27 @@ export type MemberStackParamList = {
   Goals: { memberProfileId?: string } | undefined;
   TrainerNotes: { memberProfileId?: string } | undefined;
   ExerciseLibrary: undefined;
+  ExerciseDimensionDetail: {
+    dimension: 'category' | 'muscle' | 'equipment' | 'movement' | 'goal' | 'difficulty';
+    value: string;
+    initialTitle?: string;
+  };
+  ExerciseCollections: undefined;
+  ExerciseCollectionDetail: { collectionId: string; title?: string };
+  LearningPaths: undefined;
+  LearningPathOverview: { pathId: string; title?: string };
+  LearningLesson: { pathId: string; lessonId: string; title?: string };
+  KnowledgeCheck: {
+    checkId: string;
+    lessonId?: string;
+    pathId?: string;
+    title?: string;
+  };
+  LearningHome: undefined;
+  LearningProgress: undefined;
+  FitnessAcademy: undefined;
+  CurriculumDetail: { curriculumId: string; title?: string };
+  Glossary: undefined;
   TrainingPlanOverview: { planId?: string } | undefined;
   TrainingCalendar: { planId?: string } | undefined;
   EngagementHome: undefined;
@@ -108,6 +129,16 @@ export type TrainerStackParamList = {
   TrainerNotes: { memberProfileId?: string } | undefined;
   ExerciseLibrary: undefined;
   ExerciseDetail: { exerciseId: string; exerciseName?: string };
+  ExerciseDimensionDetail: {
+    dimension: 'category' | 'muscle' | 'equipment' | 'movement' | 'goal' | 'difficulty';
+    value: string;
+    initialTitle?: string;
+  };
+  ExerciseCollections: undefined;
+  ExerciseCollectionDetail: { collectionId: string; title?: string };
+  LearningPaths: undefined;
+  LearningPathOverview: { pathId: string; title?: string };
+  LearningLesson: { pathId: string; lessonId: string; title?: string };
   TrainerWorkouts: { memberProfileId?: string } | undefined;
   CreateWorkout: { memberProfileId?: string } | undefined;
   TrainerProgramming: { memberProfileId?: string; programId?: string; planId?: string } | undefined;

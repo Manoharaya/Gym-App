@@ -41,6 +41,11 @@ import {
   CreateEquipmentRelationDto,
   UpdateContentStatusDto,
 } from '../dto/exercise.dto';
+import {
+  UpdateExercisePreferencesDto,
+  UpdateExerciseLearningProgressDto,
+} from '../dto/exercise-personalization.dto';
+import { ExercisePersonalizationService } from '../services/exercise-personalization.service';
 
 @ApiTags('Exercises')
 @ApiBearerAuth()
@@ -49,6 +54,7 @@ export class ExercisesController {
   constructor(
     private readonly exercisesService: ExercisesService,
     private readonly mediaService: ExerciseMediaService,
+    private readonly personalizationService: ExercisePersonalizationService,
   ) {}
 
   private resolveOrgId(user: AuthenticatedUser, headerOrgId?: string): string {
@@ -68,10 +74,115 @@ export class ExercisesController {
     @Headers('x-organisation-id') headerOrgId?: string,
   ) {
     const organisationId = this.resolveOrgId(user, headerOrgId);
-    return this.exercisesService.findAll(organisationId, query);
+    return this.exercisesService.findAll(organisationId, query, user?.id);
   }
 
-  @Get(':id/visual')
+  @Get('filter-metadata')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get dynamic filter metadata (categories, muscles, equipment, difficulties) with counts' })
+  async getFilterMetadata(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.getFilterMetadata(organisationId);
+  }
+
+  @Get('favorites')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'List user favorited exercises' })
+  async getFavorites(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.getFavorites(organisationId, user.id, page ? Number(page) : 1, limit ? Number(limit) : 20);
+  }
+
+  @Get('recent')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get recently viewed exercises for current user' })
+  async getRecentlyViewed(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('limit') limit?: number,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.getRecentlyViewed(organisationId, user.id, limit ? Number(limit) : 10);
+  }
+
+  @Get('personalized')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get personalized exercise discovery sections tailored to the member' })
+  async getPersonalizedDiscovery(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.personalizationService.getPersonalizedDiscovery(organisationId, user.id);
+  }
+
+  @Get('preferences')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get current member exercise discovery preferences' })
+  async getPreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.personalizationService.getPreferences(organisationId, user.id);
+  }
+
+  @Patch('preferences')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Update member exercise discovery preferences' })
+  async updatePreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateExercisePreferencesDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.personalizationService.updatePreferences(organisationId, user.id, dto);
+  }
+
+  @Post('preferences/reset')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Reset member exercise discovery preferences to profile defaults' })
+  async resetPreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.personalizationService.resetPreferences(organisationId, user.id);
+  }
+
+  @Post(':id/favorite')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Toggle exercise favorite bookmark for current user' })
+  async toggleFavorite(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.toggleFavorite(organisationId, user.id, id);
+  }
+
+  @Post(':id/view')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Record exercise view timestamp for current user' })
+  async recordRecentView(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.exercisesService.recordRecentView(organisationId, user.id, id);
+  }
+
+  @Get([':id/visual', ':id/visual-content'])
   @RequirePermission('exercises', 'read')
   @ApiOperation({ summary: 'Get comprehensive visual exercise details including media, phases, mistakes, safety, and variations' })
   async findVisualContent(
@@ -80,7 +191,7 @@ export class ExercisesController {
     @Headers('x-organisation-id') headerOrgId?: string,
   ) {
     const organisationId = this.resolveOrgId(user, headerOrgId);
-    return this.exercisesService.findVisualContent(organisationId, id);
+    return this.exercisesService.findVisualContent(organisationId, id, user?.id);
   }
 
   @Get(':id/instructions')
@@ -93,6 +204,31 @@ export class ExercisesController {
   ) {
     const organisationId = this.resolveOrgId(user, headerOrgId);
     return this.exercisesService.getInstructionSteps(organisationId, id);
+  }
+
+  @Get(':id/learning-progress')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get member learning progress for an exercise' })
+  async getLearningProgress(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.personalizationService.getLearningProgress(organisationId, user.id, id);
+  }
+
+  @Post(':id/learning-progress')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Update or complete member learning progress for an exercise' })
+  async updateLearningProgress(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateExerciseLearningProgressDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.personalizationService.updateLearningProgress(organisationId, user.id, id, dto);
   }
 
   @Get(':id/media')

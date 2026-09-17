@@ -31,8 +31,21 @@ export interface ExerciseQueryOptions {
   exerciseType?: ExerciseType;
   ownership?: 'ALL' | 'SYSTEM' | 'ORGANISATION';
   includeArchived?: boolean;
+  sortBy?: 'RECOMMENDED' | 'ALPHABETICAL' | 'DIFFICULTY' | 'NEWEST';
+  isFavorite?: boolean;
   page?: number;
   limit?: number;
+}
+
+export interface ExerciseFilterMetadata {
+  totalCount: number;
+  categories: Array<{ id: string; name: string; count: number }>;
+  muscleGroups: Array<{ id: string; name: string; count: number }>;
+  detailedMuscles: Array<{ id: string; name: string; count: number }>;
+  equipment: Array<{ id: string; name: string; count: number }>;
+  difficulties: Array<{ id: string; name: string; count: number }>;
+  movementPatterns: Array<{ id: string; name: string; count: number }>;
+  environments: string[];
 }
 
 export interface CreateCustomExercisePayload {
@@ -52,7 +65,7 @@ export interface CreateCustomExercisePayload {
 
 export class ExerciseService {
   static async getExercises(options: ExerciseQueryOptions = {}): Promise<{
-    items: Exercise[];
+    items: (Exercise & { isFavorite?: boolean })[];
     meta: { page: number; limit: number; total: number; totalPages: number };
   }> {
     const params: Record<string, any> = {};
@@ -76,6 +89,8 @@ export class ExerciseService {
     if (options.exerciseType) params.exerciseType = options.exerciseType;
     if (options.ownership) params.ownership = options.ownership;
     if (options.includeArchived) params.includeArchived = options.includeArchived;
+    if (options.sortBy) params.sortBy = options.sortBy;
+    if (options.isFavorite !== undefined) params.isFavorite = options.isFavorite;
     if (options.page) params.page = options.page;
     if (options.limit) params.limit = options.limit;
 
@@ -87,13 +102,58 @@ export class ExerciseService {
     };
   }
 
+  static async getFilterMetadata(): Promise<ExerciseFilterMetadata> {
+    const res = await apiClient.get<any>('/exercises/filter-metadata');
+    return res.data?.data || res.data;
+  }
+
+  static async toggleFavorite(exerciseId: string): Promise<{
+    exerciseId: string;
+    isFavorite: boolean;
+    message: string;
+  }> {
+    const res = await apiClient.post<any>(`/exercises/${exerciseId}/favorite`);
+    return res.data?.data || res.data;
+  }
+
+  static async getFavorites(page = 1, limit = 20): Promise<{
+    items: (Exercise & { isFavorite: boolean; favoritedAt?: string })[];
+    meta: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    const res = await apiClient.get<any>('/exercises/favorites', { params: { page, limit } });
+    const payload = res.data?.data || res.data;
+    return {
+      items: payload.items || [],
+      meta: payload.meta || { page: 1, limit, total: 0, totalPages: 0 },
+    };
+  }
+
+  static async recordRecentView(exerciseId: string): Promise<{
+    success: boolean;
+    exerciseId: string;
+    viewedAt: string;
+  }> {
+    const res = await apiClient.post<any>(`/exercises/${exerciseId}/view`);
+    return res.data?.data || res.data;
+  }
+
+  static async getRecentlyViewed(limit = 10): Promise<{
+    items: (Exercise & { isFavorite?: boolean; lastViewedAt?: string })[];
+  }> {
+    const res = await apiClient.get<any>('/exercises/recent', { params: { limit } });
+    const payload = res.data?.data || res.data;
+    return {
+      items: payload.items || [],
+    };
+  }
+
   static async getExerciseById(id: string): Promise<Exercise> {
     const res = await apiClient.get<any>(`/exercises/${id}`);
     return res.data?.data || res.data;
   }
 
-  static async getExerciseVisualDetails(id: string): Promise<Exercise> {
-    const res = await apiClient.get<any>(`/exercises/${id}/visual`);
+  static async getExerciseVisualDetails(id: string): Promise<any> {
+    const res = await apiClient.get<any>(`/exercises/${id}/visual-content`);
     return res.data?.data || res.data;
   }
 
@@ -398,5 +458,1091 @@ export class ExerciseService {
     const res = await apiClient.get<any>(`/exercises/${exerciseId}/substitutes`, { params });
     return res.data?.data || res.data || [];
   }
+
+  // ==========================================
+  // DAY 68: PERSONALIZATION & SMART LEARNING
+  // ==========================================
+
+  static async getPersonalizedSections(): Promise<PersonalizedDiscoveryResponse> {
+    const res = await apiClient.get<any>('/exercises/personalized');
+    return res.data?.data || res.data;
+  }
+
+  static async getPreferences(): Promise<MemberExercisePreference> {
+    const res = await apiClient.get<any>('/exercises/preferences');
+    return res.data?.data || res.data;
+  }
+
+  static async updatePreferences(payload: UpdateExercisePreferencesPayload): Promise<MemberExercisePreference> {
+    const res = await apiClient.patch<any>('/exercises/preferences', payload);
+    return res.data?.data || res.data;
+  }
+
+  static async resetPreferences(): Promise<MemberExercisePreference> {
+    const res = await apiClient.post<any>('/exercises/preferences/reset');
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningProgress(exerciseId: string): Promise<any> {
+    const res = await apiClient.get<any>(`/exercises/${exerciseId}/learning-progress`);
+    return res.data?.data || res.data;
+  }
+
+  static async updateLearningProgress(
+    exerciseId: string,
+    payload: UpdateExerciseLearningProgressPayload,
+  ): Promise<any> {
+    const res = await apiClient.post<any>(`/exercises/${exerciseId}/learning-progress`, payload);
+    return res.data?.data || res.data;
+  }
+
+  // --- Day 69: Visual Exercise Discovery & Taxonomies ---
+
+  static async getDiscoveryOverview(): Promise<ExerciseDiscoveryOverview> {
+    const res = await apiClient.get<any>('/exercise-discovery/overview');
+    return res.data?.data || res.data;
+  }
+
+  static async getDiscoveryDimensionDetail(
+    dimension: 'category' | 'muscle' | 'equipment' | 'movement' | 'goal' | 'difficulty',
+    value: string,
+  ): Promise<ExerciseDimensionDetail> {
+    const res = await apiClient.get<any>(`/exercise-discovery/${dimension}/${encodeURIComponent(value)}`);
+    return res.data?.data || res.data;
+  }
+
+  static async getDiscoveryMuscles(): Promise<DiscoveryMuscleItem[]> {
+    const res = await apiClient.get<any>('/exercise-discovery/muscles');
+    return res.data?.data || res.data;
+  }
+
+  static async getDiscoveryEquipment(): Promise<DiscoveryEquipmentItem[]> {
+    const res = await apiClient.get<any>('/exercise-discovery/equipment');
+    return res.data?.data || res.data;
+  }
+
+  static async getDiscoveryMovements(): Promise<DiscoveryMovementItem[]> {
+    const res = await apiClient.get<any>('/exercise-discovery/movements');
+    return res.data?.data || res.data;
+  }
+
+  // --- Day 70: Exercise Collections & Guided Learning Paths ---
+
+  static async getCollections(params?: {
+    category?: string;
+    difficulty?: string;
+    primaryMuscleGroup?: string;
+    equipmentType?: string;
+    featured?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: ExerciseCollectionSummary[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+    const res = await apiClient.get<any>('/exercise-collections', { params });
+    return res.data?.data || res.data;
+  }
+
+  static async getCollectionById(idOrSlug: string): Promise<ExerciseCollectionDetail> {
+    const res = await apiClient.get<any>(`/exercise-collections/${encodeURIComponent(idOrSlug)}`);
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningPaths(params?: {
+    category?: string;
+    difficulty?: string;
+    primaryGoal?: string;
+    featured?: boolean;
+    search?: string;
+    progressStatus?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: LearningPathSummary[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+    const res = await apiClient.get<any>('/learning-paths', { params });
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningPathById(idOrSlug: string): Promise<LearningPathDetail> {
+    const res = await apiClient.get<any>(`/learning-paths/${encodeURIComponent(idOrSlug)}`);
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningLesson(pathId: string, lessonId: string): Promise<LearningPathLessonDetail> {
+    const res = await apiClient.get<any>(`/learning-paths/${encodeURIComponent(pathId)}/lessons/${encodeURIComponent(lessonId)}`);
+    return res.data?.data || res.data;
+  }
+
+  static async completeLearningLesson(
+    pathId: string,
+    lessonId: string,
+    notes?: string,
+  ): Promise<{
+    success: boolean;
+    lessonId: string;
+    pathId: string;
+    pathProgress: LearningPathProgress;
+    nextLessonId: string | null;
+  }> {
+    const res = await apiClient.post<any>(
+      `/learning-paths/${encodeURIComponent(pathId)}/lessons/${encodeURIComponent(lessonId)}/complete`,
+      { notes },
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async resetLearningPath(pathId: string): Promise<{
+    success: boolean;
+    message: string;
+    pathId: string;
+    status: string;
+    currentLessonId: string | null;
+  }> {
+    const res = await apiClient.post<any>(`/learning-paths/${encodeURIComponent(pathId)}/reset`);
+    return res.data?.data || res.data;
+  }
+
+  static async getRelatedCollectionsAndPaths(exerciseId: string): Promise<ExerciseRelatedCollectionsAndPaths> {
+    const res = await apiClient.get<any>(`/exercise-collections/exercise/${encodeURIComponent(exerciseId)}`);
+    return res.data?.data || res.data;
+  }
+
+  // --- Day 71: Member Learning Dashboard & Progress Intelligence ---
+
+  static async getLearningDashboard(): Promise<LearningDashboardResponse> {
+    const res = await apiClient.get<any>('/learning/dashboard');
+    return res.data?.data || res.data;
+  }
+
+  static async getResumeLearningPosition(): Promise<ResumePosition | null> {
+    const res = await apiClient.get<any>('/learning/resume');
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningProgressOverview(): Promise<LearningProgressOverview> {
+    const res = await apiClient.get<any>('/learning/progress');
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningHistory(params?: { page?: number; limit?: number; type?: string }): Promise<{
+    items: Array<{
+      id: string;
+      lessonId: string;
+      lessonTitle: string;
+      lessonType: string;
+      estimatedMinutes: number;
+      pathId: string;
+      pathTitle: string;
+      pathCategory?: string | null;
+      exerciseId?: string | null;
+      exerciseName?: string | null;
+      completedAt: string;
+    }>;
+    pagination: { page: number; limit: number; totalCount: number; totalPages: number };
+  }> {
+    const res = await apiClient.get<any>('/learning/history', { params });
+    return res.data?.data || res.data;
+  }
+
+  static async getExerciseLearningMastery(exerciseId: string): Promise<ExerciseLearningMasteryStatus> {
+    const res = await apiClient.get<any>(`/learning/exercises/${encodeURIComponent(exerciseId)}/status`);
+    return res.data?.data || res.data;
+  }
+
+  static async trackCollectionInteraction(collectionId: string): Promise<void> {
+    await apiClient.post<any>(`/learning/collections/${encodeURIComponent(collectionId)}/interact`);
+  }
+
+  // --- Day 72: Interactive Fitness Education, Knowledge Checks & Assessments ---
+
+  static async getLessonKnowledgeCheck(lessonId: string): Promise<KnowledgeCheckSummary | null> {
+    const res = await apiClient.get<any>(`/learning/lessons/${encodeURIComponent(lessonId)}/knowledge-check`);
+    return res.data?.data || res.data;
+  }
+
+  static async getKnowledgeCheckPlayer(checkId: string): Promise<KnowledgeCheckPlayerDto> {
+    const res = await apiClient.get<any>(`/learning/checks/${encodeURIComponent(checkId)}/player`);
+    return res.data?.data || res.data;
+  }
+
+  static async startKnowledgeAttempt(
+    checkId: string,
+    payload?: { lessonId?: string; pathId?: string },
+  ): Promise<KnowledgeCheckAttemptResult> {
+    const res = await apiClient.post<any>(`/learning/checks/${encodeURIComponent(checkId)}/attempt`, payload || {});
+    return res.data?.data || res.data;
+  }
+
+  static async submitQuestionResponse(
+    attemptId: string,
+    payload: {
+      questionId: string;
+      selectedAnswerIds?: string[];
+      orderedItemIds?: string[];
+      matchingPairs?: Record<string, string>;
+      hintsUsed?: boolean;
+    },
+  ): Promise<{
+    questionId: string;
+    isCorrect: boolean;
+    correctCountSoFar: number;
+    feedback?: string;
+    explanation?: string;
+    correctAnswers?: any;
+  }> {
+    const res = await apiClient.post<any>(
+      `/learning/attempts/${encodeURIComponent(attemptId)}/response`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async completeKnowledgeAttempt(
+    attemptId: string,
+    timeSpentSeconds?: number,
+  ): Promise<KnowledgeCheckAttemptResult> {
+    const res = await apiClient.post<any>(
+      `/learning/attempts/${encodeURIComponent(attemptId)}/complete`,
+      { timeSpentSeconds },
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getAttemptReview(attemptId: string): Promise<KnowledgeAttemptReview> {
+    const res = await apiClient.get<any>(`/learning/attempts/${encodeURIComponent(attemptId)}/review`);
+    return res.data?.data || res.data;
+  }
+
+  // --- Day 73: Fitness Education Curriculum, Exercise Fundamentals & Academy ---
+
+  static async getAcademyOverview(): Promise<AcademyOverview> {
+    const res = await apiClient.get<any>('/learning/academy/overview');
+    return res.data?.data || res.data;
+  }
+
+  static async getCurricula(options?: {
+    category?: string;
+    search?: string;
+  }): Promise<CurriculumSummary[]> {
+    const res = await apiClient.get<any>('/learning/curricula', { params: options });
+    return res.data?.data || res.data || [];
+  }
+
+  static async getCurriculumById(curriculumId: string): Promise<CurriculumDetail> {
+    const res = await apiClient.get<any>(`/learning/curricula/${encodeURIComponent(curriculumId)}`);
+    return res.data?.data || res.data;
+  }
+
+  static async getGlossaryTerms(options?: {
+    category?: string;
+    search?: string;
+    letter?: string;
+  }): Promise<GlossaryTermItem[]> {
+    const res = await apiClient.get<any>('/learning/glossary', { params: options });
+    return res.data?.data || res.data || [];
+  }
+
+  static async getGlossaryTerm(termOrSlug: string): Promise<GlossaryTermItem> {
+    const res = await apiClient.get<any>(`/learning/glossary/${encodeURIComponent(termOrSlug)}`);
+    return res.data?.data || res.data;
+  }
 }
 
+export type ReasonCode =
+  | 'GOAL_MATCH'
+  | 'EQUIPMENT_MATCH'
+  | 'DIFFICULTY_MATCH'
+  | 'RECENT_INTEREST'
+  | 'FAVORITE'
+  | 'WORKOUT_HISTORY'
+  | 'NEW_DISCOVERY';
+
+export interface PersonalizedExerciseItem extends Exercise {
+  isFavorite: boolean;
+  reasonCode: ReasonCode;
+  reasonText: string;
+  learningProgress?: {
+    status: string;
+    completedSteps: number;
+    totalSteps: number;
+    lastStepNumber?: number | null;
+    phasesExplored: boolean;
+    completedAt?: string | null;
+  };
+}
+
+export interface MemberExercisePreference {
+  id?: string;
+  userId: string;
+  organisationId: string;
+  fitnessGoals: string[];
+  preferredDifficulty: string | null;
+  preferredCategories: string[];
+  availableEquipment: string[];
+  workoutLocation: string | null;
+  preferredTrainingStyles: string[];
+}
+
+export interface PersonalizedDiscoveryResponse {
+  preferences: {
+    fitnessGoals: string[];
+    preferredDifficulty: string | null;
+    preferredCategories: string[];
+    availableEquipment: string[];
+    workoutLocation: string | null;
+  };
+  forYou: PersonalizedExerciseItem[];
+  continueLearning: PersonalizedExerciseItem[];
+  favorites: PersonalizedExerciseItem[];
+  recentlyViewed: PersonalizedExerciseItem[];
+  basedOnGoals: PersonalizedExerciseItem[];
+  basedOnEquipment: PersonalizedExerciseItem[];
+  usedInWorkouts: PersonalizedExerciseItem[];
+  exploreNew: PersonalizedExerciseItem[];
+}
+
+export interface UpdateExercisePreferencesPayload {
+  fitnessGoals?: string[];
+  preferredDifficulty?: string;
+  preferredCategories?: string[];
+  availableEquipment?: string[];
+  workoutLocation?: string;
+  preferredTrainingStyles?: string[];
+}
+
+export interface UpdateExerciseLearningProgressPayload {
+  stepNumber?: number;
+  completedSteps?: number;
+  totalSteps?: number;
+  mediaViewed?: boolean;
+  instructionsViewed?: boolean;
+  phasesExplored?: boolean;
+  isComplete?: boolean;
+}
+
+// --- Day 69 Discovery Types ---
+
+export interface DiscoveryRepresentativeExercise {
+  id: string;
+  name: string;
+  slug: string;
+  thumbnailUrl?: string;
+  difficulty?: string;
+}
+
+export interface DiscoveryCategoryItem {
+  code: string;
+  name: string;
+  count: number;
+  description: string;
+  representativeExercise?: DiscoveryRepresentativeExercise | null;
+}
+
+export interface DiscoveryMuscleItem {
+  code: string;
+  name: string;
+  group: 'UPPER_BODY' | 'CORE' | 'LOWER_BODY';
+  region: 'ANTERIOR' | 'POSTERIOR';
+  count: number;
+  primaryCount: number;
+  secondaryCount: number;
+  representativeExercise?: DiscoveryRepresentativeExercise | null;
+}
+
+export interface DiscoveryEquipmentItem {
+  code: string;
+  name: string;
+  group: string;
+  count: number;
+  isNoEquipment: boolean;
+  representativeExercise?: DiscoveryRepresentativeExercise | null;
+}
+
+export interface DiscoveryMovementItem {
+  code: string;
+  name: string;
+  description: string;
+  count: number;
+  representativeExercise?: DiscoveryRepresentativeExercise | null;
+}
+
+export interface DiscoveryGoalItem {
+  code: string;
+  name: string;
+  description: string;
+  group: string;
+  count: number;
+}
+
+export interface DiscoveryDifficultyItem {
+  code: string;
+  name: string;
+  count: number;
+  level: number;
+}
+
+export interface ExerciseDiscoveryOverview {
+  totalExercises: number;
+  categories: DiscoveryCategoryItem[];
+  muscles: DiscoveryMuscleItem[];
+  equipment: DiscoveryEquipmentItem[];
+  movementPatterns: DiscoveryMovementItem[];
+  goals: DiscoveryGoalItem[];
+  difficulties: DiscoveryDifficultyItem[];
+}
+
+export interface RelatedMetadataCountItem {
+  id: string;
+  name: string;
+  count: number;
+  role?: string;
+}
+
+export interface DiscoveryPreviewExercise {
+  id: string;
+  name: string;
+  slug: string;
+  difficulty: string;
+  primaryMuscleGroup: string;
+  equipment: string;
+  movementPattern?: string | null;
+  exerciseCategory?: string | null;
+  thumbnailUrl?: string;
+  muscleRole?: string;
+}
+
+export interface ExerciseDimensionDetail {
+  dimension: 'category' | 'muscle' | 'equipment' | 'movement' | 'goal' | 'difficulty';
+  value: string;
+  title: string;
+  description: string;
+  exerciseCount: number;
+  region?: 'ANTERIOR' | 'POSTERIOR' | null;
+  group?: string | null;
+  isNoEquipment?: boolean;
+  roles?: {
+    primaryCount: number;
+    secondaryCount: number;
+    stabilizerCount: number;
+  };
+  relatedEquipment: RelatedMetadataCountItem[];
+  relatedMuscles: RelatedMetadataCountItem[];
+  relatedMovements: RelatedMetadataCountItem[];
+  relatedCategories: RelatedMetadataCountItem[];
+  difficultyDistribution: RelatedMetadataCountItem[];
+  previewExercises: DiscoveryPreviewExercise[];
+}
+
+// --- Day 70: Exercise Collections & Guided Learning Paths Types ---
+
+export interface ExerciseCollectionPreviewItem {
+  id: string;
+  name: string;
+  slug: string;
+  primaryMuscleGroup: string;
+  equipment: string;
+  difficulty: string;
+}
+
+export interface ExerciseCollectionSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  coverMediaUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  primaryMuscleGroup?: string | null;
+  equipmentType?: string | null;
+  featured: boolean;
+  exerciseCount: number;
+  ownershipType: string;
+  previewExercises: ExerciseCollectionPreviewItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExerciseCollectionItemDetail {
+  id: string;
+  exerciseId: string;
+  sectionTitle?: string | null;
+  sortOrder: number;
+  customTitle?: string | null;
+  learningObjective?: string | null;
+  notes?: string | null;
+  exercise: {
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    primaryMuscleGroup: string;
+    secondaryMuscleGroups: string[];
+    movementPattern?: string | null;
+    equipment: string;
+    mediaPreview?: { id: string; storageKey: string; mimeType: string; purpose: string } | null;
+  };
+}
+
+export interface ExerciseCollectionDetail {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  coverMediaUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  primaryMuscleGroup?: string | null;
+  equipmentType?: string | null;
+  featured: boolean;
+  contentStatus: string;
+  exerciseCount: number;
+  ownershipType: string;
+  items: ExerciseCollectionItemDetail[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LearningPathProgress {
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  completedLessons: number;
+  totalLessons: number;
+  percentComplete: number;
+  currentLessonId?: string | null;
+  completedAt?: string | null;
+  lastInteractedAt?: string | null;
+}
+
+export interface LearningPathLessonPreview {
+  id: string;
+  title: string;
+  lessonType: string;
+  estimatedMinutes: number;
+}
+
+export interface LearningPathSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  coverMediaUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  primaryGoal?: string | null;
+  estimatedDurationMinutes: number;
+  featured: boolean;
+  lessonCount: number;
+  exerciseCount: number;
+  ownershipType: string;
+  previewLessons: LearningPathLessonPreview[];
+  progress: LearningPathProgress;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LearningPathLessonItem {
+  id: string;
+  sectionId?: string | null;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  lessonType: string;
+  exerciseId?: string | null;
+  mediaUrl?: string | null;
+  learningObjective?: string | null;
+  keyTakeaways: string[];
+  estimatedMinutes: number;
+  isRequired: boolean;
+  exercise?: {
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    primaryMuscleGroup: string;
+    equipment: string;
+  } | null;
+  isCompleted: boolean;
+  completedAt?: string | null;
+}
+
+export interface LearningPathSectionDetail {
+  id: string;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  lessons: LearningPathLessonItem[];
+}
+
+export interface LearningPathDetail {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  coverMediaUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  primaryGoal?: string | null;
+  estimatedDurationMinutes: number;
+  featured: boolean;
+  contentStatus: string;
+  lessonCount: number;
+  exerciseCount: number;
+  ownershipType: string;
+  nextLessonId?: string | null;
+  progress: LearningPathProgress;
+  sections: LearningPathSectionDetail[];
+  lessons: LearningPathLessonItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LearningPathLessonDetail {
+  id: string;
+  pathId: string;
+  pathTitle: string;
+  section?: { id: string; title: string; description?: string | null } | null;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  lessonType: string;
+  mediaUrl?: string | null;
+  learningObjective?: string | null;
+  content?: string | null;
+  contentBlocks?: ContentBlock[] | null;
+  keyTakeaways: string[];
+  estimatedMinutes: number;
+  isRequired: boolean;
+  isCompleted: boolean;
+  completedAt?: string | null;
+  previousLessonId?: string | null;
+  nextLessonId?: string | null;
+  exercise?: {
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    primaryMuscleGroup: string;
+    equipment: string;
+    media?: Array<{ id: string; storageKey: string; mimeType: string; purpose: string }>;
+    instructionSteps?: Array<{ stepNumber: number; title: string; description: string }>;
+    movementPhases?: Array<{ phaseName: string; description?: string | null; cueText?: string | null }>;
+    commonMistakes?: Array<{ mistake: string; correction: string }>;
+  } | null;
+  position: {
+    current: number;
+    total: number;
+  };
+}
+
+export interface ExerciseRelatedCollectionsAndPaths {
+  exerciseId: string;
+  exerciseName: string;
+  exerciseSlug: string;
+  collections: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    description?: string | null;
+    coverMediaUrl?: string | null;
+    category?: string | null;
+    difficulty: string;
+    exerciseCount: number;
+  }>;
+  learningPaths: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    description?: string | null;
+    coverMediaUrl?: string | null;
+    category?: string | null;
+    difficulty: string;
+    lessonCount: number;
+    estimatedDurationMinutes: number;
+    progress?: { status: string; percentComplete: number } | null;
+  }>;
+}
+
+// --- Day 71: Learning Dashboard & Progress Intelligence Types ---
+
+export interface LearningDashboardSummary {
+  pathsStarted: number;
+  pathsCompleted: number;
+  lessonsCompleted: number;
+  exercisesLearned: number;
+  collectionsExplored: number;
+  learningTimeMinutes: number;
+  currentStreakDays: number;
+  lastActivityAt?: string | null;
+}
+
+export interface ResumePosition {
+  pathId: string;
+  pathTitle: string;
+  pathCoverUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  sectionId?: string | null;
+  sectionTitle?: string | null;
+  lessonId: string;
+  lessonTitle: string;
+  lessonNumber: number;
+  totalLessons: number;
+  percentComplete: number;
+  estimatedMinutes: number;
+}
+
+export interface LearningActivityItem {
+  id: string;
+  type: 'PATH_STARTED' | 'LESSON_COMPLETED' | 'PATH_COMPLETED' | 'EXERCISE_LEARNED' | 'COLLECTION_STARTED' | 'COLLECTION_COMPLETED';
+  title: string;
+  subtitle: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+}
+
+export interface RecentlyLearnedExercise {
+  exerciseId: string;
+  name: string;
+  primaryMuscleGroup?: string | null;
+  equipment?: string | null;
+  difficulty?: string | null;
+  thumbnailUrl?: string | null;
+  learnedAt: string;
+  masteryState?: string;
+}
+
+export interface RecommendedLearningPath {
+  pathId: string;
+  title: string;
+  coverMediaUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  lessonCount: number;
+  estimatedMinutes: number;
+  reason: string;
+}
+
+export interface ActivePathOverview {
+  pathId: string;
+  title: string;
+  coverMediaUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  completedLessons: number;
+  totalLessons: number;
+  percentComplete: number;
+  currentLessonId?: string | null;
+  currentLessonTitle?: string | null;
+  lastInteractedAt: string;
+}
+
+export interface LearningDashboardResponse {
+  summary: LearningDashboardSummary;
+  continueLearning: ResumePosition | null;
+  activePaths: ActivePathOverview[];
+  recentActivity: LearningActivityItem[];
+  recentExercises: RecentlyLearnedExercise[];
+  recommendations: RecommendedLearningPath[];
+  categories: Array<{ key: string; label: string; count: number }>;
+}
+
+export interface LearningProgressOverview {
+  activePaths: Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    coverMediaUrl?: string | null;
+    category?: string | null;
+    difficulty: string;
+    completedLessons: number;
+    totalLessons: number;
+    percentComplete: number;
+    estimatedMinutes: number;
+    lastInteractedAt: string;
+  }>;
+  completedPaths: Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    coverMediaUrl?: string | null;
+    category?: string | null;
+    difficulty: string;
+    completedLessons: number;
+    totalLessons: number;
+    completedAt?: string | null;
+  }>;
+  exploredCollections: Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    category?: string | null;
+    difficulty: string;
+    exerciseCount: number;
+    status: string;
+    lastInteractedAt: string;
+  }>;
+}
+
+export interface ExerciseLearningMasteryStatus {
+  exerciseId: string;
+  status: 'DISCOVERED' | 'VIEWED' | 'IN_PROGRESS' | 'LEARNED' | 'REVIEW_RECOMMENDED';
+  learnedAt?: string | null;
+  lastInteractedAt?: string | null;
+  instructionsCompleted: boolean;
+  phasesExplored: boolean;
+  mediaViewed: boolean;
+  relatedLearningPath?: {
+    pathId: string;
+    pathTitle: string;
+    lessonId: string;
+    lessonTitle: string;
+    lessonNumber: number;
+    totalLessons: number;
+    percentComplete: number;
+  } | null;
+}
+
+// --- Day 72 Knowledge Check Types ---
+
+export type KnowledgeQuestionType =
+  | 'MULTIPLE_CHOICE'
+  | 'MULTI_SELECT'
+  | 'TRUE_FALSE'
+  | 'IMAGE_CHOICE'
+  | 'ORDERING'
+  | 'MATCHING';
+
+export interface KnowledgeAnswerPlayer {
+  id: string;
+  answerText: string;
+  mediaUrl?: string | null;
+  sortOrder: number;
+}
+
+export interface KnowledgeQuestionPlayer {
+  id: string;
+  questionText: string;
+  questionType: KnowledgeQuestionType;
+  difficulty?: string;
+  sortOrder: number;
+  hint?: string | null;
+  mediaUrl?: string | null;
+  mediaAltText?: string | null;
+  answers: KnowledgeAnswerPlayer[];
+  matchingTargets?: string[];
+}
+
+export interface KnowledgeCheckSummary {
+  id: string;
+  lessonId?: string | null;
+  exerciseId?: string | null;
+  title: string;
+  description?: string | null;
+  instructions?: string | null;
+  passingScore: number;
+  questionCount: number;
+  attemptLimit?: number | null;
+  timeLimitMinutes?: number | null;
+  isRequiredForLesson: boolean;
+  userAttemptsCount?: number;
+  bestScore?: number | null;
+  isPassed?: boolean;
+}
+
+export interface KnowledgeCheckPlayerDto {
+  id: string;
+  lessonId?: string | null;
+  exerciseId?: string | null;
+  title: string;
+  description?: string | null;
+  instructions?: string | null;
+  passingScore: number;
+  questionCount: number;
+  attemptLimit?: number | null;
+  timeLimitMinutes?: number | null;
+  isRequiredForLesson: boolean;
+  questions: KnowledgeQuestionPlayer[];
+  existingAttempt?: {
+    id: string;
+    status: string;
+    startedAt: string;
+    answeredQuestionIds: string[];
+  } | null;
+}
+
+export interface KnowledgeCheckAttemptResult {
+  id: string;
+  checkId: string;
+  status: string;
+  score: number;
+  correctCount: number;
+  questionCount: number;
+  passed: boolean;
+  passingScore: number;
+  attemptNumber: number;
+  timeSpentSeconds?: number | null;
+  hintsUsedCount: number;
+  startedAt: string;
+  completedAt?: string | null;
+  lessonCompleted?: boolean;
+  reviewRecommendations?: Array<{
+    exerciseId?: string;
+    exerciseName?: string;
+    reason: string;
+  }>;
+}
+
+export interface KnowledgeAttemptReviewQuestion {
+  questionId: string;
+  questionText: string;
+  questionType: KnowledgeQuestionType;
+  userIsCorrect: boolean;
+  userAnswers: any;
+  correctAnswers: any;
+  explanation?: string | null;
+  correctFeedback?: string | null;
+  incorrectFeedback?: string | null;
+}
+
+export interface KnowledgeAttemptReview {
+  attemptId: string;
+  checkTitle: string;
+  score: number;
+  passed: boolean;
+  passingScore: number;
+  questions: KnowledgeAttemptReviewQuestion[];
+}
+
+// ==========================================
+// DAY 73: FITNESS EDUCATION CURRICULUM & ACADEMY TYPES
+// ==========================================
+
+export type CurriculumCategory =
+  | 'FITNESS_FUNDAMENTALS'
+  | 'MOVEMENT_FUNDAMENTALS'
+  | 'EXERCISE_FUNDAMENTALS'
+  | 'GYM_EQUIPMENT'
+  | 'TRAINING_PRINCIPLES'
+  | 'WARMUP_COOLDOWN'
+  | 'STRENGTH_TRAINING'
+  | 'CARDIO'
+  | 'MOBILITY'
+  | 'FLEXIBILITY'
+  | 'RECOVERY'
+  | 'WELLNESS';
+
+export type ContentBlockType =
+  | 'TEXT'
+  | 'CALLOUT'
+  | 'IMAGE'
+  | 'VIDEO'
+  | 'EXERCISE_REF'
+  | 'MOVEMENT_REF'
+  | 'GLOSSARY_REF';
+
+export interface ContentBlock {
+  id?: string;
+  type: ContentBlockType;
+  title?: string;
+  content?: string;
+  calloutType?: 'TIP' | 'SAFETY' | 'KEY_POINT' | 'DEFINITION';
+  mediaUrl?: string;
+  caption?: string;
+  exerciseId?: string;
+  exerciseName?: string;
+  movementPattern?: string;
+  termSlug?: string;
+  termDisplay?: string;
+  sortOrder?: number;
+}
+
+export interface CurriculumSummary {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  category: CurriculumCategory;
+  difficulty: string;
+  iconName?: string | null;
+  coverMediaUrl?: string | null;
+  contentStatus: string;
+  pathCount: number;
+  lessonCount: number;
+  completedLessons?: number;
+  percentComplete?: number;
+}
+
+export interface CurriculumDetail extends CurriculumSummary {
+  paths: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    description?: string | null;
+    difficulty: string;
+    coverMediaUrl?: string | null;
+    category?: string | null;
+    estimatedMinutes: number;
+    sortOrder: number;
+    sections: Array<{
+      id: string;
+      title: string;
+      description?: string | null;
+      sortOrder: number;
+      lessons: Array<{
+        id: string;
+        title: string;
+        sortOrder: number;
+        lessonType: string;
+        estimatedMinutes: number;
+        isCompleted: boolean;
+        hasKnowledgeCheck?: boolean;
+      }>;
+    }>;
+    unsectionedLessons: Array<{
+      id: string;
+      title: string;
+      sortOrder: number;
+      lessonType: string;
+      estimatedMinutes: number;
+      isCompleted: boolean;
+      hasKnowledgeCheck?: boolean;
+    }>;
+  }>;
+}
+
+export interface GlossaryTermItem {
+  id: string;
+  term: string;
+  slug: string;
+  definition: string;
+  shortExplanation?: string | null;
+  category?: string | null;
+  difficulty?: string | null;
+  relatedExerciseIds?: string[];
+  relatedMovementPatterns?: string[];
+  relatedLessonIds?: string[];
+  mediaUrl?: string | null;
+  isSystem: boolean;
+  sortOrder: number;
+  relatedExercises?: Array<{
+    id: string;
+    name: string;
+    difficulty: string;
+    equipment: string;
+  }>;
+  relatedLessons?: Array<{
+    id: string;
+    title: string;
+    pathId: string;
+    pathTitle: string;
+  }>;
+}
+
+export interface AcademyOverview {
+  resumePosition: any | null;
+  categories: Array<{
+    key: CurriculumCategory;
+    label: string;
+    count: number;
+    icon: string;
+  }>;
+  curricula: CurriculumSummary[];
+  glossaryHighlights: GlossaryTermItem[];
+}

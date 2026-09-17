@@ -49,7 +49,7 @@ export class ExercisesService {
    * Search and filter exercises accessible to an organisation:
    * System exercises (accessible to all) + Custom exercises belonging to active organisation.
    */
-  async findAll(organisationId: string, query: ExerciseQueryDto) {
+  async findAll(organisationId: string, query: ExerciseQueryDto, userId?: string) {
     const {
       search,
       muscleGroup,
@@ -63,6 +63,8 @@ export class ExercisesService {
       hasAnimation,
       hasModel3d,
       includeArchived,
+      sortBy = 'RECOMMENDED',
+      isFavorite,
       page = 1,
       limit = 20,
     } = query;
@@ -77,6 +79,13 @@ export class ExercisesService {
     // Content Status filter
     if (contentStatus) {
       where.contentStatus = contentStatus;
+    }
+
+    // Favorite filter
+    if (isFavorite && userId) {
+      where.userFavorites = {
+        some: { userId },
+      };
     }
 
     // Ownership filter & Tenant isolation
@@ -257,6 +266,17 @@ export class ExercisesService {
       where.AND = [...(where.AND || []), ...termConditions];
     }
 
+    let orderBy: any[] = [{ ownershipType: 'asc' }, { name: 'asc' }];
+    if (sortBy === 'ALPHABETICAL') {
+      orderBy = [{ name: 'asc' }];
+    } else if (sortBy === 'DIFFICULTY') {
+      orderBy = [{ difficulty: 'asc' }, { name: 'asc' }];
+    } else if (sortBy === 'NEWEST') {
+      orderBy = [{ createdAt: 'desc' }];
+    } else if (sortBy === 'RECOMMENDED') {
+      orderBy = [{ ownershipType: 'asc' }, { name: 'asc' }];
+    }
+
     const skip = (page - 1) * limit;
     const [total, exercises] = await Promise.all([
       this.prisma.exercise.count({ where }),
@@ -273,16 +293,30 @@ export class ExercisesService {
             orderBy: { createdAt: 'asc' },
           },
         },
-        orderBy: [{ ownershipType: 'asc' }, { name: 'asc' }],
+        orderBy,
         skip,
         take: limit,
       }),
     ]);
 
+    // Check user favorites for the current user to return isFavorite flag
+    let favoriteIds = new Set<string>();
+    if (userId && exercises.length > 0) {
+      const userFavs = await this.prisma.userExerciseFavorite.findMany({
+        where: {
+          userId,
+          exerciseId: { in: exercises.map((e) => e.id) },
+        },
+        select: { exerciseId: true },
+      });
+      favoriteIds = new Set(userFavs.map((f) => f.exerciseId));
+    }
+
     // Sign media URLs for private storage keys if needed
     const exercisesWithSignedUrls = await Promise.all(
       exercises.map(async (ex) => ({
         ...ex,
+        isFavorite: favoriteIds.has(ex.id),
         media: await this.resolveMediaUrls(ex.media),
       }))
     );
@@ -340,7 +374,7 @@ export class ExercisesService {
    * Find comprehensive visual content for an exercise:
    * Media, instruction steps, movement phases, common mistakes, safety guidelines, variations, and equipment.
    */
-  async findVisualContent(organisationId: string, id: string) {
+  async findVisualContent(organisationId: string, id: string, userId?: string) {
     const exercise = await this.prisma.exercise.findFirst({
       where: {
         id,
@@ -423,9 +457,141 @@ export class ExercisesService {
       });
     }
 
+    // 1. Fetch related exercises matching primaryMuscleGroup or movementPattern
+    const relatedExercises = await this.prisma.exercise.findMany({
+      where: {
+        id: { not: exercise.id },
+        status: 'ACTIVE',
+        OR: [
+          { ownershipType: 'SYSTEM', organisationId: null },
+          { ownershipType: 'ORGANISATION', organisationId },
+        ],
+        AND: [
+          {
+            OR: [
+              { primaryMuscleGroup: exercise.primaryMuscleGroup },
+              { movementPattern: exercise.movementPattern },
+            ],
+          },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        difficulty: true,
+        primaryMuscleGroup: true,
+        movementPattern: true,
+        equipment: true,
+        exerciseMechanics: true,
+        media: {
+          where: { isPrimary: true },
+          take: 1,
+        },
+      },
+      take: 4,
+    });
+
+    const resolvedRelatedExercises = await Promise.all(
+      relatedExercises.map(async (rel) => {
+        const resolvedMedia = rel.media?.length ? await this.resolveMediaUrls(rel.media) : [];
+        return {
+          ...rel,
+          media: resolvedMedia,
+        };
+      })
+    );
+
+    // 2. Categorize variations into progressions, regressions, variations, and substitutes
+    const categorizedVariations = {
+      progressions: [] as any[],
+      regressions: [] as any[],
+      variations: [] as any[],
+      substitutes: [] as any[],
+    };
+
+    // Process variationsFrom (current exercise is base)
+    for (const v of exercise.variationsFrom) {
+      const target = v.targetExercise;
+      if (!target) continue;
+      const targetMedia = target.media?.length ? await this.resolveMediaUrls(target.media) : [];
+      const item = {
+        id: v.id,
+        relationshipType: v.relationshipType,
+        notes: v.notes,
+        exerciseId: target.id,
+        name: target.name,
+        slug: target.slug,
+        difficulty: target.difficulty,
+        primaryMuscleGroup: target.primaryMuscleGroup,
+        exercise: {
+          ...target,
+          media: targetMedia,
+        },
+      };
+
+      const relType = v.relationshipType?.toUpperCase();
+      if (relType === 'PROGRESSION') {
+        categorizedVariations.progressions.push(item);
+      } else if (relType === 'REGRESSION') {
+        categorizedVariations.regressions.push(item);
+      } else if (relType === 'ALTERNATIVE' || relType === 'EQUIPMENT_SUBSTITUTE' || relType === 'SUBSTITUTE') {
+        categorizedVariations.substitutes.push(item);
+      } else {
+        categorizedVariations.variations.push(item);
+      }
+    }
+
+    // Process variationsTo (current exercise is target)
+    for (const v of exercise.variationsTo) {
+      const base = v.baseExercise;
+      if (!base) continue;
+      const baseMedia = base.media?.length ? await this.resolveMediaUrls(base.media) : [];
+      const relType = v.relationshipType?.toUpperCase();
+      // From target's viewpoint: if base->target is PROGRESSION, then base is REGRESSION to target
+      const inverseType = relType === 'PROGRESSION' ? 'REGRESSION' : relType === 'REGRESSION' ? 'PROGRESSION' : relType;
+
+      const item = {
+        id: v.id,
+        relationshipType: inverseType,
+        originalRelationshipType: v.relationshipType,
+        notes: v.notes,
+        exerciseId: base.id,
+        name: base.name,
+        slug: base.slug,
+        difficulty: base.difficulty,
+        primaryMuscleGroup: base.primaryMuscleGroup,
+        exercise: {
+          ...base,
+          media: baseMedia,
+        },
+      };
+
+      if (inverseType === 'PROGRESSION') {
+        categorizedVariations.progressions.push(item);
+      } else if (inverseType === 'REGRESSION') {
+        categorizedVariations.regressions.push(item);
+      } else if (inverseType === 'ALTERNATIVE' || inverseType === 'EQUIPMENT_SUBSTITUTE' || inverseType === 'SUBSTITUTE') {
+        categorizedVariations.substitutes.push(item);
+      } else {
+        categorizedVariations.variations.push(item);
+      }
+    }
+
+    let isFavorite = false;
+    if (userId) {
+      const fav = await this.prisma.userExerciseFavorite.findUnique({
+        where: { userId_exerciseId: { userId, exerciseId: exercise.id } },
+      });
+      isFavorite = !!fav;
+    }
+
     return {
       ...exercise,
+      isFavorite,
       media: await this.resolveMediaUrls(exercise.media),
+      relatedExercises: resolvedRelatedExercises,
+      categorizedVariations,
     };
   }
 
@@ -1111,5 +1277,375 @@ export class ExercisesService {
         };
       })
     );
+  }
+
+  /**
+   * Return dynamic filter metadata (categories with active counts, muscles, equipment, difficulties, movement patterns)
+   */
+  async getFilterMetadata(organisationId: string) {
+    const baseWhere = {
+      status: 'ACTIVE' as const,
+      OR: [
+        { ownershipType: 'SYSTEM' as const, organisationId: null },
+        { ownershipType: 'ORGANISATION' as const, organisationId },
+      ],
+    };
+
+    const [
+      totalCount,
+      categoryCounts,
+      muscleGroupCounts,
+      muscleRelationsCounts,
+      equipmentCounts,
+      difficultyCounts,
+      patternCounts,
+    ] = await Promise.all([
+      this.prisma.exercise.count({ where: baseWhere }),
+      this.prisma.exercise.groupBy({
+        by: ['exerciseCategory'],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
+      this.prisma.exercise.groupBy({
+        by: ['primaryMuscleGroup'],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
+      this.prisma.exerciseMuscleRelation.groupBy({
+        by: ['muscle'],
+        where: { exercise: baseWhere },
+        _count: { _all: true },
+      }),
+      this.prisma.exercise.groupBy({
+        by: ['equipment'],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
+      this.prisma.exercise.groupBy({
+        by: ['difficulty'],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
+      this.prisma.exercise.groupBy({
+        by: ['movementPattern'],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
+    ]);
+
+    // Standard baseline categories
+    const standardCategories = [
+      'STRENGTH',
+      'CARDIO',
+      'MOBILITY',
+      'CORE',
+      'FUNCTIONAL',
+      'HIIT',
+      'RECOVERY',
+    ];
+
+    const categoryMap = new Map<string, number>();
+    for (const sc of standardCategories) {
+      categoryMap.set(sc, 0);
+    }
+    for (const c of categoryCounts) {
+      if (c.exerciseCategory) {
+        const catKey = c.exerciseCategory.toUpperCase();
+        categoryMap.set(catKey, (categoryMap.get(catKey) || 0) + c._count._all);
+      }
+    }
+
+    const categories = Array.from(categoryMap.entries()).map(([id, count]) => ({
+      id,
+      name: id.charAt(0) + id.slice(1).toLowerCase().replace(/_/g, ' '),
+      count,
+    }));
+
+    // Primary muscle groups
+    const muscleGroups = muscleGroupCounts
+      .filter((m) => !!m.primaryMuscleGroup)
+      .map((m) => ({
+        id: m.primaryMuscleGroup,
+        name: m.primaryMuscleGroup.charAt(0) + m.primaryMuscleGroup.slice(1).toLowerCase().replace(/_/g, ' '),
+        count: m._count._all,
+      }));
+
+    // Detailed muscles
+    const detailedMuscles = muscleRelationsCounts
+      .filter((m) => !!m.muscle)
+      .map((m) => ({
+        id: m.muscle,
+        name: m.muscle,
+        count: m._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    // Equipment items
+    const equipment = equipmentCounts
+      .filter((e) => !!e.equipment)
+      .map((e) => ({
+        id: e.equipment,
+        name: e.equipment.charAt(0) + e.equipment.slice(1).toLowerCase().replace(/_/g, ' '),
+        count: e._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'].map((diff) => {
+      const match = difficultyCounts.find((d) => d.difficulty === diff);
+      return {
+        id: diff,
+        name: diff.charAt(0) + diff.slice(1).toLowerCase(),
+        count: match?._count._all || 0,
+      };
+    });
+
+    const movementPatterns = [
+      'SQUAT',
+      'HINGE',
+      'LUNGE',
+      'PUSH',
+      'PULL',
+      'CARRY',
+      'ROTATION',
+      'ISOLATION',
+    ].map((pat) => {
+      const match = patternCounts.find((p) => p.movementPattern === pat);
+      return {
+        id: pat,
+        name: pat.charAt(0) + pat.slice(1).toLowerCase(),
+        count: match?._count._all || 0,
+      };
+    });
+
+    return {
+      totalCount,
+      categories,
+      muscleGroups,
+      detailedMuscles,
+      equipment,
+      difficulties,
+      movementPatterns,
+      environments: ['ALL', 'GYM', 'HOME', 'OUTDOOR'],
+    };
+  }
+
+  /**
+   * Toggle exercise favorite for a member/user
+   */
+  async toggleFavorite(organisationId: string, userId: string, exerciseId: string) {
+    const exercise = await this.prisma.exercise.findFirst({
+      where: {
+        id: exerciseId,
+        status: 'ACTIVE',
+        OR: [
+          { ownershipType: 'SYSTEM', organisationId: null },
+          { ownershipType: 'ORGANISATION', organisationId },
+        ],
+      },
+    });
+
+    if (!exercise) {
+      throw new NotFoundException({
+        code: 'EXERCISE_NOT_FOUND',
+        message: `Exercise '${exerciseId}' not found or not accessible`,
+      });
+    }
+
+    const existing = await this.prisma.userExerciseFavorite.findUnique({
+      where: {
+        userId_exerciseId: {
+          userId,
+          exerciseId,
+        },
+      },
+    });
+
+    if (existing) {
+      await this.prisma.userExerciseFavorite.delete({
+        where: { id: existing.id },
+      });
+      return {
+        exerciseId,
+        isFavorite: false,
+        message: 'Exercise removed from favorites',
+      };
+    } else {
+      await this.prisma.userExerciseFavorite.create({
+        data: {
+          userId,
+          exerciseId,
+          organisationId,
+        },
+      });
+      return {
+        exerciseId,
+        isFavorite: true,
+        message: 'Exercise added to favorites',
+      };
+    }
+  }
+
+  /**
+   * List favorite exercises for a user
+   */
+  async getFavorites(organisationId: string, userId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const baseWhere = {
+      userId,
+      exercise: {
+        status: 'ACTIVE' as const,
+        OR: [
+          { ownershipType: 'SYSTEM' as const, organisationId: null },
+          { ownershipType: 'ORGANISATION' as const, organisationId },
+        ],
+      },
+    };
+
+    const [total, favorites] = await Promise.all([
+      this.prisma.userExerciseFavorite.count({ where: baseWhere }),
+      this.prisma.userExerciseFavorite.findMany({
+        where: baseWhere,
+        include: {
+          exercise: {
+            include: {
+              media: {
+                orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+              },
+              muscleRelations: {
+                orderBy: [{ role: 'asc' }, { muscle: 'asc' }],
+              },
+              equipmentRelations: {
+                orderBy: { createdAt: 'asc' },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const items = await Promise.all(
+      favorites.map(async (fav) => ({
+        ...fav.exercise,
+        isFavorite: true,
+        favoritedAt: fav.createdAt,
+        media: await this.resolveMediaUrls(fav.exercise.media),
+      }))
+    );
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Record that a user viewed an exercise
+   */
+  async recordRecentView(organisationId: string, userId: string, exerciseId: string) {
+    const exercise = await this.prisma.exercise.findFirst({
+      where: {
+        id: exerciseId,
+        status: 'ACTIVE',
+        OR: [
+          { ownershipType: 'SYSTEM', organisationId: null },
+          { ownershipType: 'ORGANISATION', organisationId },
+        ],
+      },
+    });
+
+    if (!exercise) {
+      throw new NotFoundException({
+        code: 'EXERCISE_NOT_FOUND',
+        message: `Exercise '${exerciseId}' not found or not accessible`,
+      });
+    }
+
+    const recent = await this.prisma.userExerciseRecentView.upsert({
+      where: {
+        userId_exerciseId: {
+          userId,
+          exerciseId,
+        },
+      },
+      create: {
+        userId,
+        exerciseId,
+        organisationId,
+        viewedAt: new Date(),
+      },
+      update: {
+        viewedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      exerciseId,
+      viewedAt: recent.viewedAt,
+    };
+  }
+
+  /**
+   * Get recently viewed exercises for a user
+   */
+  async getRecentlyViewed(organisationId: string, userId: string, limit = 10) {
+    const baseWhere = {
+      userId,
+      exercise: {
+        status: 'ACTIVE' as const,
+        OR: [
+          { ownershipType: 'SYSTEM' as const, organisationId: null },
+          { ownershipType: 'ORGANISATION' as const, organisationId },
+        ],
+      },
+    };
+
+    const [userFavs, recents] = await Promise.all([
+      this.prisma.userExerciseFavorite.findMany({
+        where: { userId },
+        select: { exerciseId: true },
+      }),
+      this.prisma.userExerciseRecentView.findMany({
+        where: baseWhere,
+        include: {
+          exercise: {
+            include: {
+              media: {
+                orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+              },
+              muscleRelations: {
+                orderBy: [{ role: 'asc' }, { muscle: 'asc' }],
+              },
+              equipmentRelations: {
+                orderBy: { createdAt: 'asc' },
+              },
+            },
+          },
+        },
+        orderBy: { viewedAt: 'desc' },
+        take: limit,
+      }),
+    ]);
+
+    const favoriteIds = new Set(userFavs.map((f) => f.exerciseId));
+
+    const items = await Promise.all(
+      recents.map(async (r) => ({
+        ...r.exercise,
+        isFavorite: favoriteIds.has(r.exercise.id),
+        lastViewedAt: r.viewedAt,
+        media: await this.resolveMediaUrls(r.exercise.media),
+      }))
+    );
+
+    return { items };
   }
 }

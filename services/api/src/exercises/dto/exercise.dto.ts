@@ -269,6 +269,17 @@ export class ExerciseQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  @ApiPropertyOptional({ enum: ['RECOMMENDED', 'ALPHABETICAL', 'DIFFICULTY', 'NEWEST'], description: 'Sort criteria' })
+  @IsOptional()
+  @IsString()
+  sortBy?: 'RECOMMENDED' | 'ALPHABETICAL' | 'DIFFICULTY' | 'NEWEST' = 'RECOMMENDED';
+
+  @ApiPropertyOptional({ description: 'Filter only user favorited exercises' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  isFavorite?: boolean;
 }
 
 export class CreateExerciseDto {

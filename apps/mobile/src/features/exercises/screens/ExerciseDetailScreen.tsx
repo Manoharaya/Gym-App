@@ -7,13 +7,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Share,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { MemberStackParamList } from '../../../navigation/types';
 import { Screen, Card, Badge, Icon } from '../../../components/primitives';
 import { themeColors, typography, spacing, radius } from '../../../theme';
-import { ExerciseService } from '../services/exerciseService';
+import {
+  ExerciseService,
+  ExerciseRelatedCollectionsAndPaths,
+  ExerciseLearningMasteryStatus,
+} from '../services/exerciseService';
 import { ExerciseMediaManagerModal } from '../components/ExerciseMediaManagerModal';
 import { ExerciseStepPlayer } from '../components/ExerciseStepPlayer';
 import { ExerciseInstructionEditorModal } from '../components/ExerciseInstructionEditorModal';
@@ -24,6 +29,10 @@ import {
   ExerciseEquipmentModal,
   ExerciseCompletenessScoreCard,
   ExerciseSubstituteModal,
+  ExerciseHeroMedia,
+  ExerciseQuickFacts,
+  ExerciseMovementPlayer,
+  ExerciseRelationshipSection,
 } from '../components';
 import type { Exercise } from '@fitcore/types';
 
@@ -63,6 +72,51 @@ export const ExerciseDetailScreen: React.FC = () => {
   const [substituteModalVisible, setSubstituteModalVisible] = useState(false);
   const [selectedPhaseForEdit, setSelectedPhaseForEdit] = useState<any>(null);
 
+  // Day 66: Visual Learning & Phase Stepper State
+  const [activePhaseIndex, setActivePhaseIndex] = useState(0);
+  const [activePhase, setActivePhase] = useState<any>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Day 68: Smart Learning Progress State
+  const [learningProgress, setLearningProgress] = useState<any>(null);
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
+
+  // Day 70: Related Collections & Learning Paths
+  const [relatedContent, setRelatedContent] = useState<ExerciseRelatedCollectionsAndPaths | null>(null);
+
+  // Day 71: Exercise Learning Mastery Status
+  const [learningMastery, setLearningMastery] = useState<ExerciseLearningMasteryStatus | null>(null);
+
+  const fetchLearningMastery = useCallback(async () => {
+    if (!exerciseId) return;
+    try {
+      const mastery = await ExerciseService.getExerciseLearningMastery(exerciseId);
+      setLearningMastery(mastery);
+    } catch {
+      // Graceful fallback
+    }
+  }, [exerciseId]);
+
+  const fetchRelatedContent = useCallback(async () => {
+    if (!exerciseId) return;
+    try {
+      const res = await ExerciseService.getRelatedCollectionsAndPaths(exerciseId);
+      setRelatedContent(res);
+    } catch {
+      // Graceful fallback
+    }
+  }, [exerciseId]);
+
+  const fetchLearningProgress = useCallback(async () => {
+    if (!exerciseId) return;
+    try {
+      const prog = await ExerciseService.getLearningProgress(exerciseId);
+      setLearningProgress(prog);
+    } catch {
+      // Graceful fallback
+    }
+  }, [exerciseId]);
+
   const fetchVisualDetails = useCallback(async () => {
     if (!exerciseId) {
       setLoading(false);
@@ -87,7 +141,66 @@ export const ExerciseDetailScreen: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     fetchVisualDetails();
-  }, [fetchVisualDetails]);
+    fetchLearningProgress();
+    fetchRelatedContent();
+    fetchLearningMastery();
+  }, [fetchVisualDetails, fetchLearningProgress, fetchRelatedContent, fetchLearningMastery]);
+
+  useEffect(() => {
+    if (exercise?.movementPhases && exercise.movementPhases.length > 0) {
+      setActivePhase(exercise.movementPhases[0]);
+      setActivePhaseIndex(0);
+    }
+  }, [exercise]);
+
+  // When exploring movement phases or instructions, update learning progress
+  useEffect(() => {
+    if (
+      exerciseId &&
+      (activeTab === 'movement' || activeTab === 'howto') &&
+      learningProgress?.status !== 'COMPLETED'
+    ) {
+      ExerciseService.updateLearningProgress(exerciseId, {
+        stepNumber: 1,
+        phasesExplored: activeTab === 'movement' ? true : undefined,
+        instructionsViewed: activeTab === 'howto' ? true : undefined,
+        mediaViewed: true,
+      })
+        .then((res) => setLearningProgress(res))
+        .catch(() => {});
+    }
+  }, [exerciseId, activeTab, learningProgress?.status]);
+
+  const handleToggleMastered = async () => {
+    if (!exerciseId || isUpdatingProgress) return;
+    setIsUpdatingProgress(true);
+    try {
+      const willBeComplete = learningProgress?.status !== 'COMPLETED';
+      const stepsCount = instructionsList.length || 5;
+      const res = await ExerciseService.updateLearningProgress(exerciseId, {
+        isComplete: willBeComplete,
+        completedSteps: willBeComplete ? stepsCount : 0,
+        stepNumber: willBeComplete ? stepsCount : 1,
+        totalSteps: stepsCount,
+      });
+      setLearningProgress(res);
+    } catch (err) {
+      console.warn('Failed to toggle mastered state:', err);
+    } finally {
+      setIsUpdatingProgress(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: name,
+        message: `Check out the visual demonstration and movement breakdown for ${name} on FitBeat!`,
+      });
+    } catch (err) {
+      console.warn('Share error:', err);
+    }
+  };
 
   const name = exercise?.name || fallbackName || 'Exercise';
   const instructionsList: string[] = exercise?.instructions
@@ -135,7 +248,26 @@ export const ExerciseDetailScreen: React.FC = () => {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {name}
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => setIsFavorite(!isFavorite)}
+            accessibilityLabel="Bookmark exercise"
+          >
+            <Icon
+              name="heart"
+              size={18}
+              color={isFavorite ? colors.danger : colors.textPrimary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={handleShare}
+            accessibilityLabel="Share exercise"
+          >
+            <Icon name="sparkles" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -145,31 +277,69 @@ export const ExerciseDetailScreen: React.FC = () => {
         </View>
       ) : (
         <View style={styles.contentWrapper}>
-          {/* Title & Taxonomy Badges */}
-          <View style={styles.titleSection}>
-            <View style={styles.titleRow}>
-              <Text style={styles.exerciseTitle}>{name}</Text>
-              {exercise?.contentStatus && (
+          {/* Day 66: Hero Media Multi-Angle & Phase-Loop Synchronizer */}
+          <ExerciseHeroMedia
+            mediaList={mediaList}
+            exerciseName={name}
+            movementPattern={exercise?.movementPattern}
+            difficulty={exercise?.difficulty}
+            activePhase={activePhase}
+          />
+
+          {/* Day 66: Quick Facts Bar */}
+          <ExerciseQuickFacts
+            difficulty={exercise?.difficulty}
+            movementPattern={exercise?.movementPattern}
+            exerciseMechanics={exercise?.exerciseMechanics || undefined}
+            primaryMuscle={exercise?.primaryMuscleGroup}
+            secondaryMuscles={(exercise?.secondaryMuscleGroups as string[]) || undefined}
+            equipment={exercise?.equipment}
+            equipmentRequirement={exercise?.equipmentRequirement || undefined}
+            tempo={exercise?.tempo || undefined}
+            breathingInstructions={exercise?.breathingInstructions || undefined}
+            trainingGoals={(exercise?.trainingGoals as string[]) || undefined}
+          />
+
+          {/* Day 68: Learning Progress & Mastery Status Banner */}
+          <View style={styles.masteryBanner}>
+            <View style={styles.masteryInfo}>
+              <View style={styles.masteryBadgeRow}>
                 <Badge
-                  label={exercise.contentStatus}
-                  variant={exercise.contentStatus === 'PUBLISHED' ? 'accent' : 'neutral'}
+                  label={learningProgress?.status === 'COMPLETED' ? 'MASTERED' : 'IN LEARNING'}
+                  variant={learningProgress?.status === 'COMPLETED' ? 'accent' : 'primary'}
                 />
-              )}
+                <Text style={styles.masterySubtitle}>
+                  {learningProgress?.status === 'COMPLETED'
+                    ? 'Technique guide completed'
+                    : `${learningProgress?.completedSteps || 0} of ${instructionsList.length || 5} steps practiced`}
+                </Text>
+              </View>
             </View>
-            <View style={styles.badgeRow}>
-              {exercise?.primaryMuscleGroup && (
-                <Badge label={exercise.primaryMuscleGroup} variant="accent" />
+
+            <TouchableOpacity
+              onPress={handleToggleMastered}
+              disabled={isUpdatingProgress}
+              style={[
+                styles.masteryActionButton,
+                learningProgress?.status === 'COMPLETED' && styles.masteryActionButtonCompleted,
+              ]}
+              activeOpacity={0.8}
+            >
+              {isUpdatingProgress ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Icon
+                    name={learningProgress?.status === 'COMPLETED' ? 'check' : 'check'}
+                    size={14}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.masteryActionText}>
+                    {learningProgress?.status === 'COMPLETED' ? 'Mastered' : 'Mark Mastered'}
+                  </Text>
+                </>
               )}
-              {exercise?.difficulty && (
-                <Badge label={exercise.difficulty} variant="primary" />
-              )}
-              {exercise?.equipment && (
-                <Badge label={exercise.equipment} variant="neutral" />
-              )}
-              {exercise?.movementPattern && (
-                <Badge label={exercise.movementPattern} variant="neutral" />
-              )}
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Segmented Navigation Tab Bar */}
@@ -267,6 +437,153 @@ export const ExerciseDetailScreen: React.FC = () => {
             {/* TAB 1: OVERVIEW */}
             {activeTab === 'overview' && (
               <>
+                {/* Day 71: Educational Mastery & Learning Path Status */}
+                {learningMastery && (
+                  <Card
+                    style={[
+                      styles.masteryBannerCard,
+                      learningMastery.status === 'LEARNED' && styles.masteryBannerCardLearned,
+                    ]}
+                  >
+                    <View style={styles.masteryBannerHeader}>
+                      <View style={styles.masteryBannerBadgeRow}>
+                        <Badge
+                          label={
+                            learningMastery.status === 'LEARNED'
+                              ? '✓ EXERCISE LEARNED'
+                              : learningMastery.status === 'IN_PROGRESS'
+                              ? 'LEARNING IN PROGRESS'
+                              : 'LEARNING STATUS'
+                          }
+                          variant={learningMastery.status === 'LEARNED' ? 'success' : 'primary'}
+                        />
+                        {learningMastery.learnedAt && (
+                          <Text style={styles.masteryDateText}>
+                            Mastered {new Date(learningMastery.learnedAt).toLocaleDateString()}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Progress Checklist Indicators */}
+                    <View style={styles.masteryChecklistRow}>
+                      <View style={styles.masteryCheckItem}>
+                        <Icon
+                          name={learningMastery.instructionsCompleted ? 'check' : 'clock'}
+                          size={12}
+                          color={learningMastery.instructionsCompleted ? themeColors.success : themeColors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.masteryCheckText,
+                            learningMastery.instructionsCompleted && styles.masteryCheckTextDone,
+                          ]}
+                        >
+                          Instructions
+                        </Text>
+                      </View>
+
+                      <View style={styles.masteryCheckItem}>
+                        <Icon
+                          name={learningMastery.phasesExplored ? 'check' : 'clock'}
+                          size={12}
+                          color={learningMastery.phasesExplored ? themeColors.success : themeColors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.masteryCheckText,
+                            learningMastery.phasesExplored && styles.masteryCheckTextDone,
+                          ]}
+                        >
+                          Phases
+                        </Text>
+                      </View>
+
+                      <View style={styles.masteryCheckItem}>
+                        <Icon
+                          name={learningMastery.mediaViewed ? 'check' : 'clock'}
+                          size={12}
+                          color={learningMastery.mediaViewed ? themeColors.success : themeColors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.masteryCheckText,
+                            learningMastery.mediaViewed && styles.masteryCheckTextDone,
+                          ]}
+                        >
+                          Visual Form
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Related Learning Path Link */}
+                    {learningMastery.relatedLearningPath && (
+                      <TouchableOpacity
+                        style={styles.masteryPathLinkBox}
+                        activeOpacity={0.8}
+                        onPress={() =>
+                          (navigation as any).navigate('LearningLesson', {
+                            pathId: learningMastery.relatedLearningPath!.pathId,
+                            lessonId: learningMastery.relatedLearningPath!.lessonId,
+                            title: learningMastery.relatedLearningPath!.lessonTitle,
+                          })
+                        }
+                      >
+                        <Icon name="award" size={14} color={themeColors.primary} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.masteryPathPre}>TAUGHT IN PATH</Text>
+                          <Text style={styles.masteryPathTitle} numberOfLines={1}>
+                            {learningMastery.relatedLearningPath.pathTitle}
+                          </Text>
+                          <Text style={styles.masteryPathSub}>
+                            Lesson {learningMastery.relatedLearningPath.lessonNumber} of{' '}
+                            {learningMastery.relatedLearningPath.totalLessons}:{' '}
+                            {learningMastery.relatedLearningPath.lessonTitle}
+                          </Text>
+                        </View>
+                        <Icon name="chevron-right" size={14} color={themeColors.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </Card>
+                )}
+
+                {/* Day 66: Interactive Movement Phase Stepper Player */}
+                {movementPhases.length > 0 && (
+                  <ExerciseMovementPlayer
+                    phases={movementPhases}
+                    instructionSteps={instructionSteps}
+                    commonMistakes={commonMistakes}
+                    activePhaseIndex={activePhaseIndex}
+                    onPhaseChange={(idx, phase) => {
+                      setActivePhaseIndex(idx);
+                      setActivePhase(phase);
+                    }}
+                  />
+                )}
+
+                {/* Day 66: Step-By-Step Execution Player */}
+                {instructionSteps.length > 0 && (
+                  <View style={styles.stepPlayerSection}>
+                    <View style={styles.sectionHeaderRow}>
+                      <View>
+                        <Text style={styles.sectionOverline}>Step-By-Step Execution</Text>
+                        <Text style={styles.sectionHeading}>Coaching Instructions</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.inlineActionBtn}
+                        onPress={() => setActiveTab('howto')}
+                      >
+                        <Text style={styles.inlineActionBtnText}>Full View</Text>
+                        <Icon name="chevron-right" size={12} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <ExerciseStepPlayer
+                      steps={instructionSteps}
+                      exerciseName={name}
+                    />
+                  </View>
+                )}
+
                 {/* Day 65: Quality Completeness Audit */}
                 <ExerciseCompletenessScoreCard exerciseId={exercise?.id || exerciseId} />
 
@@ -448,6 +765,87 @@ export const ExerciseDetailScreen: React.FC = () => {
                       ))}
                     </Card>
                   )}
+
+                {/* Day 66: Categorized Progressions, Regressions & Substitutes */}
+                <ExerciseRelationshipSection
+                  categorizedVariations={(exercise as any)?.categorizedVariations}
+                  relatedExercises={(exercise as any)?.relatedExercises}
+                  onSelectExercise={(id, targetName) => navigateToExercise(id, targetName)}
+                />
+
+                {/* Day 70: Taught in Guided Masterclasses & Curated Collections */}
+                {relatedContent &&
+                  (relatedContent.learningPaths.length > 0 || relatedContent.collections.length > 0) && (
+                    <View style={styles.relatedMasterclassSection}>
+                      <View style={styles.masterclassHeaderRow}>
+                        <Icon name="award" size={15} color={colors.primary} />
+                        <Text style={styles.sectionHeading}>LEARN & PRACTICE IN</Text>
+                      </View>
+
+                      {relatedContent.learningPaths.map((p) => (
+                        <TouchableOpacity
+                          key={`path-${p.id}`}
+                          activeOpacity={0.8}
+                          onPress={() =>
+                            (navigation as any).navigate('LearningPathOverview', {
+                              pathId: p.id,
+                              title: p.title,
+                            })
+                          }
+                          style={styles.relatedPathCard}
+                        >
+                          <View style={styles.relatedPathIconHalo}>
+                            <Icon name="award" size={16} color={colors.primary} />
+                          </View>
+                          <View style={styles.relatedPathInfo}>
+                            <Text style={styles.relatedPathPre}>GUIDED MASTERCLASS</Text>
+                            <Text style={styles.relatedPathTitle} numberOfLines={1}>
+                              {p.title}
+                            </Text>
+                            <Text style={styles.relatedPathMeta}>
+                              {p.lessonCount} Lessons • {p.estimatedDurationMinutes}m • {p.difficulty}
+                            </Text>
+                          </View>
+                          <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      ))}
+
+                      {relatedContent.collections.map((col) => (
+                        <TouchableOpacity
+                          key={`col-${col.id}`}
+                          activeOpacity={0.8}
+                          onPress={() =>
+                            (navigation as any).navigate('ExerciseCollectionDetail', {
+                              collectionId: col.id,
+                              title: col.title,
+                            })
+                          }
+                          style={styles.relatedPathCard}
+                        >
+                          <View
+                            style={[
+                              styles.relatedPathIconHalo,
+                              { backgroundColor: 'rgba(0, 200, 180, 0.12)' },
+                            ]}
+                          >
+                            <Icon name="activity" size={16} color={colors.accent} />
+                          </View>
+                          <View style={styles.relatedPathInfo}>
+                            <Text style={[styles.relatedPathPre, { color: colors.accent }]}>
+                              CURATED COLLECTION
+                            </Text>
+                            <Text style={styles.relatedPathTitle} numberOfLines={1}>
+                              {col.title}
+                            </Text>
+                            <Text style={styles.relatedPathMeta}>
+                              {col.exerciseCount} Exercises • {col.category || 'Curriculum'}
+                            </Text>
+                          </View>
+                          <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
               </>
             )}
 
@@ -469,6 +867,19 @@ export const ExerciseDetailScreen: React.FC = () => {
                     <Text style={styles.manageMediaBtnText}>Movement Studio</Text>
                   </TouchableOpacity>
                 </View>
+
+                {movementPhases.length > 0 && (
+                  <ExerciseMovementPlayer
+                    phases={movementPhases}
+                    instructionSteps={instructionSteps}
+                    commonMistakes={commonMistakes}
+                    activePhaseIndex={activePhaseIndex}
+                    onPhaseChange={(idx, phase) => {
+                      setActivePhaseIndex(idx);
+                      setActivePhase(phase);
+                    }}
+                  />
+                )}
 
                 <ExerciseMovementTimeline
                   phases={movementPhases}
@@ -804,50 +1215,11 @@ export const ExerciseDetailScreen: React.FC = () => {
 
             {/* TAB 6: VARIATIONS & PROGRESSIONS */}
             {activeTab === 'variations' && (
-              <>
-                {variationsFrom.length > 0 ? (
-                  variationsFrom.map((v, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      onPress={() =>
-                        v.targetExercise &&
-                        navigateToExercise(v.targetExercise.id, v.targetExercise.name)
-                      }
-                      activeOpacity={0.7}
-                    >
-                      <Card style={styles.variationCard}>
-                        <View style={styles.rowBetween}>
-                          <View style={{ flex: 1 }}>
-                            <View style={styles.rowAlign}>
-                              <Badge
-                                label={v.relationshipType}
-                                variant={
-                                  v.relationshipType === 'REGRESSION'
-                                    ? 'neutral'
-                                    : v.relationshipType === 'PROGRESSION'
-                                    ? 'accent'
-                                    : 'primary'
-                                }
-                              />
-                              <Text style={styles.variationName}>
-                                {v.targetExercise?.name || 'Related Exercise'}
-                              </Text>
-                            </View>
-                            {v.notes && <Text style={styles.variationNotes}>{v.notes}</Text>}
-                          </View>
-                          <Icon name="chevron-right" size={16} color={colors.textTertiary} />
-                        </View>
-                      </Card>
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  <Card style={styles.card}>
-                    <Text style={styles.bodyMuted}>
-                      No direct regressions or progressions mapped for this exercise.
-                    </Text>
-                  </Card>
-                )}
-              </>
+              <ExerciseRelationshipSection
+                categorizedVariations={(exercise as any)?.categorizedVariations}
+                relatedExercises={(exercise as any)?.relatedExercises}
+                onSelectExercise={(id, targetName) => navigateToExercise(id, targetName)}
+              />
             )}
 
             {/* TAB: MUSCLES & EQUIPMENT */}
@@ -1556,5 +1928,214 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textPrimary,
     fontWeight: '700',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  stepPlayerSection: {
+    marginBottom: sp.md,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: sp.md,
+    marginBottom: sp.sm,
+  },
+  sectionOverline: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  // Day 68: Learning Progress Banner Styles
+  masteryBanner: {
+    marginHorizontal: sp.md,
+    marginTop: sp.xs,
+    marginBottom: sp.sm,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  masteryInfo: {
+    flex: 1,
+    marginRight: sp.sm,
+  },
+  masteryBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.xs,
+  },
+  masterySubtitle: {
+    ...typography.caption,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  masteryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
+  masteryActionButtonCompleted: {
+    backgroundColor: '#10B981',
+  },
+  masteryActionText: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  // Day 70: Related Masterclasses & Collections Styles
+  relatedMasterclassSection: {
+    marginHorizontal: sp.md,
+    marginTop: sp.md,
+    marginBottom: sp.lg,
+  },
+  masterclassHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: sp.sm,
+  },
+  relatedPathCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: sp.sm + 4,
+    marginBottom: sp.xs + 2,
+  },
+  relatedPathIconHalo: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: sp.sm,
+  },
+  relatedPathInfo: {
+    flex: 1,
+  },
+  relatedPathPre: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 0.8,
+  },
+  relatedPathTitle: {
+    ...typography.subtitle,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 1,
+  },
+  relatedPathMeta: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  // Day 71: Exercise Mastery Status Styles
+  masteryBannerCard: {
+    backgroundColor: 'rgba(255, 107, 0, 0.06)',
+    borderColor: 'rgba(255, 107, 0, 0.25)',
+    borderWidth: 1,
+    padding: sp.md,
+    borderRadius: radius.md,
+    marginBottom: sp.md,
+  },
+  masteryBannerCardLearned: {
+    backgroundColor: 'rgba(0, 230, 153, 0.06)',
+    borderColor: 'rgba(0, 230, 153, 0.3)',
+  },
+  masteryBannerHeader: {
+    marginBottom: sp.xs,
+  },
+  masteryBannerBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  masteryDateText: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  masteryChecklistRow: {
+    flexDirection: 'row',
+    gap: sp.md,
+    marginTop: sp.xs,
+    marginBottom: sp.xs,
+  },
+  masteryCheckItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  masteryCheckText: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  masteryCheckTextDone: {
+    color: colors.success,
+    fontWeight: '700',
+  },
+  masteryPathLinkBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    padding: sp.sm,
+    borderRadius: radius.sm,
+    marginTop: sp.sm,
+    gap: sp.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  masteryPathPre: {
+    ...typography.caption,
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
+  masteryPathTitle: {
+    ...typography.subtitle,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  masteryPathSub: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
   },
 });

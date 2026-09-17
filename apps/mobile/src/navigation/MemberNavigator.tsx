@@ -5,7 +5,22 @@ import { themeColors } from '../theme';
 
 import { MemberHomeScreen } from '../features/dashboard';
 import { WorkoutSessionScreen } from '../features/training';
-import { ExerciseDetailScreen, ExerciseLibraryScreen } from '../features/exercises';
+import {
+  ExerciseDetailScreen,
+  ExerciseLibraryScreen,
+  ExerciseDimensionDetailScreen,
+  ExerciseCollectionsScreen,
+  ExerciseCollectionDetailScreen,
+  LearningPathsScreen,
+  LearningPathOverviewScreen,
+  LearningLessonScreen,
+  LearningHomeScreen,
+  LearningProgressScreen,
+  KnowledgeCheckScreen,
+  FitnessAcademyScreen,
+  CurriculumDetailScreen,
+  GlossaryScreen,
+} from '../features/exercises';
 import { ProgressScreen } from '../features/progress';
 import { NutritionScreen, NutritionCoachScreen } from '../features/nutrition';
 import {
@@ -114,6 +129,18 @@ export const MemberNavigator: React.FC = () => {
       <Stack.Screen name="WorkoutSession" component={WorkoutSessionScreen} />
       <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
       <Stack.Screen name="ExerciseLibrary" component={ExerciseLibraryScreen} />
+      <Stack.Screen name="ExerciseDimensionDetail" component={ExerciseDimensionDetailScreen} />
+      <Stack.Screen name="ExerciseCollections" component={ExerciseCollectionsScreen} />
+      <Stack.Screen name="ExerciseCollectionDetail" component={ExerciseCollectionDetailScreen} />
+      <Stack.Screen name="LearningPaths" component={LearningPathsScreen} />
+      <Stack.Screen name="LearningPathOverview" component={LearningPathOverviewScreen} />
+      <Stack.Screen name="LearningLesson" component={LearningLessonScreen} />
+      <Stack.Screen name="LearningHome" component={LearningHomeScreen} />
+      <Stack.Screen name="LearningProgress" component={LearningProgressScreen} />
+      <Stack.Screen name="KnowledgeCheck" component={KnowledgeCheckScreen} />
+      <Stack.Screen name="FitnessAcademy" component={FitnessAcademyScreen} />
+      <Stack.Screen name="CurriculumDetail" component={CurriculumDetailScreen} />
+      <Stack.Screen name="Glossary" component={GlossaryScreen} />
 
       {/* Class Booking & Scheduling */}
       <Stack.Screen name="Bookings" component={ClassesScreen} />
