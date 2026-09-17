@@ -9,11 +9,17 @@ import { Badge, Button, Card, Icon } from '../../../components/primitives';
 import { themeColors, typography, radius, spacing } from '../../../theme';
 import type { DiscoveryMuscleItem } from '../services/exerciseService';
 
+export interface MuscleRoleHighlight {
+  code: string;
+  role: 'PRIMARY' | 'SECONDARY' | 'STABILIZER';
+}
+
 interface BodyMapVisualizerProps {
   muscles: DiscoveryMuscleItem[];
   selectedMuscle?: string;
   onSelectMuscle: (muscleCode: string) => void;
   onExploreMuscle?: (muscleCode: string) => void;
+  highlightedMuscles?: MuscleRoleHighlight[];
 }
 
 export const BodyMapVisualizer: React.FC<BodyMapVisualizerProps> = ({
@@ -21,6 +27,7 @@ export const BodyMapVisualizer: React.FC<BodyMapVisualizerProps> = ({
   selectedMuscle,
   onSelectMuscle,
   onExploreMuscle,
+  highlightedMuscles,
 }) => {
   const [viewRegion, setViewRegion] = useState<'ANTERIOR' | 'POSTERIOR'>('ANTERIOR');
   const [displayMode, setDisplayMode] = useState<'VISUAL' | 'LIST'>('VISUAL');
@@ -36,6 +43,12 @@ export const BodyMapVisualizer: React.FC<BodyMapVisualizerProps> = ({
 
   const isSelected = (code: string) => selectedMuscle === code;
 
+  const getHighlightRole = (code: string): 'PRIMARY' | 'SECONDARY' | 'STABILIZER' | null => {
+    if (!highlightedMuscles) return null;
+    const match = highlightedMuscles.find((h) => h.code.toUpperCase() === code.toUpperCase());
+    return match ? match.role : null;
+  };
+
   const renderMuscleButton = (
     code: string,
     label: string,
@@ -44,12 +57,13 @@ export const BodyMapVisualizer: React.FC<BodyMapVisualizerProps> = ({
   ) => {
     const selected = isSelected(code);
     const count = getMuscleCount(code);
+    const highlightRole = getHighlightRole(code);
 
     return (
       <TouchableOpacity
         key={code}
         accessibilityRole="button"
-        accessibilityLabel={`${label}, ${count} exercises available`}
+        accessibilityLabel={`${label}${highlightRole ? `, ${highlightRole} muscle` : ''}, ${count} exercises available`}
         accessibilityState={{ selected }}
         activeOpacity={0.7}
         onPress={() => onSelectMuscle(code)}
@@ -57,6 +71,9 @@ export const BodyMapVisualizer: React.FC<BodyMapVisualizerProps> = ({
           styles.anatomicalRegion,
           { width: widthPercent as any },
           selected && styles.anatomicalRegionSelected,
+          highlightRole === 'PRIMARY' && styles.highlightPrimary,
+          highlightRole === 'SECONDARY' && styles.highlightSecondary,
+          highlightRole === 'STABILIZER' && styles.highlightStabilizer,
           customStyle,
         ]}
       >
@@ -65,17 +82,24 @@ export const BodyMapVisualizer: React.FC<BodyMapVisualizerProps> = ({
             style={[
               styles.regionLabel,
               selected && styles.regionLabelSelected,
+              highlightRole === 'PRIMARY' && styles.labelPrimary,
+              highlightRole === 'SECONDARY' && styles.labelSecondary,
             ]}
             numberOfLines={1}
           >
             {label}
           </Text>
-          {count > 0 && (
+          {highlightRole ? (
+            <Badge
+              label={highlightRole === 'PRIMARY' ? 'PRI' : highlightRole === 'SECONDARY' ? 'SEC' : 'STAB'}
+              variant={highlightRole === 'PRIMARY' ? 'primary' : highlightRole === 'SECONDARY' ? 'accent' : 'neutral'}
+            />
+          ) : count > 0 ? (
             <Badge
               label={String(count)}
               variant={selected ? 'primary' : 'neutral'}
             />
-          )}
+          ) : null}
         </View>
         {selected && (
           <View style={styles.activeDot} />
@@ -248,27 +272,39 @@ export const BodyMapVisualizer: React.FC<BodyMapVisualizerProps> = ({
           <View style={styles.muscleGrid}>
             {currentViewMuscles.map((m) => {
               const selected = isSelected(m.code);
+              const highlightRole = getHighlightRole(m.code);
               return (
                 <TouchableOpacity
                   key={m.code}
                   accessibilityRole="button"
-                  accessibilityLabel={`${m.name}, ${m.count} exercises`}
+                  accessibilityLabel={`${m.name}${highlightRole ? `, ${highlightRole} muscle` : ''}, ${m.count} exercises`}
                   accessibilityState={{ selected }}
                   onPress={() => onSelectMuscle(m.code)}
                   style={[
                     styles.listMuscleChip,
                     selected && styles.listMuscleChipSelected,
+                    highlightRole === 'PRIMARY' && styles.highlightPrimary,
+                    highlightRole === 'SECONDARY' && styles.highlightSecondary,
+                    highlightRole === 'STABILIZER' && styles.highlightStabilizer,
                   ]}
                 >
                   <View style={styles.chipInfo}>
-                    <Text
-                      style={[
-                        styles.chipName,
-                        selected && styles.chipNameSelected,
-                      ]}
-                    >
-                      {m.name}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text
+                        style={[
+                          styles.chipName,
+                          selected && styles.chipNameSelected,
+                        ]}
+                      >
+                        {m.name}
+                      </Text>
+                      {highlightRole && (
+                        <Badge
+                          label={highlightRole}
+                          variant={highlightRole === 'PRIMARY' ? 'primary' : highlightRole === 'SECONDARY' ? 'accent' : 'neutral'}
+                        />
+                      )}
+                    </View>
                     <Text style={styles.chipSub}>
                       {m.group.replace('_', ' ')} • {m.primaryCount} primary
                     </Text>
@@ -513,5 +549,28 @@ const styles = StyleSheet.create({
   selectedMuscleMeta: {
     ...typography.caption,
     color: themeColors.textSecondary,
+  },
+  highlightPrimary: {
+    borderColor: themeColors.primary,
+    backgroundColor: 'rgba(59, 130, 246, 0.18)',
+    borderWidth: 1.5,
+  },
+  highlightSecondary: {
+    borderColor: themeColors.accent,
+    backgroundColor: 'rgba(20, 184, 166, 0.18)',
+    borderWidth: 1.5,
+  },
+  highlightStabilizer: {
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+  },
+  labelPrimary: {
+    color: themeColors.primary,
+    fontWeight: '700',
+  },
+  labelSecondary: {
+    color: themeColors.accent,
+    fontWeight: '700',
   },
 });

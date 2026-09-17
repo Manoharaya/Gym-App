@@ -20,6 +20,9 @@ import {
   FitnessAcademyScreen,
   CurriculumDetailScreen,
   GlossaryScreen,
+  MuscleDetailScreen,
+  MovementPatternDetailScreen,
+  ExerciseTutorialScreen,
 } from '../features/exercises';
 import { ProgressScreen } from '../features/progress';
 import { NutritionScreen, NutritionCoachScreen } from '../features/nutrition';
@@ -141,6 +144,9 @@ export const MemberNavigator: React.FC = () => {
       <Stack.Screen name="FitnessAcademy" component={FitnessAcademyScreen} />
       <Stack.Screen name="CurriculumDetail" component={CurriculumDetailScreen} />
       <Stack.Screen name="Glossary" component={GlossaryScreen} />
+      <Stack.Screen name="MuscleDetail" component={MuscleDetailScreen} />
+      <Stack.Screen name="MovementPatternDetail" component={MovementPatternDetailScreen} />
+      <Stack.Screen name="ExerciseTutorial" component={ExerciseTutorialScreen} />
 
       {/* Class Booking & Scheduling */}
       <Stack.Screen name="Bookings" component={ClassesScreen} />

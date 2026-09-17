@@ -12,3 +12,6 @@ export * from './KnowledgeCheckScreen';
 export * from './FitnessAcademyScreen';
 export * from './CurriculumDetailScreen';
 export * from './GlossaryScreen';
+export * from './MuscleDetailScreen';
+export * from './MovementPatternDetailScreen';
+export * from './ExerciseTutorialScreen';

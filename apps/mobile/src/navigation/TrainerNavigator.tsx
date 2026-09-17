@@ -10,7 +10,13 @@ import {
   TrainerWorkoutsScreen,
   CreateWorkoutScreen,
 } from '../features/trainer/screens';
-import { ExerciseLibraryScreen, ExerciseDetailScreen } from '../features/exercises';
+import {
+  ExerciseLibraryScreen,
+  ExerciseDetailScreen,
+  MuscleDetailScreen,
+  MovementPatternDetailScreen,
+  ExerciseTutorialScreen,
+} from '../features/exercises';
 import {
   TrainerClientDetailScreen,
   TrainingProgramScreen,
@@ -45,6 +51,9 @@ export const TrainerNavigator: React.FC = () => {
       <Stack.Screen name="TrainerNotes" component={TrainerNotesScreen} />
       <Stack.Screen name="ExerciseLibrary" component={ExerciseLibraryScreen} />
       <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
+      <Stack.Screen name="MuscleDetail" component={MuscleDetailScreen} />
+      <Stack.Screen name="MovementPatternDetail" component={MovementPatternDetailScreen} />
+      <Stack.Screen name="ExerciseTutorial" component={ExerciseTutorialScreen} />
       <Stack.Screen name="TrainerWorkouts" component={TrainerWorkoutsScreen} />
       <Stack.Screen name="CreateWorkout" component={CreateWorkoutScreen} />
       {/* Day 14: Advanced Programming & Previews */}

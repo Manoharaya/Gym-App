@@ -102,6 +102,9 @@ export type MemberStackParamList = {
   FitnessAcademy: undefined;
   CurriculumDetail: { curriculumId: string; title?: string };
   Glossary: undefined;
+  MuscleDetail: { muscleCode: string; muscleName?: string };
+  MovementPatternDetail: { pattern: string; patternName?: string };
+  ExerciseTutorial: { exerciseId: string; initialMode?: string; previewMode?: boolean };
   TrainingPlanOverview: { planId?: string } | undefined;
   TrainingCalendar: { planId?: string } | undefined;
   EngagementHome: undefined;
@@ -139,6 +142,9 @@ export type TrainerStackParamList = {
   LearningPaths: undefined;
   LearningPathOverview: { pathId: string; title?: string };
   LearningLesson: { pathId: string; lessonId: string; title?: string };
+  MuscleDetail: { muscleCode: string; muscleName?: string };
+  MovementPatternDetail: { pattern: string; patternName?: string };
+  ExerciseTutorial: { exerciseId: string; initialMode?: string; previewMode?: boolean };
   TrainerWorkouts: { memberProfileId?: string } | undefined;
   CreateWorkout: { memberProfileId?: string } | undefined;
   TrainerProgramming: { memberProfileId?: string; programId?: string; planId?: string } | undefined;

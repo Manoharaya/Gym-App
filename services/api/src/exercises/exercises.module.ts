@@ -13,6 +13,8 @@ import { LearningPathsController } from './controllers/learning-paths.controller
 import { LearningDashboardController } from './controllers/learning-dashboard.controller';
 import { KnowledgeCheckController } from './controllers/knowledge-check.controller';
 import { AcademyController } from './controllers/academy.controller';
+import { ExerciseAnatomyController } from './controllers/exercise-anatomy.controller';
+import { ExerciseTutorialController } from './controllers/exercise-tutorial.controller';
 import { ExercisesService } from './services/exercises.service';
 import { ExerciseKnowledgeService } from './services/exercise-knowledge.service';
 import { ExerciseMediaService } from './services/exercise-media.service';
@@ -27,6 +29,8 @@ import { ExerciseCollectionsLearningPathsService } from './services/exercise-col
 import { LearningDashboardService } from './services/learning-dashboard.service';
 import { KnowledgeCheckService } from './services/knowledge-check.service';
 import { AcademyService } from './services/academy.service';
+import { ExerciseAnatomyService } from './services/exercise-anatomy.service';
+import { ExerciseTutorialService } from './services/exercise-tutorial.service';
 
 @Module({
   imports: [DatabaseModule, AuditModule, StorageModule],
@@ -42,6 +46,8 @@ import { AcademyService } from './services/academy.service';
     LearningDashboardController,
     KnowledgeCheckController,
     AcademyController,
+    ExerciseAnatomyController,
+    ExerciseTutorialController,
   ],
   providers: [
     ExercisesService,
@@ -58,6 +64,8 @@ import { AcademyService } from './services/academy.service';
     LearningDashboardService,
     KnowledgeCheckService,
     AcademyService,
+    ExerciseAnatomyService,
+    ExerciseTutorialService,
   ],
   exports: [
     ExercisesService,
@@ -74,6 +82,8 @@ import { AcademyService } from './services/academy.service';
     LearningDashboardService,
     KnowledgeCheckService,
     AcademyService,
+    ExerciseAnatomyService,
+    ExerciseTutorialService,
   ],
 })
 export class ExercisesModule {}

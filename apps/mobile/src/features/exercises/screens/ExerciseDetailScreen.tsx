@@ -18,6 +18,8 @@ import {
   ExerciseService,
   ExerciseRelatedCollectionsAndPaths,
   ExerciseLearningMasteryStatus,
+  ExerciseAnatomyData,
+  DiscoveryMuscleItem,
 } from '../services/exerciseService';
 import { ExerciseMediaManagerModal } from '../components/ExerciseMediaManagerModal';
 import { ExerciseStepPlayer } from '../components/ExerciseStepPlayer';
@@ -33,6 +35,10 @@ import {
   ExerciseQuickFacts,
   ExerciseMovementPlayer,
   ExerciseRelationshipSection,
+  BodyMapVisualizer,
+  MuscleEducationCard,
+  WhyThisExerciseWorksSection,
+  MovementMechanicsCard,
 } from '../components';
 import type { Exercise } from '@fitcore/types';
 
@@ -86,6 +92,29 @@ export const ExerciseDetailScreen: React.FC = () => {
 
   // Day 71: Exercise Learning Mastery Status
   const [learningMastery, setLearningMastery] = useState<ExerciseLearningMasteryStatus | null>(null);
+
+  // Day 74: Visual Anatomy, Muscle Education & Mechanics State
+  const [anatomyData, setAnatomyData] = useState<ExerciseAnatomyData | null>(null);
+  const [discoveryMuscles, setDiscoveryMuscles] = useState<DiscoveryMuscleItem[]>([]);
+
+  const fetchAnatomy = useCallback(async () => {
+    if (!exerciseId) return;
+    try {
+      const data = await ExerciseService.getExerciseAnatomy(exerciseId);
+      setAnatomyData(data);
+    } catch {
+      // Graceful fallback
+    }
+  }, [exerciseId]);
+
+  const fetchDiscoveryMuscles = useCallback(async () => {
+    try {
+      const muscles = await ExerciseService.getDiscoveryMuscles();
+      setDiscoveryMuscles(muscles);
+    } catch {
+      // Graceful fallback
+    }
+  }, []);
 
   const fetchLearningMastery = useCallback(async () => {
     if (!exerciseId) return;
@@ -144,7 +173,9 @@ export const ExerciseDetailScreen: React.FC = () => {
     fetchLearningProgress();
     fetchRelatedContent();
     fetchLearningMastery();
-  }, [fetchVisualDetails, fetchLearningProgress, fetchRelatedContent, fetchLearningMastery]);
+    fetchAnatomy();
+    fetchDiscoveryMuscles();
+  }, [fetchVisualDetails, fetchLearningProgress, fetchRelatedContent, fetchLearningMastery, fetchAnatomy, fetchDiscoveryMuscles]);
 
   useEffect(() => {
     if (exercise?.movementPhases && exercise.movementPhases.length > 0) {
@@ -587,6 +618,37 @@ export const ExerciseDetailScreen: React.FC = () => {
                 {/* Day 65: Quality Completeness Audit */}
                 <ExerciseCompletenessScoreCard exerciseId={exercise?.id || exerciseId} />
 
+                {/* Day 75: Interactive Exercise Tutorial Master Launcher */}
+                <TouchableOpacity
+                  style={styles.tutorialHeroBanner}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    (navigation as any).navigate('ExerciseTutorial', {
+                      exerciseId: exercise?.id || exerciseId,
+                      initialMode: 'STEP_BY_STEP',
+                    })
+                  }
+                >
+                  <View style={styles.tutorialHeroLeft}>
+                    <View style={styles.tutorialIconHalo}>
+                      <Icon name="award" size={20} color="#000000" />
+                    </View>
+                    <View style={styles.tutorialHeroText}>
+                      <View style={styles.tutorialBadgeRow}>
+                        <Text style={styles.tutorialPre}>INTERACTIVE COACHING</Text>
+                        <Badge label="4 MODES" variant="accent" />
+                      </View>
+                      <Text style={styles.tutorialHeroTitle}>
+                        Start Interactive Tutorial
+                      </Text>
+                      <Text style={styles.tutorialHeroSubtitle}>
+                        Step-by-step phases, coaching cues, breathing & practice
+                      </Text>
+                    </View>
+                  </View>
+                  <Icon name="chevron-right" size={18} color={colors.primary} />
+                </TouchableOpacity>
+
                 {/* Day 65: Quick Substitution & Equipment Action Bar */}
                 <View style={styles.quickActionRow}>
                   <TouchableOpacity
@@ -613,6 +675,46 @@ export const ExerciseDetailScreen: React.FC = () => {
                   onManageMuscles={() => setActiveTab('muscles')}
                   canEdit={false}
                 />
+
+                {/* Day 74: "Why This Exercise Works" Biomechanical Rationale */}
+                {anatomyData?.whyThisExerciseWorks && (
+                  <WhyThisExerciseWorksSection
+                    data={anatomyData.whyThisExerciseWorks}
+                    exerciseName={name}
+                    movementPattern={exercise?.movementPattern}
+                    onExplorePattern={(p) =>
+                      (navigation as any).navigate('MovementPatternDetail', { pattern: p })
+                    }
+                  />
+                )}
+
+                {/* Day 74: Knowledge Check Challenge Launcher */}
+                {anatomyData && anatomyData.knowledgeChecks && anatomyData.knowledgeChecks.length > 0 && (
+                  <Card style={styles.knowledgeCheckCard}>
+                    <View style={styles.cardHeaderWithIcon}>
+                      <Icon name="award" size={16} color={colors.accent} />
+                      <Text style={styles.sectionHeadingIcon}>TEST YOUR KNOWLEDGE</Text>
+                    </View>
+                    <Text style={styles.bodyText}>
+                      Ready to test your understanding of {name} anatomy, joint mechanics, and safe execution?
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.knowledgeCheckBtn}
+                      onPress={() => {
+                        const firstCheck = anatomyData?.knowledgeChecks?.[0];
+                        if (firstCheck) {
+                          (navigation as any).navigate('KnowledgeCheck', {
+                            checkId: firstCheck.id,
+                            title: firstCheck.title,
+                          });
+                        }
+                      }}
+                    >
+                      <Text style={styles.knowledgeCheckBtnText}>Take Exercise Anatomy Quiz</Text>
+                      <Icon name="chevron-right" size={14} color="#000000" />
+                    </TouchableOpacity>
+                  </Card>
+                )}
 
                 {/* Biomechanics Metric Strip */}
                 <View style={styles.metricsRow}>
@@ -852,6 +954,15 @@ export const ExerciseDetailScreen: React.FC = () => {
             {/* TAB: MOVEMENT INTELLIGENCE & PHASES */}
             {activeTab === 'movement' && (
               <>
+                {/* Day 74: Movement Mechanics Card */}
+                {anatomyData?.movementMechanics && (
+                  <MovementMechanicsCard
+                    mechanics={anatomyData.movementMechanics}
+                    onExplorePattern={(p) =>
+                      (navigation as any).navigate('MovementPatternDetail', { pattern: p })
+                    }
+                  />
+                )}
                 <View style={styles.mediaHeaderRow}>
                   <Text style={styles.sectionHeading}>
                     MOVEMENT BIOMECHANICS & PHASES ({movementPhases.length})
@@ -1222,14 +1333,99 @@ export const ExerciseDetailScreen: React.FC = () => {
               />
             )}
 
-            {/* TAB: MUSCLES & EQUIPMENT */}
+            {/* TAB: MUSCLES & ANATOMY */}
             {activeTab === 'muscles' && (
               <>
-                <ExerciseMuscleCard
-                  muscleRelations={muscleRelations}
-                  primaryMuscleGroup={exercise?.primaryMuscleGroup}
-                  canEdit={false}
-                />
+                {/* Day 74: Interactive Body Map with Active Muscle Highlights */}
+                {discoveryMuscles.length > 0 && (
+                  <View style={{ marginBottom: sp.md }}>
+                    <Text style={styles.sectionHeading}>INTERACTIVE ANATOMICAL BODY MAP</Text>
+                    <BodyMapVisualizer
+                      muscles={discoveryMuscles}
+                      highlightedMuscles={anatomyData?.bodyMapData?.allInvolvedMuscles?.map((m) => ({
+                        code: m.code,
+                        role: m.role,
+                      }))}
+                      onSelectMuscle={(code) =>
+                        (navigation as any).navigate('MuscleDetail', { muscleCode: code })
+                      }
+                      onExploreMuscle={(code) =>
+                        (navigation as any).navigate('MuscleDetail', { muscleCode: code })
+                      }
+                    />
+                  </View>
+                )}
+
+                {/* Day 74: Muscle Education Cards by Role */}
+                {anatomyData && anatomyData.musclesInvolved.totalCount > 0 ? (
+                  <View style={{ marginBottom: sp.md }}>
+                    {anatomyData.musclesInvolved.primary.length > 0 && (
+                      <View style={{ marginBottom: sp.md }}>
+                        <Text style={styles.sectionHeading}>
+                          PRIMARY FORCE DRIVERS ({anatomyData.musclesInvolved.primary.length})
+                        </Text>
+                        {anatomyData.musclesInvolved.primary.map((m) => (
+                          <MuscleEducationCard
+                            key={m.code}
+                            muscle={m}
+                            onExploreMuscle={(code, mName) =>
+                              (navigation as any).navigate('MuscleDetail', {
+                                muscleCode: code,
+                                muscleName: mName,
+                              })
+                            }
+                          />
+                        ))}
+                      </View>
+                    )}
+
+                    {anatomyData.musclesInvolved.secondary.length > 0 && (
+                      <View style={{ marginBottom: sp.md }}>
+                        <Text style={styles.sectionHeading}>
+                          ASSISTING SYNERGISTS ({anatomyData.musclesInvolved.secondary.length})
+                        </Text>
+                        {anatomyData.musclesInvolved.secondary.map((m) => (
+                          <MuscleEducationCard
+                            key={m.code}
+                            muscle={m}
+                            onExploreMuscle={(code, mName) =>
+                              (navigation as any).navigate('MuscleDetail', {
+                                muscleCode: code,
+                                muscleName: mName,
+                              })
+                            }
+                          />
+                        ))}
+                      </View>
+                    )}
+
+                    {anatomyData.musclesInvolved.stabilizers.length > 0 && (
+                      <View style={{ marginBottom: sp.md }}>
+                        <Text style={styles.sectionHeading}>
+                          JOINT & POSTURAL STABILIZERS ({anatomyData.musclesInvolved.stabilizers.length})
+                        </Text>
+                        {anatomyData.musclesInvolved.stabilizers.map((m) => (
+                          <MuscleEducationCard
+                            key={m.code}
+                            muscle={m}
+                            onExploreMuscle={(code, mName) =>
+                              (navigation as any).navigate('MuscleDetail', {
+                                muscleCode: code,
+                                muscleName: mName,
+                              })
+                            }
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <ExerciseMuscleCard
+                    muscleRelations={muscleRelations}
+                    primaryMuscleGroup={exercise?.primaryMuscleGroup}
+                    canEdit={false}
+                  />
+                )}
 
                 <Card style={styles.card}>
                   <View style={styles.rowBetween}>
@@ -2137,5 +2333,82 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 11,
     color: colors.textSecondary,
+  },
+  knowledgeCheckCard: {
+    padding: sp.md,
+    marginBottom: sp.md,
+    backgroundColor: 'rgba(20, 184, 166, 0.08)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(20, 184, 166, 0.25)',
+  },
+  knowledgeCheckBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    paddingVertical: sp.sm,
+    paddingHorizontal: sp.md,
+    borderRadius: radius.md,
+    marginTop: sp.sm,
+    gap: sp.sm,
+  },
+  knowledgeCheckBtnText: {
+    ...typography.button,
+    color: '#000000',
+    fontWeight: '700',
+  },
+  tutorialHeroBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    padding: sp.md,
+    marginBottom: sp.md,
+  },
+  tutorialHeroLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.sm,
+    flex: 1,
+  },
+  tutorialIconHalo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tutorialHeroText: {
+    flex: 1,
+  },
+  tutorialBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  tutorialPre: {
+    ...typography.caption,
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.accent,
+    letterSpacing: 0.5,
+  },
+  tutorialHeroTitle: {
+    ...typography.subtitle,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  tutorialHeroSubtitle: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });

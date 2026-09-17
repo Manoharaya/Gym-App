@@ -744,6 +744,109 @@ export class ExerciseService {
     const res = await apiClient.get<any>(`/learning/glossary/${encodeURIComponent(termOrSlug)}`);
     return res.data?.data || res.data;
   }
+
+  // --- Day 74: Visual Anatomy, Muscle Education, Movement Mechanics & "Why This Exercise Works" ---
+
+  static async getExerciseAnatomy(exerciseId: string): Promise<ExerciseAnatomyData> {
+    const res = await apiClient.get<any>(`/exercises/${encodeURIComponent(exerciseId)}/anatomy`);
+    return res.data?.data || res.data;
+  }
+
+  static async updateExerciseWhyItWorks(
+    exerciseId: string,
+    payload: UpdateExerciseWhyItWorksInput,
+  ): Promise<any> {
+    const res = await apiClient.patch<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/why-it-works`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getMusclesCatalog(): Promise<MuscleCatalogItem[]> {
+    const res = await apiClient.get<any>('/muscles');
+    return res.data?.data || res.data || [];
+  }
+
+  static async getMuscleDetail(muscleCode: string): Promise<MuscleDetailData> {
+    const res = await apiClient.get<any>(`/muscles/${encodeURIComponent(muscleCode)}`);
+    return res.data?.data || res.data;
+  }
+
+  static async getMovementsCatalog(): Promise<MovementCatalogItem[]> {
+    const res = await apiClient.get<any>('/movements');
+    return res.data?.data || res.data || [];
+  }
+
+  static async getMovementPatternDetail(pattern: string): Promise<MovementPatternDetailData> {
+    const res = await apiClient.get<any>(`/movements/${encodeURIComponent(pattern)}`);
+    return res.data?.data || res.data;
+  }
+
+  // ==========================================
+  // DAY 75: INTERACTIVE EXERCISE TUTORIALS
+  // ==========================================
+
+  static async getExerciseTutorial(exerciseId: string): Promise<ExerciseTutorialResponse> {
+    const res = await apiClient.get<any>(`/exercises/${encodeURIComponent(exerciseId)}/tutorial`);
+    return res.data?.data || res.data;
+  }
+
+  static async getTutorialProgress(exerciseId: string): Promise<TutorialUserProgress> {
+    const res = await apiClient.get<any>(`/exercises/${encodeURIComponent(exerciseId)}/tutorial/progress`);
+    return res.data?.data || res.data;
+  }
+
+  static async startTutorial(
+    exerciseId: string,
+    payload: StartTutorialPayload = {},
+  ): Promise<TutorialUserProgress> {
+    const res = await apiClient.post<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/tutorial/start`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async recordTutorialProgress(
+    exerciseId: string,
+    payload: UpdateTutorialProgressPayload,
+  ): Promise<TutorialUserProgress> {
+    const res = await apiClient.post<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/tutorial/progress`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async completeTutorial(
+    exerciseId: string,
+    payload: CompleteTutorialPayload = {},
+  ): Promise<TutorialUserProgress> {
+    const res = await apiClient.post<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/tutorial/complete`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getRelatedTutorials(exerciseId: string): Promise<any> {
+    const res = await apiClient.get<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/tutorial/related`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async updateTutorialConfig(
+    exerciseId: string,
+    payload: UpdateTutorialConfigPayload,
+  ): Promise<any> {
+    const res = await apiClient.patch<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/tutorial`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
 }
 
 export type ReasonCode =
@@ -1545,4 +1648,465 @@ export interface AcademyOverview {
   }>;
   curricula: CurriculumSummary[];
   glossaryHighlights: GlossaryTermItem[];
+}
+
+// ==========================================
+// DAY 74: VISUAL ANATOMY, MUSCLE EDUCATION & MOVEMENT MECHANICS TYPES
+// ==========================================
+
+export type MuscleRole = 'PRIMARY' | 'SECONDARY' | 'STABILIZER';
+export type AnatomicalRegion = 'ANTERIOR' | 'POSTERIOR';
+export type MuscleGroupCategory = 'UPPER_BODY' | 'CORE' | 'LOWER_BODY';
+
+export interface MuscleInvolvedItem {
+  code: string;
+  name: string;
+  group: string;
+  region: AnatomicalRegion;
+  role: MuscleRole;
+  roleExplanation: string;
+  educationalDescription: string;
+  activationLevel?: string;
+  notes?: string;
+}
+
+export interface MovementMechanicsPhase {
+  id: string;
+  phaseName: string;
+  phaseType: string;
+  title?: string;
+  description?: string;
+  orderIndex: number;
+  cueText?: string;
+  bodyPosition?: string;
+  jointAlignments?: any;
+  rangeOfMotionType?: string;
+  rangeOfMotionNotes?: string;
+  breathingPattern?: string;
+  breathingNotes?: string;
+  tempoSeconds?: number;
+  holdDurationSeconds?: number;
+  visualCues?: any;
+  phaseMuscles?: Array<{ muscle: string; role: string; actionType: string }>;
+}
+
+export interface WhyThisExerciseWorksData {
+  overview: string;
+  mechanicsExplanation: string;
+  primaryDrivers: string[];
+  jointAction: string;
+  stabilizationFocus: string;
+  benefits: string[];
+  educationalDisclaimer: string;
+}
+
+export interface ExerciseAnatomyData {
+  exercise: {
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    movementPattern: string;
+    exerciseMechanics?: string;
+    bodyPosition?: string;
+    laterality?: string;
+    tempo?: string;
+    tempoStructure?: any;
+    rangeOfMotion?: string;
+    breathingInstructions?: string;
+    educationalTips?: string[];
+    safetyNotes?: string;
+  };
+  musclesInvolved: {
+    primary: MuscleInvolvedItem[];
+    secondary: MuscleInvolvedItem[];
+    stabilizers: MuscleInvolvedItem[];
+    totalCount: number;
+  };
+  movementMechanics: {
+    pattern: {
+      code: string;
+      name: string;
+      definition: string;
+      primaryJointActions: string[];
+    };
+    phases: MovementMechanicsPhase[];
+    tempoSummary: {
+      tempoString?: string;
+      eccentricSeconds?: number;
+      bottomHoldSeconds?: number;
+      concentricSeconds?: number;
+      topHoldSeconds?: number;
+      tempoExplanation: string;
+    };
+    breathingSummary: {
+      instructions?: string;
+      patternType?: string;
+      guidance: string;
+    };
+  };
+  equipment: Array<{
+    id: string;
+    equipmentName: string;
+    requirementType: string;
+    equipmentCategory?: string;
+    alternatives?: string[];
+    notes?: string;
+  }>;
+  whyThisExerciseWorks: WhyThisExerciseWorksData;
+  bodyMapData: {
+    anteriorHighlighted: string[];
+    posteriorHighlighted: string[];
+    allInvolvedMuscles: Array<{
+      code: string;
+      label: string;
+      role: MuscleRole;
+      region: AnatomicalRegion;
+    }>;
+  };
+  relatedExercises: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    primaryMuscleGroup: string;
+    movementPattern: string;
+    mediaUrl?: string;
+  }>;
+  relatedLearning: Array<{
+    id: string;
+    title: string;
+    type: 'CURRICULUM' | 'LEARNING_PATH' | 'LESSON';
+    pathId?: string;
+    lessonId?: string;
+  }>;
+  knowledgeChecks: Array<{
+    id: string;
+    title: string;
+    questionCount: number;
+  }>;
+}
+
+export interface MuscleCatalogItem {
+  code: string;
+  name: string;
+  group: MuscleGroupCategory;
+  region: AnatomicalRegion;
+  exerciseCount: number;
+  educationalSummary: string;
+}
+
+export interface MuscleDetailData {
+  code: string;
+  name: string;
+  group: MuscleGroupCategory;
+  region: AnatomicalRegion;
+  educationalDescription: string;
+  primaryActions: string[];
+  synergistMuscles: string[];
+  exercises: {
+    primary: Array<{
+      id: string;
+      name: string;
+      difficulty: string;
+      movementPattern: string;
+      equipment: string;
+    }>;
+    secondary: Array<{
+      id: string;
+      name: string;
+      difficulty: string;
+      movementPattern: string;
+      equipment: string;
+    }>;
+  };
+  relatedLessons: Array<{
+    id: string;
+    title: string;
+    learningPathTitle: string;
+    learningPathId: string;
+  }>;
+}
+
+export interface MovementCatalogItem {
+  code: string;
+  name: string;
+  definition: string;
+  exerciseCount: number;
+}
+
+export interface MovementPatternDetailData {
+  code: string;
+  name: string;
+  definition: string;
+  description: string;
+  primaryJointActions: string[];
+  commonBodyPositions: string[];
+  exercises: Array<{
+    id: string;
+    name: string;
+    difficulty: string;
+    primaryMuscleGroup: string;
+    equipment: string;
+  }>;
+  relatedCurricula: Array<{
+    id: string;
+    title: string;
+    category: string;
+  }>;
+}
+
+export interface UpdateExerciseWhyItWorksInput {
+  overview?: string;
+  mechanicsExplanation?: string;
+  primaryDrivers?: string[];
+  jointAction?: string;
+  stabilizationFocus?: string;
+  benefits?: string[];
+}
+
+// ==========================================
+// DAY 75: INTERACTIVE EXERCISE TUTORIAL TYPES
+// ==========================================
+
+export type TutorialMode =
+  | 'QUICK_LEARN'
+  | 'STEP_BY_STEP'
+  | 'MOVEMENT_BREAKDOWN'
+  | 'TECHNIQUE_CHECKLIST';
+
+export type TutorialProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+
+export type TutorialSection =
+  | 'OVERVIEW'
+  | 'DEMONSTRATION'
+  | 'COACHING'
+  | 'BREAKDOWN'
+  | 'PRACTICE'
+  | 'KNOWLEDGE_CHECK'
+  | 'COMPLETE';
+
+export interface TutorialConfig {
+  checklist: string[];
+  audioGuidanceUrl?: string | null;
+  audioGuidanceTranscript?: string | null;
+  defaultMode: TutorialMode;
+  estimatedMinutes: number;
+  keyTechniquePoints: string[];
+}
+
+export interface TutorialDemonstration {
+  id: string;
+  mediaType: string;
+  url: string;
+  thumbnailUrl?: string | null;
+  durationSeconds?: number | null;
+  isPrimary: boolean;
+  purpose: string;
+  altText?: string | null;
+}
+
+export interface TutorialPhase {
+  id: string;
+  orderIndex: number;
+  phaseName: string;
+  phaseType: string;
+  title?: string | null;
+  description?: string | null;
+  cueText?: string | null;
+  bodyPosition?: string | null;
+  bodyOrientation?: string | null;
+  jointAlignments?: any;
+  rangeOfMotionType?: string | null;
+  breathingPattern?: string | null;
+  breathingNotes?: string | null;
+  tempoSeconds?: number | null;
+  visualCues?: any;
+  commonMistakes?: any;
+  safetyNotes?: string | null;
+  phaseMuscles?: any;
+  videoStartTimeSeconds?: number | null;
+  videoEndTimeSeconds?: number | null;
+}
+
+export interface TutorialStep {
+  id: string;
+  stepNumber: number;
+  stepType: string;
+  phase?: string | null;
+  movementPhase?: string | null;
+  title: string;
+  description: string;
+  detailedInstruction?: string | null;
+  coachingCue?: string | null;
+  bodyPosition?: string | null;
+  breathing?: string | null;
+  tempo?: string | null;
+  visualCue?: string | null;
+  visualCueCategory?: string | null;
+  videoStartTimeSeconds?: number | null;
+  videoEndTimeSeconds?: number | null;
+}
+
+export interface TechniqueCoachingDetails {
+  setup: string[];
+  position: {
+    feet?: string;
+    hands?: string;
+    spine?: string;
+    head?: string;
+    core?: string;
+  };
+  movement: {
+    direction?: string;
+    movementPattern?: string;
+    phase?: string;
+    rangeOfMotion?: string;
+  };
+  breathing: {
+    pattern?: string;
+    cues?: string[];
+  };
+  tempo: {
+    value?: string;
+    explanation?: string;
+  };
+}
+
+export interface TutorialCommonMistake {
+  id: string;
+  mistake: string;
+  consequence?: string | null;
+  correction: string;
+  severity: string;
+  mediaUrl?: string | null;
+}
+
+export interface TutorialSafetyGuideline {
+  id: string;
+  category: string;
+  title?: string | null;
+  description: string;
+  severity: string;
+}
+
+export interface TutorialEquipment {
+  required: string[];
+  optional: string[];
+  alternatives: Array<{ from: string; to: string; notes?: string }>;
+}
+
+export interface TutorialMuscles {
+  primary: string[];
+  secondary: string[];
+  stabilizers: string[];
+}
+
+export interface TutorialVariations {
+  progressions: any[];
+  regressions: any[];
+  alternatives: any[];
+}
+
+export interface TutorialUserProgress {
+  status: TutorialProgressStatus;
+  currentMode: TutorialMode;
+  currentPhaseIndex: number;
+  currentStepIndex: number;
+  completedSections: string[];
+  checklistState: Record<string, boolean>;
+  practiceCompleted: boolean;
+  practiceCompletedAt?: string | null;
+  timeSpentSeconds: number;
+  knowledgeCheckCompleted: boolean;
+  knowledgeCheckScore?: number | null;
+  lastInteractedAt: string;
+  completedAt?: string | null;
+}
+
+export interface TutorialKnowledgeCheck {
+  id: string;
+  title: string;
+  passingScore: number;
+  questionCount: number;
+}
+
+export interface TutorialRelatedLearning {
+  movementPattern: string;
+  primaryMuscle: string;
+  relatedExercises: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    equipment: string;
+  }>;
+  learningPaths: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    category: string;
+  }>;
+}
+
+export interface ExerciseTutorialResponse {
+  exercise: {
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    equipment: string;
+    movementPattern: string;
+    primaryMuscleGroup: string;
+    secondaryMuscleGroups?: string[];
+    description?: string | null;
+    setupInstructions?: string | null;
+    executionInstructions?: string | null;
+    safetyNotes?: string | null;
+    tempo?: string | null;
+    breathingInstructions?: string | null;
+    rangeOfMotion?: string | null;
+  };
+  tutorialConfig: TutorialConfig;
+  demonstrations: TutorialDemonstration[];
+  phases: TutorialPhase[];
+  steps: TutorialStep[];
+  coaching: TechniqueCoachingDetails;
+  commonMistakes: TutorialCommonMistake[];
+  safetyGuidelines: TutorialSafetyGuideline[];
+  equipment: TutorialEquipment;
+  muscles: TutorialMuscles;
+  variations: TutorialVariations;
+  whyItWorks: any;
+  knowledgeCheck?: TutorialKnowledgeCheck | null;
+  userProgress?: TutorialUserProgress | null;
+  relatedLearning: TutorialRelatedLearning;
+}
+
+export interface StartTutorialPayload {
+  mode?: TutorialMode;
+}
+
+export interface UpdateTutorialProgressPayload {
+  mode?: TutorialMode;
+  phaseIndex?: number;
+  stepIndex?: number;
+  section?: TutorialSection;
+  checklistState?: Record<string, boolean>;
+  practiceCompleted?: boolean;
+  timeSpentSeconds?: number;
+}
+
+export interface CompleteTutorialPayload {
+  timeSpentSeconds?: number;
+  knowledgeCheckScore?: number;
+}
+
+export interface UpdateTutorialConfigPayload {
+  checklist?: string[];
+  audioGuidanceUrl?: string;
+  audioGuidanceTranscript?: string;
+  defaultMode?: TutorialMode;
+  estimatedMinutes?: number;
+  keyTechniquePoints?: string[];
 }

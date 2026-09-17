@@ -2419,6 +2419,8 @@ model Exercise {
   availableEnvironments Json?                     // string[] e.g. ["HOME", "GYM", "OUTDOOR", "STUDIO"]
   trainingGoals         Json?                     // string[] e.g. ["STRENGTH", "MUSCLE_BUILDING", "ENDURANCE", "FAT_LOSS", "MOBILITY", "GENERAL_FITNESS"]
   tags                  Json?                     // string[] e.g. ["Beginner Friendly", "No Equipment", "Home Workout"]
+  whyItWorks            Json?                     // { overview?: string, mechanicsExplanation?: string, primaryDrivers?: string[], jointAction?: string, stabilizationFocus?: string, benefits?: string[] }
+  tutorialConfig        Json?                     // { checklist?: string[], audioGuidanceUrl?: string, audioGuidanceTranscript?: string, defaultMode?: string, estimatedMinutes?: number, keyTechniquePoints?: string[] }
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
   archivedAt            DateTime?
@@ -2599,6 +2601,7 @@ model ExerciseMovementPhase {
   visualCues            Json?                     // ExercisePhaseVisualCue[]
   commonMistakes        Json?                     // ExercisePhaseMistake[]
   safetyNotes           String?
+  phaseMuscles          Json?                     // Array<{ muscle: string, role: string, actionType: string }>
   mediaId               String?
   mediaUrl              String?
   videoStartTimeSeconds Float?
@@ -2806,6 +2809,7 @@ model ExerciseLearningProgress {
   mediaViewed         Boolean      @default(false)
   instructionsViewed  Boolean      @default(false)
   phasesExplored      Boolean      @default(false)
+  tutorialProgress    Json?        // { currentMode?: string, currentPhaseIndex?: number, currentStepIndex?: number, completedSections?: string[], checklistState?: Record<string, boolean>, practiceCompleted?: boolean, practiceCompletedAt?: string, timeSpentSeconds?: number, knowledgeCheckCompleted?: boolean, knowledgeCheckScore?: number }
   completedAt         DateTime?
   lastInteractedAt    DateTime     @default(now())
   createdAt           DateTime     @default(now())
