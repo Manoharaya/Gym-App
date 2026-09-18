@@ -244,6 +244,30 @@ export class ExercisesController {
     return this.mediaService.getExerciseMedia(organisationId, id, query, user);
   }
 
+  @Get(':id/media/views')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get multi-angle exercise demonstration views with deterministic fallback' })
+  async getMediaViews(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.getExerciseMediaViews(organisationId, id, user);
+  }
+
+  @Get(':id/media/phases')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get movement phase-specific visual demonstrations organized by angle' })
+  async getMediaPhases(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.getExerciseMediaPhases(organisationId, id, user);
+  }
+
   @Get(':id/relationships')
   @RequirePermission('exercises', 'read')
   @ApiOperation({ summary: 'Get exercise variations, progressions, regressions, and equipment requirements' })

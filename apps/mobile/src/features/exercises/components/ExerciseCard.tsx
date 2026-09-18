@@ -10,9 +10,16 @@ import {
 import { Badge, Card, Icon } from '../../../components/primitives';
 import { themeColors, typography, radius, spacing } from '../../../theme';
 import type { Exercise } from '@fitcore/types';
+import { ContentMasteryBadge } from './ContentMasteryBadge';
 
 interface ExerciseCardProps {
-  exercise: Exercise & { isFavorite?: boolean; lastViewedAt?: string; reasonText?: string };
+  exercise: Exercise & {
+    isFavorite?: boolean;
+    lastViewedAt?: string;
+    reasonText?: string;
+    masteryStatus?: string;
+    completionPercent?: number;
+  };
   onPress: (exercise: Exercise) => void;
   onQuickPreview?: (exercise: Exercise) => void;
   onToggleFavorite?: (exerciseId: string) => void;
@@ -147,6 +154,13 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
               label={exercise.difficulty || 'INTERMEDIATE'}
               variant={getDifficultyVariant(exercise.difficulty || undefined)}
             />
+            {exercise.masteryStatus && (
+              <ContentMasteryBadge
+                status={exercise.masteryStatus}
+                completionPercent={exercise.completionPercent}
+                size="sm"
+              />
+            )}
           </View>
 
           {onToggleFavorite && (

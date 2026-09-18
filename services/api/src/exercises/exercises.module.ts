@@ -15,6 +15,10 @@ import { KnowledgeCheckController } from './controllers/knowledge-check.controll
 import { AcademyController } from './controllers/academy.controller';
 import { ExerciseAnatomyController } from './controllers/exercise-anatomy.controller';
 import { ExerciseTutorialController } from './controllers/exercise-tutorial.controller';
+import { GuidedSessionController } from './controllers/guided-session.controller';
+import { VisualMovementCoachController } from './controllers/visual-movement-coach.controller';
+import { MovementPracticeController } from './controllers/movement-practice.controller';
+import { MovementLearningIntelligenceController } from './controllers/movement-learning-intelligence.controller';
 import { ExercisesService } from './services/exercises.service';
 import { ExerciseKnowledgeService } from './services/exercise-knowledge.service';
 import { ExerciseMediaService } from './services/exercise-media.service';
@@ -31,6 +35,13 @@ import { KnowledgeCheckService } from './services/knowledge-check.service';
 import { AcademyService } from './services/academy.service';
 import { ExerciseAnatomyService } from './services/exercise-anatomy.service';
 import { ExerciseTutorialService } from './services/exercise-tutorial.service';
+import { GuidedSessionService } from './services/guided-session.service';
+import { ExerciseLearningPersonalizationService } from './services/exercise-learning-personalization.service';
+import { ExerciseLearningMasteryService } from './services/exercise-learning-mastery.service';
+import { LearningHubService } from './services/learning-hub.service';
+import { VisualMovementCoachService } from './services/visual-movement-coach.service';
+import { MovementPracticeService } from './services/movement-practice.service';
+import { MovementLearningIntelligenceService } from './services/movement-learning-intelligence.service';
 
 @Module({
   imports: [DatabaseModule, AuditModule, StorageModule],
@@ -48,6 +59,10 @@ import { ExerciseTutorialService } from './services/exercise-tutorial.service';
     AcademyController,
     ExerciseAnatomyController,
     ExerciseTutorialController,
+    GuidedSessionController,
+    VisualMovementCoachController,
+    MovementPracticeController,
+    MovementLearningIntelligenceController,
   ],
   providers: [
     ExercisesService,
@@ -66,6 +81,13 @@ import { ExerciseTutorialService } from './services/exercise-tutorial.service';
     AcademyService,
     ExerciseAnatomyService,
     ExerciseTutorialService,
+    GuidedSessionService,
+    ExerciseLearningPersonalizationService,
+    ExerciseLearningMasteryService,
+    LearningHubService,
+    VisualMovementCoachService,
+    MovementPracticeService,
+    MovementLearningIntelligenceService,
   ],
   exports: [
     ExercisesService,
@@ -84,7 +106,15 @@ import { ExerciseTutorialService } from './services/exercise-tutorial.service';
     AcademyService,
     ExerciseAnatomyService,
     ExerciseTutorialService,
+    GuidedSessionService,
+    ExerciseLearningPersonalizationService,
+    ExerciseLearningMasteryService,
+    LearningHubService,
+    VisualMovementCoachService,
+    MovementPracticeService,
+    MovementLearningIntelligenceService,
   ],
 })
 export class ExercisesModule {}
+
 

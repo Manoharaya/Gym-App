@@ -23,6 +23,12 @@ import {
   MuscleDetailScreen,
   MovementPatternDetailScreen,
   ExerciseTutorialScreen,
+  GuidedSessionsScreen,
+  GuidedSessionDetailScreen,
+  GuidedExerciseSessionScreen,
+  GuidedSessionAuthoringScreen,
+  VisualMovementCoachScreen,
+  GuidedMovementPracticeScreen,
 } from '../features/exercises';
 import { ProgressScreen } from '../features/progress';
 import { NutritionScreen, NutritionCoachScreen } from '../features/nutrition';
@@ -147,6 +153,12 @@ export const MemberNavigator: React.FC = () => {
       <Stack.Screen name="MuscleDetail" component={MuscleDetailScreen} />
       <Stack.Screen name="MovementPatternDetail" component={MovementPatternDetailScreen} />
       <Stack.Screen name="ExerciseTutorial" component={ExerciseTutorialScreen} />
+      <Stack.Screen name="VisualMovementCoach" component={VisualMovementCoachScreen} />
+      <Stack.Screen name="GuidedMovementPractice" component={GuidedMovementPracticeScreen} />
+      <Stack.Screen name="GuidedSessions" component={GuidedSessionsScreen} />
+      <Stack.Screen name="GuidedSessionDetail" component={GuidedSessionDetailScreen} />
+      <Stack.Screen name="GuidedExerciseSession" component={GuidedExerciseSessionScreen} />
+      <Stack.Screen name="GuidedSessionAuthoring" component={GuidedSessionAuthoringScreen} />
 
       {/* Class Booking & Scheduling */}
       <Stack.Screen name="Bookings" component={ClassesScreen} />

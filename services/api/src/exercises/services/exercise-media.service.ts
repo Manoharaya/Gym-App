@@ -17,6 +17,10 @@ import {
   UpdateExerciseMediaDto,
   DirectUploadMediaMetadataDto,
   UploadedMediaFile,
+  CreateMediaAnnotationDto,
+  UpdateMediaAnnotationDto,
+  QueryMediaAnnotationsDto,
+  MediaViewsGroupDto,
 } from '../dto/exercise-media.dto';
 
 @Injectable()
@@ -127,6 +131,14 @@ export class ExerciseMediaService {
 
     if (query.purpose) {
       where.purpose = query.purpose;
+    }
+
+    if (query.viewAngle) {
+      where.viewAngle = query.viewAngle;
+    }
+
+    if (query.phaseId) {
+      where.phaseId = query.phaseId;
     }
 
     if (query.isPrimary !== undefined) {
@@ -307,6 +319,8 @@ export class ExerciseMediaService {
         modelLod: dto.modelLod,
         status: dto.status ?? 'READY',
         isPublished: dto.isPublished ?? true,
+        viewAngle: dto.viewAngle,
+        phaseId: dto.phaseId,
         createdByUserId: actor.id,
         updatedByUserId: actor.id,
       },
@@ -377,6 +391,8 @@ export class ExerciseMediaService {
         thumbnailUrl: dto.thumbnailUrl,
         status: dto.status,
         isPublished: dto.isPublished,
+        viewAngle: dto.viewAngle !== undefined ? dto.viewAngle : existing.viewAngle,
+        phaseId: dto.phaseId !== undefined ? dto.phaseId : existing.phaseId,
         updatedByUserId: actor.id,
       },
     });
@@ -559,6 +575,8 @@ export class ExerciseMediaService {
         modelLod: dto.modelLod,
         status: 'READY',
         isPublished: true,
+        viewAngle: dto.viewAngle,
+        phaseId: dto.phaseId,
         createdByUserId: actor.id,
         updatedByUserId: actor.id,
       },
@@ -578,5 +596,333 @@ export class ExerciseMediaService {
     });
 
     return this.enrichWithSignedUrl(created);
+  }
+
+  /**
+   * Get exercise media grouped by view angle with deterministic fallback
+   */
+  async getExerciseMediaViews(
+    organisationId: string,
+    exerciseId: string,
+    actor?: AuthenticatedUser,
+  ): Promise<MediaViewsGroupDto> {
+    const mediaList = await this.getExerciseMedia(organisationId, exerciseId, {}, actor);
+
+    const views: Record<string, any[]> = {};
+    for (const m of mediaList) {
+      const angle = m.viewAngle || (m.isPrimary ? 'SIDE' : 'FRONT');
+      if (!views[angle]) {
+        views[angle] = [];
+      }
+      views[angle].push(m);
+    }
+
+    const availableAngles = Object.keys(views);
+
+    // Deterministic selection strategy:
+    // 1. Primary configured angle
+    // 2. Primary demonstration
+    // 3. Side
+    // 4. Front
+    // 5. First available angle
+    let defaultAngle = 'SIDE';
+    const primaryMedia = mediaList.find((m) => m.isPrimary);
+    if (primaryMedia?.viewAngle && views[primaryMedia.viewAngle]?.length) {
+      defaultAngle = primaryMedia.viewAngle;
+    } else if (views['SIDE']?.length) {
+      defaultAngle = 'SIDE';
+    } else if (views['FRONT']?.length) {
+      defaultAngle = 'FRONT';
+    } else if (availableAngles.length > 0) {
+      defaultAngle = availableAngles[0]!;
+    }
+
+    return {
+      defaultAngle,
+      availableAngles,
+      views,
+      totalMedia: mediaList.length,
+    };
+  }
+
+  /**
+   * Get exercise media grouped by movement phases
+   */
+  async getExerciseMediaPhases(
+    organisationId: string,
+    exerciseId: string,
+    actor?: AuthenticatedUser,
+  ) {
+    const exercise = await this.prisma.exercise.findFirst({
+      where: {
+        id: exerciseId,
+        OR: [{ ownershipType: 'SYSTEM' }, { organisationId }],
+      },
+    });
+
+    if (!exercise) {
+      throw new NotFoundException(`Exercise '${exerciseId}' not found`);
+    }
+
+    const phases = await this.prisma.exerciseMovementPhase.findMany({
+      where: { exerciseId },
+      orderBy: { orderIndex: 'asc' },
+    });
+
+    const allMedia = await this.getExerciseMedia(organisationId, exerciseId, {}, actor);
+
+    return phases.map((phase) => {
+      // Find media directly linked via phaseId or phase.mediaId
+      const phaseMedia = allMedia.filter(
+        (m) => m.phaseId === phase.id || m.id === phase.mediaId,
+      );
+
+      const angleViews: Record<string, any[]> = {};
+      for (const m of phaseMedia) {
+        const angle = m.viewAngle || 'SIDE';
+        if (!angleViews[angle]) {
+          angleViews[angle] = [];
+        }
+        angleViews[angle].push(m);
+      }
+
+      return {
+        phaseId: phase.id,
+        phaseName: phase.phaseName,
+        phaseType: phase.phaseType,
+        title: phase.title,
+        description: phase.description,
+        orderIndex: phase.orderIndex,
+        tempoSeconds: phase.tempoSeconds,
+        videoStartTimeSeconds: phase.videoStartTimeSeconds,
+        videoEndTimeSeconds: phase.videoEndTimeSeconds,
+        media: phaseMedia,
+        views: angleViews,
+        availableAngles: Object.keys(angleViews),
+      };
+    });
+  }
+
+  /**
+   * Get authored visual cue annotations for a media asset
+   */
+  async getMediaAnnotations(
+    organisationId: string,
+    mediaId: string,
+    query: QueryMediaAnnotationsDto = {},
+    actor?: AuthenticatedUser,
+  ) {
+    const media = await this.prisma.exerciseMedia.findUnique({
+      where: { id: mediaId },
+      include: { exercise: true },
+    });
+
+    if (!media) {
+      throw new NotFoundException(`Exercise media '${mediaId}' not found`);
+    }
+
+    const isPrivileged = actor ? this.isPrivilegedActor(actor) : false;
+
+    const where: any = { mediaId };
+
+    if (query.phaseId) {
+      where.phaseId = query.phaseId;
+    }
+
+    if (query.category) {
+      where.category = query.category;
+    }
+
+    if (!isPrivileged) {
+      where.status = 'PUBLISHED';
+    } else if (query.status) {
+      where.status = query.status;
+    }
+
+    return this.prisma.exerciseMediaAnnotation.findMany({
+      where,
+      orderBy: [{ startTime: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  /**
+   * Create an authored visual cue annotation on a media asset
+   */
+  async createMediaAnnotation(
+    organisationId: string,
+    mediaId: string,
+    dto: CreateMediaAnnotationDto,
+    actor: AuthenticatedUser,
+  ) {
+    const media = await this.prisma.exerciseMedia.findUnique({
+      where: { id: mediaId },
+      include: { exercise: true },
+    });
+
+    if (!media) {
+      throw new NotFoundException(`Exercise media '${mediaId}' not found`);
+    }
+
+    this.ensureCanModifyExercise(media.exercise, organisationId);
+
+    // Validate coordinates
+    if (dto.x < 0 || dto.x > 1 || dto.y < 0 || dto.y > 1) {
+      throw new BadRequestException('Normalized coordinates x and y must be between 0.0 and 1.0');
+    }
+
+    if (dto.width != null && (dto.width < 0 || dto.width > 1)) {
+      throw new BadRequestException('Normalized width must be between 0.0 and 1.0');
+    }
+
+    if (dto.height != null && (dto.height < 0 || dto.height > 1)) {
+      throw new BadRequestException('Normalized height must be between 0.0 and 1.0');
+    }
+
+    // Validate timestamps
+    if (dto.startTime != null && dto.endTime != null && dto.startTime > dto.endTime) {
+      throw new BadRequestException('Annotation startTime must not be greater than endTime');
+    }
+
+    const created = await this.prisma.exerciseMediaAnnotation.create({
+      data: {
+        mediaId,
+        organisationId,
+        phaseId: dto.phaseId,
+        type: dto.type,
+        label: dto.label,
+        description: dto.description,
+        category: dto.category ?? 'ALIGNMENT',
+        x: dto.x,
+        y: dto.y,
+        width: dto.width,
+        height: dto.height,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        status: dto.status ?? 'PUBLISHED',
+        createdByUserId: actor.id,
+        updatedByUserId: actor.id,
+      },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'MEDIA_ANNOTATION_CREATED',
+      resource: 'exercise_media_annotation',
+      resourceId: created.id,
+      metadata: {
+        mediaId,
+        label: created.label,
+        type: created.type,
+        category: created.category,
+      },
+    });
+
+    return created;
+  }
+
+  /**
+   * Update an existing visual cue annotation
+   */
+  async updateMediaAnnotation(
+    organisationId: string,
+    mediaId: string,
+    annotationId: string,
+    dto: UpdateMediaAnnotationDto,
+    actor: AuthenticatedUser,
+  ) {
+    const annotation = await this.prisma.exerciseMediaAnnotation.findUnique({
+      where: { id: annotationId },
+      include: { media: { include: { exercise: true } } },
+    });
+
+    if (!annotation || annotation.mediaId !== mediaId) {
+      throw new NotFoundException(`Annotation '${annotationId}' not found on media '${mediaId}'`);
+    }
+
+    this.ensureCanModifyExercise(annotation.media.exercise, organisationId);
+
+    if (dto.x != null && (dto.x < 0 || dto.x > 1)) {
+      throw new BadRequestException('Normalized coordinate x must be between 0.0 and 1.0');
+    }
+
+    if (dto.y != null && (dto.y < 0 || dto.y > 1)) {
+      throw new BadRequestException('Normalized coordinate y must be between 0.0 and 1.0');
+    }
+
+    const nextStart = dto.startTime !== undefined ? dto.startTime : annotation.startTime;
+    const nextEnd = dto.endTime !== undefined ? dto.endTime : annotation.endTime;
+    if (nextStart != null && nextEnd != null && nextStart > nextEnd) {
+      throw new BadRequestException('Annotation startTime must not be greater than endTime');
+    }
+
+    const updated = await this.prisma.exerciseMediaAnnotation.update({
+      where: { id: annotationId },
+      data: {
+        type: dto.type,
+        label: dto.label,
+        description: dto.description,
+        category: dto.category,
+        x: dto.x,
+        y: dto.y,
+        width: dto.width,
+        height: dto.height,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        phaseId: dto.phaseId,
+        status: dto.status,
+        updatedByUserId: actor.id,
+      },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'MEDIA_ANNOTATION_UPDATED',
+      resource: 'exercise_media_annotation',
+      resourceId: updated.id,
+      metadata: {
+        mediaId,
+        annotationId,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Delete an authored visual cue annotation
+   */
+  async deleteMediaAnnotation(
+    organisationId: string,
+    mediaId: string,
+    annotationId: string,
+    actor: AuthenticatedUser,
+  ) {
+    const annotation = await this.prisma.exerciseMediaAnnotation.findUnique({
+      where: { id: annotationId },
+      include: { media: { include: { exercise: true } } },
+    });
+
+    if (!annotation || annotation.mediaId !== mediaId) {
+      throw new NotFoundException(`Annotation '${annotationId}' not found on media '${mediaId}'`);
+    }
+
+    this.ensureCanModifyExercise(annotation.media.exercise, organisationId);
+
+    await this.prisma.exerciseMediaAnnotation.delete({
+      where: { id: annotationId },
+    });
+
+    await this.auditService.log({
+      organisationId,
+      userId: actor.id,
+      action: 'MEDIA_ANNOTATION_DELETED',
+      resource: 'exercise_media_annotation',
+      resourceId: annotationId,
+      metadata: { mediaId },
+    });
+
+    return { success: true, deletedId: annotationId };
   }
 }

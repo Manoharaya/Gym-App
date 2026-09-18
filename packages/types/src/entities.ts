@@ -2046,6 +2046,9 @@ export interface ExerciseMedia extends BaseEntity {
   format3d?: 'GLB' | 'GLTF' | 'USDZ' | string | null;
   modelLod?: 'LOW' | 'MEDIUM' | 'HIGH' | string | null;
   status?: ExerciseMediaStatus | string;
+  viewAngle?: string | null;
+  phaseId?: string | null;
+  annotations?: any[];
   isPublished?: boolean;
   createdByUserId?: string | null;
   updatedByUserId?: string | null;

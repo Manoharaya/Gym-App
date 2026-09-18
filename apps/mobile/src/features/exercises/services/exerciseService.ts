@@ -847,6 +847,551 @@ export class ExerciseService {
     );
     return res.data?.data || res.data;
   }
+
+  // =========================================================================
+  // DAY 76: GUIDED EXERCISE SESSIONS
+  // =========================================================================
+
+  static async getGuidedSessions(
+    options: {
+      search?: string;
+      category?: string;
+      difficulty?: string;
+      primaryGoal?: string;
+      ownershipType?: string;
+      contentStatus?: string;
+      featured?: boolean;
+      page?: number;
+      limit?: number;
+    } = {},
+  ): Promise<{ items: GuidedSessionSummary[]; meta: any }> {
+    const res = await apiClient.get<any>('/guided-sessions', { params: options });
+    return res.data?.data || res.data;
+  }
+
+  static async getResumeGuidedSession(): Promise<ResumeGuidedSessionResponse | null> {
+    const res = await apiClient.get<any>('/guided-sessions/resume');
+    return res.data?.data || res.data;
+  }
+
+  static async getGuidedSession(sessionId: string): Promise<GuidedSessionDetail> {
+    const res = await apiClient.get<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getGuidedSessionProgress(
+    sessionId: string,
+  ): Promise<UserGuidedSessionProgress> {
+    const res = await apiClient.get<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/progress`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async startGuidedSession(
+    sessionId: string,
+    payload: { resetProgress?: boolean } = {},
+  ): Promise<UserGuidedSessionProgress> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/start`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async updateGuidedSessionProgress(
+    sessionId: string,
+    payload: {
+      currentItemId?: string;
+      currentStepIndex?: number;
+      completedItemId?: string;
+      itemCompletionData?: any;
+      timeSpentSecondsIncrement?: number;
+    },
+  ): Promise<UserGuidedSessionProgress> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/progress`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async completeGuidedSession(
+    sessionId: string,
+    payload: {
+      totalTimeSpentSeconds?: number;
+      practiceFeedback?: any;
+    } = {},
+  ): Promise<any> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/complete`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async createGuidedSession(payload: any): Promise<any> {
+    const res = await apiClient.post<any>('/guided-sessions', payload);
+    return res.data?.data || res.data;
+  }
+
+  static async updateGuidedSession(sessionId: string, payload: any): Promise<any> {
+    const res = await apiClient.patch<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async addGuidedSessionSection(
+    sessionId: string,
+    payload: { title: string; description?: string; sortOrder?: number },
+  ): Promise<any> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/sections`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async updateGuidedSessionSection(
+    sessionId: string,
+    sectionId: string,
+    payload: any,
+  ): Promise<any> {
+    const res = await apiClient.patch<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/sections/${encodeURIComponent(sectionId)}`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async deleteGuidedSessionSection(
+    sessionId: string,
+    sectionId: string,
+  ): Promise<any> {
+    const res = await apiClient.delete<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/sections/${encodeURIComponent(sectionId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async addGuidedSessionItem(sessionId: string, payload: any): Promise<any> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/items`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async updateGuidedSessionItem(
+    sessionId: string,
+    itemId: string,
+    payload: any,
+  ): Promise<any> {
+    const res = await apiClient.patch<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/items/${encodeURIComponent(itemId)}`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async deleteGuidedSessionItem(
+    sessionId: string,
+    itemId: string,
+  ): Promise<any> {
+    const res = await apiClient.delete<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/items/${encodeURIComponent(itemId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async reorderGuidedSessionItems(
+    sessionId: string,
+    items: Array<{ id: string; sortOrder: number; sectionId?: string }>,
+  ): Promise<any> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/reorder`,
+      { items },
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async validateGuidedSession(
+    sessionId: string,
+  ): Promise<PublishValidationResult> {
+    const res = await apiClient.get<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/validate`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async publishGuidedSession(sessionId: string): Promise<any> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/publish`,
+      {},
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async duplicateGuidedSession(sessionId: string): Promise<any> {
+    const res = await apiClient.post<any>(
+      `/guided-sessions/${encodeURIComponent(sessionId)}/duplicate`,
+      {},
+    );
+    return res.data?.data || res.data;
+  }
+
+  // =========================================================================
+  // DAY 77: MULTI-ANGLE DEMONSTRATIONS & VISUAL COMPARISON
+  // =========================================================================
+
+  static async getExerciseMediaViews(exerciseId: string): Promise<MediaViewsGroupDto> {
+    const res = await apiClient.get<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/media/views`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getExerciseMediaPhases(exerciseId: string): Promise<PhaseMediaViewDto[]> {
+    const res = await apiClient.get<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/media/phases`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getMediaAnnotations(
+    mediaId: string,
+    options: { phaseId?: string; category?: string; status?: string } = {},
+  ): Promise<ExerciseMediaAnnotation[]> {
+    const res = await apiClient.get<any>(
+      `/exercise-media/${encodeURIComponent(mediaId)}/annotations`,
+      { params: options },
+    );
+    return res.data?.data || res.data || [];
+  }
+
+  static async createMediaAnnotation(
+    mediaId: string,
+    payload: CreateMediaAnnotationPayload,
+  ): Promise<ExerciseMediaAnnotation> {
+    const res = await apiClient.post<any>(
+      `/exercise-media/${encodeURIComponent(mediaId)}/annotations`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async updateMediaAnnotation(
+    mediaId: string,
+    annotationId: string,
+    payload: UpdateMediaAnnotationPayload,
+  ): Promise<ExerciseMediaAnnotation> {
+    const res = await apiClient.patch<any>(
+      `/exercise-media/${encodeURIComponent(mediaId)}/annotations/${encodeURIComponent(annotationId)}`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+  static async deleteMediaAnnotation(
+    mediaId: string,
+    annotationId: string,
+  ): Promise<{ success: boolean }> {
+    const res = await apiClient.delete<any>(
+      `/exercise-media/${encodeURIComponent(mediaId)}/annotations/${encodeURIComponent(annotationId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  // =========================================================================
+  // DAY 78: LEARNING PERSONALIZATION & ADAPTIVE TUTORIALS
+  // =========================================================================
+
+  static async getLearningPreferences(): Promise<LearningPreferencesResponse> {
+    const res = await apiClient.get<any>('/learning/preferences');
+    return res.data?.data || res.data;
+  }
+
+  static async updateLearningPreferences(
+    payload: UpdateLearningPreferencesPayload,
+  ): Promise<LearningPreferencesResponse> {
+    const res = await apiClient.patch<any>('/learning/preferences', payload);
+    return res.data?.data || res.data;
+  }
+
+  static async resetLearningPreferences(): Promise<LearningPreferencesResponse> {
+    const res = await apiClient.post<any>('/learning/preferences/reset');
+    return res.data?.data || res.data;
+  }
+
+  static async getPersonalizedTutorial(
+    exerciseId: string,
+  ): Promise<PersonalizedTutorialResponse> {
+    const res = await apiClient.get<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/personalized-tutorial`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getTargetedReview(
+    exerciseId: string,
+  ): Promise<TargetedReviewResponse> {
+    const res = await apiClient.get<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/targeted-review`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningContext(
+    exerciseId: string,
+  ): Promise<PersonalizedTutorialPlan> {
+    const res = await apiClient.get<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/learning-context`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getPersonalizedLearningRecommendations(): Promise<LearningRecommendationsResponse> {
+    const res = await apiClient.get<any>('/learning/recommendations');
+    return res.data?.data || res.data;
+  }
+
+  // =========================================================================
+  // DAY 79: LEARNING ANALYTICS, SKILL PROGRESSION & MASTERY INTELLIGENCE
+  // =========================================================================
+
+  static async trackLearningEvent(
+    payload: TrackLearningEventPayload,
+  ): Promise<LearningMasteryRecord> {
+    const res = await apiClient.post<any>('/learning/events', payload);
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningMasterySummary(): Promise<LearningMasterySummary> {
+    const res = await apiClient.get<any>('/learning/summary');
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningMasteryList(
+    query?: QueryLearningMasteryParams,
+  ): Promise<{ items: LearningMasteryRecord[]; meta: any }> {
+    const res = await apiClient.get<any>('/learning/mastery', { params: query });
+    return res.data?.data || res.data;
+  }
+
+  static async getContentMastery(
+    contentType: LearningContentType,
+    contentId: string,
+  ): Promise<LearningMasteryRecord> {
+    const res = await apiClient.get<any>(
+      `/learning/mastery/${encodeURIComponent(contentType)}/${encodeURIComponent(contentId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getLearningReviewQueue(): Promise<LearningReviewQueueItem[]> {
+    const res = await apiClient.get<any>('/learning/review-queue');
+    return res.data?.data || res.data || [];
+  }
+
+  static async getContentLearningAnalytics(
+    contentType: LearningContentType,
+    contentId: string,
+  ): Promise<ContentMasteryAnalytics> {
+    const res = await apiClient.get<any>(
+      `/learning/analytics/content/${encodeURIComponent(contentType)}/${encodeURIComponent(contentId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getPlatformLearningAnalytics(): Promise<PlatformLearningAnalytics> {
+    const res = await apiClient.get<any>('/learning/analytics/overview');
+    return res.data?.data || res.data;
+  }
+
+  static async getTrainerMemberMastery(
+    memberId: string,
+  ): Promise<LearningMasterySummary> {
+    const res = await apiClient.get<any>(
+      `/learning/trainer/members/${encodeURIComponent(memberId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  // =========================================================================
+  // DAY 80: VISUAL FITNESS LEARNING HUB & UNIFIED SEARCH
+  // =========================================================================
+
+  static async getLearningHubData(): Promise<LearningHubData> {
+    const res = await apiClient.get<any>('/learning/hub');
+    return res.data?.data || res.data;
+  }
+
+  static async searchLearningHub(
+    params: LearningHubSearchParams,
+  ): Promise<LearningHubSearchResults> {
+    const res = await apiClient.get<any>('/learning/hub/search', { params });
+    return res.data?.data || res.data;
+  }
+
+  // =========================================================================
+  // DAY 81: VISUAL MOVEMENT COACH FOUNDATION & STRUCTURED MOVEMENT FEEDBACK
+  // =========================================================================
+
+  static async getVisualMovementCoach(exerciseId: string): Promise<VisualMovementCoachData> {
+    const res = await apiClient.get<any>(`/exercises/${exerciseId}/movement-coach`);
+    return res.data?.data || res.data;
+  }
+
+  static async getMovementExpectations(
+    exerciseId: string,
+    phaseId?: string,
+  ): Promise<MovementExpectationItem[]> {
+    const res = await apiClient.get<any>(`/exercises/${exerciseId}/movement-expectations`, {
+      params: phaseId ? { phaseId } : undefined,
+    });
+    return res.data?.data || res.data;
+  }
+
+  static async getTechniqueChecklist(exerciseId: string): Promise<TechniqueChecklistItem[]> {
+    const res = await apiClient.get<any>(`/exercises/${exerciseId}/technique-checklist`);
+    return res.data?.data || res.data;
+  }
+
+  // =========================================================================
+  // DAY 82: VISUAL MOVEMENT COACH — GUIDED PRACTICE & FEEDBACK EXPERIENCE
+  // =========================================================================
+
+  static async getGuidedPracticeData(exerciseId: string): Promise<GuidedMovementPracticePayload> {
+    const res = await apiClient.get<any>(`/exercises/${exerciseId}/guided-practice`);
+    return res.data?.data || res.data;
+  }
+
+  static async startOrResumeMovementPractice(
+    exerciseId: string,
+    payload?: StartMovementPracticeSessionPayload,
+  ): Promise<MovementPracticeSessionResponse> {
+    const res = await apiClient.post<any>(
+      `/exercises/${exerciseId}/guided-practice/session`,
+      payload || { exerciseId },
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async updateMovementPracticeSession(
+    sessionId: string,
+    payload: UpdateMovementPracticeSessionPayload,
+  ): Promise<MovementPracticeSessionResponse> {
+    const res = await apiClient.patch<any>(
+      `/movement-practice-sessions/${sessionId}`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async recordPhasePractice(
+    sessionId: string,
+    payload: RecordPhasePracticePayload,
+  ): Promise<MovementPracticeSessionResponse> {
+    const res = await apiClient.post<any>(
+      `/movement-practice-sessions/${sessionId}/phases/practice`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async recordPhaseReview(
+    sessionId: string,
+    payload: RecordPhaseReviewPayload,
+  ): Promise<MovementPracticeSessionResponse> {
+    const res = await apiClient.post<any>(
+      `/movement-practice-sessions/${sessionId}/phases/${payload.phaseId}/review`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async completeMovementPracticeSession(
+    sessionId: string,
+    payload: CompleteMovementPracticeSessionPayload,
+  ): Promise<MovementPracticeSessionResponse> {
+    const res = await apiClient.post<any>(
+      `/movement-practice-sessions/${sessionId}/complete`,
+      payload,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getActiveMovementPracticeSession(): Promise<MovementPracticeSessionResponse | null> {
+    const res = await apiClient.get<any>('/movement-practice-sessions/active');
+    return res.data?.data || res.data || null;
+  }
+
+  // ==========================================
+  // DAY 83: MOVEMENT LEARNING INTELLIGENCE
+  // ==========================================
+
+  static async getMovementLearningDashboard(): Promise<MovementLearningDashboardData> {
+    const res = await apiClient.get<any>('/movement-learning/me');
+    return res.data?.data || res.data;
+  }
+
+  static async getMemberLearningGaps(query?: {
+    status?: string;
+    priority?: string;
+    exerciseId?: string;
+    gapType?: string;
+    limit?: number;
+  }): Promise<LearningGapItem[]> {
+    const res = await apiClient.get<any>('/movement-learning/gaps', { params: query });
+    return res.data?.data || res.data || [];
+  }
+
+  static async resolveLearningGap(
+    gapId: string,
+    status: 'RESOLVED' | 'DISMISSED' = 'RESOLVED',
+    resolutionReason?: string,
+  ): Promise<LearningGapItem> {
+    const res = await apiClient.post<any>(
+      `/movement-learning/gaps/${encodeURIComponent(gapId)}/resolve`,
+      { status, resolutionReason },
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async createTargetedPracticeSession(
+    payload: CreateTargetedReviewSessionPayload,
+  ): Promise<TargetedReviewSessionResponse> {
+    const res = await apiClient.post<any>('/movement-learning/targeted-session', payload);
+    return res.data?.data || res.data;
+  }
+
+  static async getQuickRefresh(exerciseId: string): Promise<QuickRefreshData> {
+    const res = await apiClient.get<any>(
+      `/movement-learning/quick-refresh/${encodeURIComponent(exerciseId)}`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getExerciseLearningIntelligence(
+    exerciseId: string,
+  ): Promise<ExerciseLearningIntelligenceData> {
+    const res = await apiClient.get<any>(
+      `/exercises/${encodeURIComponent(exerciseId)}/learning-intelligence`,
+    );
+    return res.data?.data || res.data;
+  }
+
+  static async getTrainerMemberLearningInsights(
+    memberId: string,
+  ): Promise<TrainerMemberLearningInsightsData> {
+    const res = await apiClient.get<any>(
+      `/movement-learning/trainer/member/${encodeURIComponent(memberId)}`,
+    );
+    return res.data?.data || res.data;
+  }
 }
 
 export type ReasonCode =
@@ -2110,3 +2655,1287 @@ export interface UpdateTutorialConfigPayload {
   estimatedMinutes?: number;
   keyTechniquePoints?: string[];
 }
+
+// ==========================================
+// DAY 76: GUIDED EXERCISE SESSIONS & STRUCTURED PRACTICE PROGRAMS
+// ==========================================
+
+export type GuidedSessionItemType =
+  | 'INTRO'
+  | 'WARMUP'
+  | 'EXERCISE_TUTORIAL'
+  | 'PRACTICE'
+  | 'REST'
+  | 'TRANSITION'
+  | 'KNOWLEDGE_CHECK'
+  | 'COOLDOWN'
+  | 'SUMMARY';
+
+export interface GuidedSessionSummary {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  coverMediaUrl?: string | null;
+  category?: string | null;
+  difficulty: string;
+  primaryGoal?: string | null;
+  estimatedDurationMinutes: number;
+  contentStatus: string;
+  ownershipType: string;
+  featured: boolean;
+  sectionCount: number;
+  itemCount: number;
+  exerciseCount: number;
+  userProgress?: {
+    status: string;
+    percentComplete: number;
+    currentStepIndex: number;
+    completedItemCount: number;
+    lastAccessedAt: string;
+  } | null;
+}
+
+export interface GuidedSessionItem {
+  id: string;
+  sessionId: string;
+  sectionId?: string | null;
+  sortOrder: number;
+  itemType: GuidedSessionItemType;
+  title: string;
+  description?: string | null;
+  durationSeconds?: number | null;
+  repetitionCount?: number | null;
+  exerciseId?: string | null;
+  knowledgeCheckId?: string | null;
+  config?: Record<string, any> | null;
+  isRequired: boolean;
+  exercise?: any;
+  knowledgeCheck?: any;
+}
+
+export interface GuidedSessionSection {
+  id: string;
+  sessionId: string;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  items: GuidedSessionItem[];
+}
+
+export interface UserGuidedSessionProgress {
+  id: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  currentStepIndex: number;
+  currentItemId?: string | null;
+  completedItemCount: number;
+  totalItemCount: number;
+  percentComplete: number;
+  timeSpentSeconds: number;
+  practiceLog?: Record<string, any> | null;
+  knowledgeCheckScores?: Record<string, any> | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  lastAccessedAt: string;
+  completedItemIds: string[];
+}
+
+export interface GuidedSessionDetail {
+  session: {
+    id: string;
+    organisationId?: string | null;
+    ownershipType: string;
+    title: string;
+    slug: string;
+    description?: string | null;
+    coverMediaUrl?: string | null;
+    category?: string | null;
+    difficulty: string;
+    primaryGoal?: string | null;
+    estimatedDurationMinutes: number;
+    contentStatus: string;
+    featured: boolean;
+    metadata?: Record<string, any> | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  equipmentNeededSummary: string[];
+  movementPatterns: string[];
+  primeMuscles: string[];
+  structureBreakdown: {
+    warmupMinutes: number;
+    tutorialMinutes: number;
+    practiceMinutes: number;
+    cooldownMinutes: number;
+    totalItems: number;
+  };
+  sections: GuidedSessionSection[];
+  unsectionedItems: GuidedSessionItem[];
+  items: GuidedSessionItem[];
+  userProgress?: UserGuidedSessionProgress | null;
+}
+
+export interface ResumeGuidedSessionResponse {
+  sessionId: string;
+  sessionTitle: string;
+  coverMediaUrl?: string | null;
+  difficulty: string;
+  currentStepIndex: number;
+  totalItems: number;
+  percentComplete: number;
+  currentItem?: {
+    id: string;
+    title: string;
+    itemType: GuidedSessionItemType;
+  } | null;
+  nextItem?: {
+    id: string;
+    title: string;
+    itemType: GuidedSessionItemType;
+  } | null;
+  lastAccessedAt: string;
+}
+
+export interface PublishValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  summary?: {
+    totalItems: number;
+    exerciseTutorialCount: number;
+    practiceCount: number;
+    knowledgeCheckCount: number;
+    estimatedDurationMinutes: number;
+    equipmentNeeded: string[];
+  };
+}
+
+// =========================================================================
+// DAY 77: MULTI-ANGLE DEMONSTRATIONS & VISUAL COMPARISON TYPES
+// =========================================================================
+
+export type MediaViewAngle =
+  | 'FRONT'
+  | 'BACK'
+  | 'LEFT'
+  | 'RIGHT'
+  | 'SIDE'
+  | 'THREE_QUARTER'
+  | 'OVERHEAD'
+  | 'CLOSE_UP'
+  | 'CUSTOM';
+
+export type AnnotationType =
+  | 'POINT'
+  | 'LINE'
+  | 'ARROW'
+  | 'REGION'
+  | 'TEXT_LABEL'
+  | 'HIGHLIGHT';
+
+export type AnnotationCategory =
+  | 'ALIGNMENT'
+  | 'POSTURE'
+  | 'BREATHING'
+  | 'RANGE_OF_MOTION'
+  | 'SAFETY'
+  | 'COMMON_MISTAKE';
+
+export type AnnotationStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+export interface ExerciseMediaAnnotation {
+  id: string;
+  mediaId: string;
+  phaseId?: string | null;
+  type: AnnotationType;
+  label: string;
+  description?: string | null;
+  category: AnnotationCategory;
+  x: number;
+  y: number;
+  width?: number | null;
+  height?: number | null;
+  startTime?: number | null;
+  endTime?: number | null;
+  status: AnnotationStatus;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaViewsGroupDto {
+  exerciseId: string;
+  primaryMedia?: ExerciseMedia | null;
+  defaultAngle: MediaViewAngle;
+  availableAngles: MediaViewAngle[];
+  views: Record<string, ExerciseMedia[]>;
+  angleMetadata: Record<string, { label: string; description: string; count: number }>;
+}
+
+export interface PhaseMediaViewDto {
+  phaseId: string;
+  phaseName: string;
+  phaseOrder: number;
+  description?: string;
+  primaryAngle: MediaViewAngle;
+  availableAngles: MediaViewAngle[];
+  views: Record<string, ExerciseMedia[]>;
+}
+
+export interface CreateMediaAnnotationPayload {
+  phaseId?: string;
+  type: AnnotationType;
+  label: string;
+  description?: string;
+  category?: AnnotationCategory;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  startTime?: number;
+  endTime?: number;
+  status?: AnnotationStatus;
+}
+
+export interface UpdateMediaAnnotationPayload {
+  phaseId?: string | null;
+  type?: AnnotationType;
+  label?: string;
+  description?: string | null;
+  category?: AnnotationCategory;
+  x?: number;
+  y?: number;
+  width?: number | null;
+  height?: number | null;
+  startTime?: number | null;
+  endTime?: number | null;
+  status?: AnnotationStatus;
+}
+
+// =========================================================================
+// DAY 78: LEARNING PERSONALIZATION & ADAPTIVE TUTORIALS TYPES
+// =========================================================================
+
+export type LearningDepth = 'BASIC' | 'STANDARD' | 'DETAILED' | 'ADVANCED';
+
+export type PersonalizedTutorialMode =
+  | 'PERSONALIZED'
+  | 'QUICK_LEARN'
+  | 'STEP_BY_STEP'
+  | 'MOVEMENT_BREAKDOWN'
+  | 'TECHNIQUE_CHECKLIST';
+
+export type PracticePreference = 'REPS' | 'TIMED' | 'BOTH';
+
+export interface UpdateLearningPreferencesPayload {
+  preferredLearningDepth?: LearningDepth;
+  preferredTutorialMode?: PersonalizedTutorialMode;
+  preferredMediaType?: string;
+  preferredViewAngle?: string;
+  autoAdvancePreference?: boolean;
+  showDetailedInstructions?: boolean;
+  showAnatomyDetails?: boolean;
+  showTechniqueDetails?: boolean;
+  practicePreference?: PracticePreference;
+  knowledgeCheckPreference?: boolean;
+  playbackSpeed?: number;
+}
+
+export interface LearningPreferencesResponse {
+  userId: string;
+  organisationId: string;
+  preferredLearningDepth: LearningDepth;
+  preferredTutorialMode: PersonalizedTutorialMode;
+  preferredMediaType?: string | null;
+  preferredViewAngle?: string | null;
+  autoAdvancePreference: boolean;
+  showDetailedInstructions: boolean;
+  showAnatomyDetails: boolean;
+  showTechniqueDetails: boolean;
+  practicePreference: PracticePreference;
+  knowledgeCheckPreference: boolean;
+  playbackSpeed: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonalizedTutorialPlan {
+  learningDepth: LearningDepth;
+  recommendedMode: PersonalizedTutorialMode;
+  orderedSections: string[];
+  preferredAngle: string;
+  mediaSelection: {
+    preferredAngle: string;
+    activeMediaId?: string | null;
+    isFallback: boolean;
+  };
+  playbackSpeed: number;
+  instructionDepth: 'ESSENTIAL' | 'COMPREHENSIVE' | 'ADVANCED_BIOMECHANICAL';
+  practiceChecklist: string[];
+  practiceMode: 'REPS' | 'TIMED';
+  knowledgeCheckConfig: {
+    enabled: boolean;
+    recommendedDifficulty: 'BASIC' | 'STANDARD' | 'ADVANCED';
+    questionCount: number;
+  };
+  targetedReviewRecommended: boolean;
+  recommendedReviewPhases: string[];
+  estimatedLearningTimeMinutes: number;
+  personalizationReason: string;
+  isCustomOverride?: boolean;
+}
+
+export interface PersonalizedTutorialResponse {
+  tutorial: ExerciseTutorialResponse;
+  plan: PersonalizedTutorialPlan;
+  learningContext: {
+    hasCompletedTutorial: boolean;
+    completedSteps: number;
+    totalSteps: number;
+    knowledgeCheckScore?: number | null;
+    phasesExplored: boolean;
+    lastInteractedAt?: string | null;
+  };
+}
+
+export interface TargetedReviewResponse {
+  exerciseId: string;
+  exerciseName: string;
+  suggestedPhases: Array<{
+    id: string;
+    name: string;
+    cue: string;
+    orderIndex: number;
+  }>;
+  commonMistakesToAvoid: Array<{
+    id: string;
+    name: string;
+    cue: string;
+    severity: string;
+  }>;
+  breathingGuidance?: string | null;
+  reviewPrompt: string;
+}
+
+export interface LearningRecommendationsResponse {
+  continueLearning: Array<{
+    exerciseId: string;
+    name: string;
+    difficulty: string;
+    completedSteps: number;
+    totalSteps: number;
+    percentComplete: number;
+    lastAccessedAt: string;
+  }>;
+  reviewRecommended: Array<{
+    exerciseId: string;
+    name: string;
+    difficulty: string;
+    reason: string;
+    lastScore?: number | null;
+  }>;
+  recentlyMastered: Array<{
+    exerciseId: string;
+    name: string;
+    difficulty: string;
+    completedAt: string;
+    score?: number | null;
+  }>;
+}
+
+// =========================================================================
+// DAY 79: LEARNING ANALYTICS & MASTERY TYPES
+// =========================================================================
+
+export type LearningMasteryStatus =
+  | 'NOT_STARTED'
+  | 'EXPLORING'
+  | 'LEARNING'
+  | 'PRACTICING'
+  | 'REVIEW'
+  | 'PROGRESSING'
+  | 'COMPLETED'
+  | 'MASTERED';
+
+export type LearningContentType =
+  | 'EXERCISE'
+  | 'TUTORIAL'
+  | 'LESSON'
+  | 'LEARNING_PATH'
+  | 'COLLECTION'
+  | 'GUIDED_SESSION'
+  | 'CURRICULUM'
+  | 'MOVEMENT'
+  | 'MUSCLE'
+  | 'EQUIPMENT';
+
+export type LearningEventType =
+  | 'TUTORIAL_STARTED'
+  | 'SECTION_VIEWED'
+  | 'PHASE_EXPLORED'
+  | 'MEDIA_ANGLE_SWITCHED'
+  | 'INSTRUCTION_EXPANDED'
+  | 'PRACTICE_REP_CHECKED'
+  | 'PRACTICE_COMPLETED'
+  | 'KNOWLEDGE_CHECK_PASSED'
+  | 'KNOWLEDGE_CHECK_FAILED'
+  | 'TUTORIAL_COMPLETED'
+  | 'REVIEW_OPENED';
+
+export interface TrackLearningEventPayload {
+  eventType: string;
+  contentType: LearningContentType;
+  contentId: string;
+  sectionId?: string;
+  sessionId?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface QueryLearningMasteryParams {
+  [key: string]: string | number | boolean | undefined;
+  contentType?: LearningContentType;
+  status?: LearningMasteryStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface LearningMasteryRecord {
+  id: string;
+  userId: string;
+  organisationId: string;
+  contentType: LearningContentType;
+  contentId: string;
+  contentTitle?: string;
+  status: LearningMasteryStatus;
+  completionPercent: number;
+  knowledgeCheckScore?: number | null;
+  knowledgeCheckAttempts: number;
+  sectionsCompleted: string[];
+  lastActivityAt: string;
+  firstCompletedAt?: string | null;
+  masteredAt?: string | null;
+  reviewRecommendedAt?: string | null;
+  reviewReason?: string | null;
+  metadata?: Record<string, any>;
+}
+
+export interface ContinueLearningMasteryItem {
+  contentType: LearningContentType;
+  contentId: string;
+  title: string;
+  progressPercent: number;
+  lastActivityAt: string;
+  resumeActionTitle: string;
+}
+
+export interface RecentlyLearnedMasteryItem {
+  contentType: LearningContentType;
+  contentId: string;
+  title: string;
+  status: LearningMasteryStatus;
+  completedAt: string;
+}
+
+export interface LearningReviewQueueItem {
+  contentType: LearningContentType;
+  contentId: string;
+  title: string;
+  reason: string;
+  reviewRecommendedAt: string;
+  score?: number | null;
+}
+
+export interface LearningMasterySummary {
+  totalLearned: number;
+  totalMastered: number;
+  totalHoursLearned: number;
+  activeLearningPathsCount: number;
+  completedLearningPathsCount: number;
+  continueLearning: ContinueLearningMasteryItem[];
+  recentlyLearned: RecentlyLearnedMasteryItem[];
+  reviewItems: LearningReviewQueueItem[];
+}
+
+export interface DropoffFunnelStage {
+  stage: string;
+  count: number;
+  percentage: number;
+}
+
+export interface ContentMasteryAnalytics {
+  contentId: string;
+  contentType: LearningContentType;
+  contentTitle: string;
+  uniqueLearnersCount: number;
+  totalStarts: number;
+  totalCompletions: number;
+  completionRate: number;
+  averageTimeSpentSeconds: number;
+  knowledgeCheckPassRate?: number | null;
+  reviewRate: number;
+  dropoffFunnel: DropoffFunnelStage[];
+}
+
+export interface TopLearnedExercise {
+  exerciseId: string;
+  name: string;
+  learnersCount: number;
+  masteryRate: number;
+}
+
+export interface HighDropoffStage {
+  stage: string;
+  dropoffPercentage: number;
+}
+
+export interface PlatformLearningAnalytics {
+  totalLearners: number;
+  totalEventsLogged: number;
+  totalExercisesMastered: number;
+  totalPathsCompleted: number;
+  overallCompletionRate: number;
+  topLearnedExercises: TopLearnedExercise[];
+  highDropoffStages: HighDropoffStage[];
+}
+
+// =========================================================================
+// DAY 80: LEARNING HUB & CONTENT DISCOVERY TYPES
+// =========================================================================
+
+export interface ContinueLearningHubItem {
+  contentType: 'LEARNING_PATH' | 'TUTORIAL' | 'GUIDED_SESSION';
+  contentId: string;
+  title: string;
+  parentTitle?: string;
+  progressPercent: number;
+  currentStepIndex: number;
+  totalSteps: number;
+  thumbnailUrl?: string | null;
+  lastActivityAt: string;
+  resumeActionTitle: string;
+}
+
+export interface RecommendedLearningHubItem {
+  contentType: 'LEARNING_PATH' | 'COLLECTION' | 'GUIDED_SESSION' | 'EXERCISE';
+  contentId: string;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  difficulty: string;
+  reasonCode: string;
+  reasonText: string;
+  estimatedMinutes?: number;
+}
+
+export interface LearningHubTaxonomyItem {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  iconName?: string;
+  exerciseCount: number;
+  thumbnailUrl?: string | null;
+}
+
+export interface LearningHubExploreSection {
+  categories: LearningHubTaxonomyItem[];
+  movements: LearningHubTaxonomyItem[];
+  muscles: LearningHubTaxonomyItem[];
+  equipment: LearningHubTaxonomyItem[];
+}
+
+export interface LearningHubGuidedPathItem {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  difficulty: string;
+  lessonCount: number;
+  exerciseCount: number;
+  percentComplete: number;
+  isEnrolled: boolean;
+}
+
+export interface LearningHubGuidedCollectionItem {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  exerciseCount: number;
+  difficulty: string;
+}
+
+export interface LearningHubGuidedSessionItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  difficulty: string;
+  estimatedMinutes: number;
+  exerciseCount: number;
+  percentComplete: number;
+}
+
+export interface LearningHubGuidedSection {
+  paths: LearningHubGuidedPathItem[];
+  collections: LearningHubGuidedCollectionItem[];
+  sessions: LearningHubGuidedSessionItem[];
+}
+
+export interface LearningHubAcademyTrackItem {
+  id: string;
+  slug: string;
+  title: string;
+  category: string;
+  lessonCount: number;
+  completedLessonCount: number;
+  percentComplete: number;
+}
+
+export interface LearningHubAcademySection {
+  tracks: LearningHubAcademyTrackItem[];
+  totalGlossaryTerms: number;
+}
+
+export interface HubReviewItem {
+  contentType: string;
+  contentId: string;
+  title: string;
+  reason: string;
+  score?: number | null;
+  recommendedAt: string;
+}
+
+export interface HubMyLearningSummary {
+  learningStreakDays: number;
+  totalTimeSpentMinutes: number;
+  masteredExercisesCount: number;
+  completedPathsCount: number;
+  inProgressCount: number;
+  reviewItemsCount: number;
+}
+
+export interface HubFeaturedExercise {
+  id: string;
+  name: string;
+  difficulty: string;
+  primaryMuscleGroup: string;
+  equipment: string;
+  movementPattern?: string | null;
+  thumbnailUrl?: string | null;
+  masteryStatus: string;
+  completionPercent: number;
+}
+
+export interface LearningHubData {
+  continueLearning: ContinueLearningHubItem[];
+  recommendedLearning: RecommendedLearningHubItem[];
+  explore: LearningHubExploreSection;
+  guidedLearning: LearningHubGuidedSection;
+  academy: LearningHubAcademySection;
+  reviewQueue: HubReviewItem[];
+  myLearningSummary: HubMyLearningSummary;
+  featuredExercises: HubFeaturedExercise[];
+}
+
+export interface LearningHubSearchParams {
+  [key: string]: string | number | boolean | undefined;
+  q: string;
+  limit?: number;
+  type?: string;
+}
+
+export interface UnifiedSearchResultItem {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  type: string;
+  category?: string | null;
+  difficulty?: string | null;
+  thumbnailUrl?: string | null;
+  relevanceScore?: number;
+}
+
+export interface LearningHubSearchResults {
+  query: string;
+  totalCount: number;
+  exercises: UnifiedSearchResultItem[];
+  movementPatterns: UnifiedSearchResultItem[];
+  muscles: UnifiedSearchResultItem[];
+  equipment: UnifiedSearchResultItem[];
+  learningPaths: UnifiedSearchResultItem[];
+  collections: UnifiedSearchResultItem[];
+  curricula: UnifiedSearchResultItem[];
+  tutorials: UnifiedSearchResultItem[];
+}
+
+// =========================================================================
+// DAY 81: VISUAL MOVEMENT COACH INTERFACES
+// =========================================================================
+
+export type MovementExpectationType =
+  | 'POSTURE'
+  | 'ALIGNMENT'
+  | 'BODY_POSITION'
+  | 'MOVEMENT_DIRECTION'
+  | 'RANGE_OF_MOTION'
+  | 'TEMPO'
+  | 'BREATHING'
+  | 'STABILITY'
+  | 'CONTROL'
+  | 'BALANCE'
+  | 'FOOT_POSITION'
+  | 'HAND_POSITION'
+  | 'SPINE_POSITION'
+  | 'HEAD_POSITION'
+  | 'JOINT_POSITION'
+  | 'EQUIPMENT_POSITION'
+  | 'SAFETY'
+  | 'FOCUS';
+
+export type MovementExpectationPriority = 'ESSENTIAL' | 'IMPORTANT' | 'OPTIONAL';
+
+export type MovementCoachBodyRegion =
+  | 'HEAD'
+  | 'NECK'
+  | 'SHOULDERS'
+  | 'CHEST'
+  | 'UPPER_BACK'
+  | 'SPINE'
+  | 'CORE'
+  | 'HIPS'
+  | 'GLUTES'
+  | 'KNEES'
+  | 'ANKLES'
+  | 'FEET'
+  | 'ELBOWS'
+  | 'WRISTS'
+  | 'HANDS'
+  | 'FULL_BODY';
+
+export interface MovementExpectationItem {
+  id: string;
+  exerciseId: string;
+  movementPhaseId?: string | null;
+  phaseName?: string | null;
+  title: string;
+  description: string;
+  expectationType: MovementExpectationType;
+  priority: MovementExpectationPriority;
+  bodyRegion: MovementCoachBodyRegion;
+  expectedState?: string | null;
+  expectedDirection?: string | null;
+  expectedPosition?: string | null;
+  expectedAlignment?: string | null;
+  expectedRangeOfMotion?: string | null;
+  expectedTempo?: string | null;
+  expectedBreathing?: string | null;
+  visualCueId?: string | null;
+  visualCue?: {
+    id: string;
+    type: string;
+    label: string;
+    description?: string | null;
+    x: number;
+    y: number;
+  } | null;
+  safetyNote?: string | null;
+  commonMistakeId?: string | null;
+  commonMistake?: {
+    id: string;
+    mistake: string;
+    correction: string;
+    severity: string;
+  } | null;
+  sortOrder: number;
+  status: string;
+}
+
+export interface TechniqueChecklistItem {
+  id: string;
+  title: string;
+  description?: string;
+  category: 'SETUP' | 'ALIGNMENT' | 'EXECUTION' | 'BREATHING' | 'TEMPO' | 'SAFETY';
+  priority: MovementExpectationPriority;
+  phaseName?: string;
+  isRequired: boolean;
+  order: number;
+}
+
+export interface MovementCoachPhase {
+  id: string;
+  phaseName: string;
+  phaseType: string;
+  title?: string | null;
+  description?: string | null;
+  orderIndex: number;
+  cueText?: string | null;
+  bodyPosition?: string | null;
+  bodyOrientation?: string | null;
+  breathingPattern?: string | null;
+  breathingNotes?: string | null;
+  tempoSeconds?: number | null;
+  holdDurationSeconds?: number | null;
+  mediaUrl?: string | null;
+  videoStartTimeSeconds?: number | null;
+  videoEndTimeSeconds?: number | null;
+  expectations: MovementExpectationItem[];
+  visualCues: Array<{
+    id: string;
+    type: string;
+    label: string;
+    description?: string | null;
+    category: string;
+    x: number;
+    y: number;
+    startTime?: number | null;
+    endTime?: number | null;
+  }>;
+  mistakes: Array<{
+    id: string;
+    mistake: string;
+    consequence?: string | null;
+    correction: string;
+    severity: string;
+  }>;
+  safetyGuidelines: Array<{
+    id: string;
+    category: string;
+    title?: string | null;
+    description: string;
+    severity: string;
+  }>;
+}
+
+export interface WhatToFocusOnGroup {
+  essential: MovementExpectationItem[];
+  important: MovementExpectationItem[];
+  optional: MovementExpectationItem[];
+}
+
+export interface VisualMovementCoachData {
+  exercise: {
+    id: string;
+    name: string;
+    slug: string;
+    difficulty: string;
+    exerciseType: string;
+    movementPattern: string;
+    primaryMuscleGroup: string;
+    equipment: string;
+    bodyPosition?: string | null;
+    tempo?: string | null;
+    rangeOfMotion?: string | null;
+    breathingInstructions?: string | null;
+  };
+  media: {
+    heroMediaUrl?: string | null;
+    thumbnailUrl?: string | null;
+    mediaType?: string | null;
+  };
+  phases: MovementCoachPhase[];
+  whatToFocusOn: WhatToFocusOnGroup;
+  techniqueChecklist: TechniqueChecklistItem[];
+  safetyGuidance: Array<{
+    id: string;
+    category: string;
+    title?: string | null;
+    description: string;
+    severity: string;
+  }>;
+  commonMistakes: Array<{
+    id: string;
+    mistake: string;
+    consequence?: string | null;
+    correction: string;
+    severity: string;
+    phaseName?: string | null;
+  }>;
+  learningStatus?: {
+    isCompleted?: boolean;
+    completedAt?: string | null;
+    masteryLevel?: string;
+  };
+}
+
+// =========================================================================
+// DAY 82: GUIDED MOVEMENT PRACTICE TYPES & INTERFACES
+// =========================================================================
+
+export type GuidedPracticeSessionStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'PAUSED'
+  | 'COMPLETED'
+  | 'ABANDONED';
+
+export type GuidedPracticeStep =
+  | 'INTRO'
+  | 'PREPARATION'
+  | 'PHASE_LEARNING'
+  | 'PHASE_PRACTICE'
+  | 'PHASE_REVIEW'
+  | 'SELF_REVIEW'
+  | 'KNOWLEDGE_CHECK'
+  | 'SUMMARY'
+  | 'COMPLETED';
+
+export type GuidedPracticeSessionType =
+  | 'GUIDED_PRACTICE'
+  | 'PHASE_FOCUS'
+  | 'QUICK_REHEARSAL';
+
+export interface PhasePracticeRecord {
+  phaseId: string;
+  reps?: number;
+  durationSeconds?: number;
+  completedAt: string;
+}
+
+export interface SelfReflectionData {
+  selectedTopics?: string[];
+  notes?: string;
+}
+
+export interface MovementPracticeSessionResponse {
+  id: string;
+  userId: string;
+  organisationId: string;
+  exerciseId: string;
+  tutorialId?: string | null;
+  sessionType: GuidedPracticeSessionType;
+  status: GuidedPracticeSessionStatus;
+  currentStep: GuidedPracticeStep;
+  currentPhaseId?: string | null;
+  currentPhaseIndex: number;
+  totalSteps: number;
+  progressPercent: number;
+  completedPhases: string[];
+  checklistState: Record<string, boolean>;
+  phasePracticeData: PhasePracticeRecord[];
+  selfReflection?: SelfReflectionData | null;
+  knowledgeCheckScore?: number | null;
+  knowledgeCheckCompleted: boolean;
+  startedAt?: string | null;
+  lastActiveAt: string;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PracticeKnowledgeCheckQuestion {
+  id: string;
+  question: string;
+  questionType: string;
+  options: Array<{
+    id: string;
+    text: string;
+  }>;
+  explanation?: string | null;
+}
+
+export interface GuidedMovementPracticePayload {
+  exercise: {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    difficulty: string;
+    exerciseType: string;
+    movementPattern: string;
+    primaryMuscleGroup: string;
+    secondaryMuscleGroups?: string[] | null;
+    equipment: string;
+    bodyPosition?: string | null;
+    tempo?: string | null;
+    rangeOfMotion?: string | null;
+    breathingInstructions?: string | null;
+    setupInstructions?: string | null;
+    executionInstructions?: string | null;
+    estimatedLearningMinutes: number;
+  };
+  media: {
+    heroMediaUrl?: string | null;
+    thumbnailUrl?: string | null;
+    mediaType?: string | null;
+  };
+  phases: MovementCoachPhase[];
+  techniqueChecklist: TechniqueChecklistItem[];
+  equipmentRequired: Array<{
+    id: string;
+    name: string;
+    category?: string;
+    isRequired: boolean;
+  }>;
+  safetyGuidelines: Array<{
+    id: string;
+    category: string;
+    title?: string | null;
+    description: string;
+    severity: string;
+  }>;
+  knowledgeCheck?: {
+    id: string;
+    title: string;
+    description?: string | null;
+    questions: PracticeKnowledgeCheckQuestion[];
+  } | null;
+  activeSession?: MovementPracticeSessionResponse | null;
+  completionFeedback?: {
+    reviewedPhasesCount: number;
+    totalPhasesCount: number;
+    checklistCompletedCount: number;
+    totalChecklistCount: number;
+    knowledgeCheckScore?: number | null;
+    summaryMessage: string;
+    suggestedReviewTopics: string[];
+    recommendedNextExercise?: {
+      id: string;
+      name: string;
+      slug: string;
+    } | null;
+  } | null;
+}
+
+export interface StartMovementPracticeSessionPayload {
+  exerciseId: string;
+  sessionType?: GuidedPracticeSessionType;
+}
+
+export interface UpdateMovementPracticeSessionPayload {
+  currentStep?: GuidedPracticeStep;
+  currentPhaseId?: string;
+  currentPhaseIndex?: number;
+  checklistState?: Record<string, boolean>;
+  status?: GuidedPracticeSessionStatus;
+}
+
+export interface RecordPhasePracticePayload {
+  phaseId: string;
+  reps?: number;
+  durationSeconds?: number;
+}
+
+export interface RecordPhaseReviewPayload {
+  phaseId: string;
+  reviewedItems?: string[];
+}
+
+export interface CompleteMovementPracticeSessionPayload {
+  selfReflectionTopics?: string[];
+  knowledgeCheckScore?: number;
+  notes?: string;
+}
+
+// ==========================================
+// DAY 83: MOVEMENT LEARNING INTELLIGENCE TYPES
+// ==========================================
+
+export type LearningGapType =
+  | 'INCOMPLETE'
+  | 'LOW_KNOWLEDGE_CHECK_RESULT'
+  | 'REPEATED_REVIEW'
+  | 'UNREVIEWED_PHASE'
+  | 'MISSED_PREREQUISITE'
+  | 'ABANDONED'
+  | 'STALE_LEARNING';
+
+export type LearningGapPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type LearningGapStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'DISMISSED';
+
+export type PracticeRecommendationType =
+  | 'CONTINUE_TUTORIAL'
+  | 'REVIEW_PHASE'
+  | 'REVIEW_EXERCISE'
+  | 'REVIEW_BREATHING'
+  | 'REVIEW_TEMPO'
+  | 'REVIEW_SETUP'
+  | 'REVIEW_MOVEMENT_MECHANICS'
+  | 'REVIEW_COMMON_MISTAKES'
+  | 'RETAKE_KNOWLEDGE_CHECK'
+  | 'CONTINUE_LEARNING_PATH'
+  | 'START_NEW_EXERCISE';
+
+export interface LearningGapItem {
+  id: string;
+  organisationId: string;
+  userId: string;
+  contentType: string;
+  contentId: string;
+  exerciseId?: string | null;
+  exerciseName?: string;
+  movementPhaseId?: string | null;
+  phaseName?: string;
+  gapType: LearningGapType;
+  priority: LearningGapPriority;
+  reason: string;
+  status: LearningGapStatus;
+  contextData?: Record<string, any> | null;
+  detectedAt: string;
+  lastReviewedAt?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecommendedPracticeItem {
+  recommendationType: PracticeRecommendationType;
+  exerciseId: string;
+  exerciseName: string;
+  phaseId?: string;
+  phaseName?: string;
+  priority: LearningGapPriority;
+  reason: string;
+  actionTitle: string;
+}
+
+export interface QuickRefreshPhase {
+  id: string;
+  orderIndex: number;
+  name: string;
+  phaseType: string;
+  focusCue: string;
+  breathing: string;
+  tempo: string;
+  keyMistakeToAvoid?: string;
+}
+
+export interface QuickRefreshData {
+  exerciseId: string;
+  exerciseName: string;
+  estimatedDurationSeconds: number;
+  setup: {
+    keyNotes: string[];
+    equipment: string[];
+  };
+  movementPhases: QuickRefreshPhase[];
+  cadenceSummary: {
+    tempo: string;
+    breathingPattern: string;
+  };
+  refresherChecklist: string[];
+}
+
+export interface MovementLearningDashboardData {
+  continueLearning: Array<{
+    type: 'TUTORIAL' | 'PRACTICE_SESSION';
+    id: string;
+    exerciseId: string;
+    exerciseName: string;
+    progressPercent: number;
+    currentStep: string;
+    lastActiveAt: string;
+    reason: string;
+  }>;
+  needsReview: LearningGapItem[];
+  recommendedPractice: RecommendedPracticeItem[];
+  quickRefresh: Array<{
+    exerciseId: string;
+    exerciseName: string;
+    estimatedDurationSeconds: number;
+    reason: string;
+  }>;
+  recentlyLearned: Array<{
+    exerciseId: string;
+    exerciseName: string;
+    status: string;
+    completedAt: string;
+  }>;
+  learningSummary: {
+    totalExercisesLearned: number;
+    totalPhasesCompleted: number;
+    totalPracticesCompleted: number;
+    activeGapsCount: number;
+    highPriorityGapsCount: number;
+    masteryCount: number;
+  };
+}
+
+export interface ExerciseLearningIntelligenceData {
+  exerciseId: string;
+  exerciseName: string;
+  activeGaps: LearningGapItem[];
+  phaseProgress: Array<{
+    phaseId: string;
+    name: string;
+    orderIndex: number;
+    phaseType: string;
+    isPracticed: boolean;
+    practiceCount: number;
+    hasGaps: boolean;
+    gapReasons: string[];
+  }>;
+  prerequisites: Array<{
+    prerequisiteExerciseId: string;
+    prerequisiteExerciseName: string;
+    isCompleted: boolean;
+    status: string;
+  }>;
+  variations: {
+    progressions: Array<{ id: string; name: string }>;
+    regressions: Array<{ id: string; name: string }>;
+    alternatives: Array<{ id: string; name: string }>;
+  };
+  quickRefreshAvailable: boolean;
+  recommendedNextAction: {
+    actionType: string;
+    title: string;
+    reason: string;
+    phaseId?: string;
+  };
+}
+
+export interface CreateTargetedReviewSessionPayload {
+  exerciseId: string;
+  gapIds?: string[];
+  focusPhaseIds?: string[];
+  focusConcepts?: string[];
+  includeKnowledgeCheck?: boolean;
+  sessionType?: string;
+}
+
+export interface TargetedReviewSessionResponse {
+  session: {
+    id: string;
+    exerciseId: string;
+    sessionType: string;
+    status: string;
+    currentStep: string;
+    currentPhaseId?: string | null;
+    totalSteps: number;
+    progressPercent: number;
+  };
+  targetedPhases: Array<{
+    id: string;
+    name: string;
+    orderIndex: number;
+    phaseType: string;
+  }>;
+  suggestedSequence: string[];
+}
+
+export interface TrainerMemberLearningInsightsData {
+  memberId: string;
+  memberName: string;
+  totalExercisesLearned: number;
+  totalTutorialsCompleted: number;
+  totalGuidedPractices: number;
+  knowledgeCheckAverage: number | null;
+  activeGapsCount: number;
+  recentActivity: Array<{
+    type: string;
+    exerciseName: string;
+    completedAt: string;
+  }>;
+  topReviewNeeds: LearningGapItem[];
+}
+
+
+
+
+
+

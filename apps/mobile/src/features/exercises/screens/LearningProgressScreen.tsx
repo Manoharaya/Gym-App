@@ -17,29 +17,53 @@ import { Icon, Badge, Button, Card } from '../../../components/primitives';
 import {
   ExerciseService,
   LearningProgressOverview,
+  LearningRecommendationsResponse,
+  LearningPreferencesResponse,
+  UpdateLearningPreferencesPayload,
+  LearningMasterySummary,
+  LearningMasteryRecord,
 } from '../services/exerciseService';
+import { PersonalizeLearningModal } from '../components/PersonalizeLearningModal';
+import {
+  ContentMasteryBadge,
+  LearningJourneyVisualizer,
+  LearningAnalyticsCard,
+} from '../components';
 
 type NavProp = NativeStackNavigationProp<MemberStackParamList>;
-type TabKey = 'ACTIVE' | 'COMPLETED' | 'COLLECTIONS' | 'HISTORY';
+type TabKey = 'MASTERY' | 'ACTIVE' | 'COMPLETED' | 'COLLECTIONS' | 'HISTORY';
 
 export const LearningProgressScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
 
-  const [activeTab, setActiveTab] = useState<TabKey>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<TabKey>('MASTERY');
   const [overview, setOverview] = useState<LearningProgressOverview | null>(null);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<LearningRecommendationsResponse | null>(null);
+  const [preferences, setPreferences] = useState<LearningPreferencesResponse | null>(null);
+  const [masterySummary, setMasterySummary] = useState<LearningMasterySummary | null>(null);
+  const [masteryList, setMasteryList] = useState<LearningMasteryRecord[]>([]);
+  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [ovRes, histRes] = await Promise.all([
+      const [ovRes, histRes, recsRes, prefsRes, summaryRes, masteryRes] = await Promise.all([
         ExerciseService.getLearningProgressOverview(),
         ExerciseService.getLearningHistory({ page: 1, limit: 30 }),
+        ExerciseService.getPersonalizedLearningRecommendations().catch(() => null),
+        ExerciseService.getLearningPreferences().catch(() => null),
+        ExerciseService.getLearningMasterySummary().catch(() => null),
+        ExerciseService.getLearningMasteryList({ limit: 30 }).catch(() => null),
       ]);
       setOverview(ovRes);
       setHistoryItems(histRes.items || []);
+      setRecommendations(recsRes);
+      setPreferences(prefsRes);
+      setMasterySummary(summaryRes);
+      setMasteryList(masteryRes?.items || []);
     } catch (err) {
       console.warn('Failed to load learning progress data:', err);
     } finally {
@@ -51,6 +75,26 @@ export const LearningProgressScreen: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleUpdatePreferences = async (payload: UpdateLearningPreferencesPayload) => {
+    try {
+      const updated = await ExerciseService.updateLearningPreferences(payload);
+      setPreferences(updated);
+      loadData();
+    } catch (err) {
+      console.warn('Failed to update learning preferences:', err);
+    }
+  };
+
+  const handleResetPreferences = async () => {
+    try {
+      const reset = await ExerciseService.resetLearningPreferences();
+      setPreferences(reset);
+      loadData();
+    } catch (err) {
+      console.warn('Failed to reset learning preferences:', err);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -99,10 +143,28 @@ export const LearningProgressScreen: React.FC = () => {
           <Text style={styles.headerTitle}>Curriculum Progress</Text>
           <Text style={styles.headerSubtitle}>Active Courses & Completed History</Text>
         </View>
+
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => setShowPreferencesModal(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Learning Preferences"
+        >
+          <Icon name="settings" size={20} color={themeColors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       {/* Tab Switcher */}
       <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'MASTERY' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('MASTERY')}
+        >
+          <Text style={[styles.tabText, activeTab === 'MASTERY' && styles.tabTextActive]}>
+            Mastery ({masterySummary?.totalMastered || 0})
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'ACTIVE' && styles.tabBtnActive]}
           onPress={() => setActiveTab('ACTIVE')}
@@ -117,7 +179,7 @@ export const LearningProgressScreen: React.FC = () => {
           onPress={() => setActiveTab('COMPLETED')}
         >
           <Text style={[styles.tabText, activeTab === 'COMPLETED' && styles.tabTextActive]}>
-            Completed ({overview?.completedPaths.length || 0})
+            Paths ({overview?.completedPaths.length || 0})
           </Text>
         </TouchableOpacity>
 
@@ -126,7 +188,7 @@ export const LearningProgressScreen: React.FC = () => {
           onPress={() => setActiveTab('COLLECTIONS')}
         >
           <Text style={[styles.tabText, activeTab === 'COLLECTIONS' && styles.tabTextActive]}>
-            Collections ({overview?.exploredCollections.length || 0})
+            Packs ({overview?.exploredCollections.length || 0})
           </Text>
         </TouchableOpacity>
 
@@ -158,9 +220,206 @@ export const LearningProgressScreen: React.FC = () => {
             />
           }
         >
+          {/* TAB 0: MASTERY INTELLIGENCE OVERVIEW */}
+          {activeTab === 'MASTERY' && (
+            <View>
+              {masterySummary && (
+                <LearningAnalyticsCard
+                  summary={masterySummary}
+                  onReviewPress={() => {
+                    const firstReview = masterySummary.reviewItems[0];
+                    if (firstReview?.contentId) {
+                      navigation.navigate('ExerciseTutorial', {
+                        exerciseId: firstReview.contentId,
+                        initialMode: 'MOVEMENT_BREAKDOWN',
+                      });
+                    }
+                  }}
+                  style={{ marginBottom: spacing.md }}
+                />
+              )}
+
+              {/* Continue Learning Queue with LearningJourneyVisualizer */}
+              {masterySummary?.continueLearning && masterySummary.continueLearning.length > 0 && (
+                <View style={styles.masterySection}>
+                  <Text style={styles.sectionHeading}>Continue Learning Focus</Text>
+                  <LearningJourneyVisualizer
+                    currentStatus="PROGRESSING"
+                    completionPercent={masterySummary.continueLearning[0]?.progressPercent || 0}
+                    style={{ marginBottom: spacing.sm }}
+                  />
+
+                  {masterySummary.continueLearning.map((item) => (
+                    <Card key={`${item.contentType}-${item.contentId}`} style={styles.masteryItemCard}>
+                      <View style={styles.masteryItemHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.masteryItemTitle}>{item.title}</Text>
+                          <Text style={styles.masteryItemSubtitle}>
+                            Last active: {formatDate(item.lastActivityAt)}
+                          </Text>
+                        </View>
+                        <ContentMasteryBadge
+                          status="PROGRESSING"
+                          completionPercent={item.progressPercent}
+                          showPercent
+                          size="sm"
+                        />
+                      </View>
+
+                      {/* Progress Bar */}
+                      <View style={styles.progressBarBg}>
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            { width: `${Math.max(8, item.progressPercent)}%` },
+                          ]}
+                        />
+                      </View>
+
+                      <View style={styles.masteryItemFooter}>
+                        <Text style={styles.masteryActionPrompt}>{item.resumeActionTitle}</Text>
+                        <Button
+                          title="Resume"
+                          variant="primary"
+                          size="sm"
+                          rightIcon={<Icon name="chevron-right" size={14} color="#FFFFFF" />}
+                          onPress={() => {
+                            if (item.contentType === 'EXERCISE' || item.contentType === 'TUTORIAL') {
+                              navigation.navigate('ExerciseTutorial', {
+                                exerciseId: item.contentId,
+                                initialMode: 'MOVEMENT_BREAKDOWN',
+                              });
+                            }
+                          }}
+                        />
+                      </View>
+                    </Card>
+                  ))}
+                </View>
+              )}
+
+              {/* Mastered Content */}
+              {masterySummary?.recentlyLearned && masterySummary.recentlyLearned.length > 0 && (
+                <View style={styles.masterySection}>
+                  <Text style={styles.sectionHeading}>Recently Mastered & Completed</Text>
+                  {masterySummary.recentlyLearned.map((item) => (
+                    <Card key={`${item.contentType}-${item.contentId}`} style={styles.masteryDoneCard}>
+                      <View style={styles.masteryItemHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.masteryItemTitle}>{item.title}</Text>
+                          <Text style={styles.masteryItemSubtitle}>
+                            Completed {formatDate(item.completedAt)}
+                          </Text>
+                        </View>
+                        <ContentMasteryBadge status={item.status} size="sm" />
+                      </View>
+                    </Card>
+                  ))}
+                </View>
+              )}
+
+              {/* Review Queue if any */}
+              {masterySummary?.reviewItems && masterySummary.reviewItems.length > 0 && (
+                <View style={styles.masterySection}>
+                  <View style={styles.reviewSectionHeader}>
+                    <Icon name="alert-circle" size={16} color="#F59E0B" />
+                    <Text style={styles.reviewSectionTitle}>Technique & Concept Review</Text>
+                  </View>
+                  {masterySummary.reviewItems.map((item) => (
+                    <Card key={`${item.contentType}-${item.contentId}`} style={styles.reviewCard}>
+                      <View style={styles.reviewCardHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.reviewTitle}>{item.title}</Text>
+                          <Text style={styles.reviewReason}>{item.reason}</Text>
+                        </View>
+                        <ContentMasteryBadge status="REVIEW" score={item.score} size="sm" />
+                      </View>
+                      <Button
+                        title="Start Targeted Review"
+                        variant="primary"
+                        size="sm"
+                        onPress={() =>
+                          navigation.navigate('ExerciseTutorial', {
+                            exerciseId: item.contentId,
+                            initialMode: 'MOVEMENT_BREAKDOWN',
+                          })
+                        }
+                        style={styles.reviewStartBtn}
+                      />
+                    </Card>
+                  ))}
+                </View>
+              )}
+
+              {/* All Mastery Checkpoints if present */}
+              {masteryList && masteryList.length > 0 && (
+                <View style={styles.masterySection}>
+                  <Text style={styles.sectionHeading}>All Curriculum Checkpoints ({masteryList.length})</Text>
+                  {masteryList.map((rec) => (
+                    <Card key={rec.id} style={styles.masteryItemCard}>
+                      <View style={styles.masteryItemHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.masteryItemTitle}>{rec.contentTitle || rec.contentId}</Text>
+                          <Text style={styles.masteryItemSubtitle}>
+                            {rec.sectionsCompleted.length} sections done • {rec.contentType}
+                          </Text>
+                        </View>
+                        <ContentMasteryBadge
+                          status={rec.status}
+                          completionPercent={rec.completionPercent}
+                          score={rec.knowledgeCheckScore}
+                          showPercent
+                          size="sm"
+                        />
+                      </View>
+                    </Card>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
           {/* TAB 1: ACTIVE LEARNING PATHS */}
           {activeTab === 'ACTIVE' && (
             <View>
+              {/* Day 78: Review Recommended Section */}
+              {recommendations?.reviewRecommended && recommendations.reviewRecommended.length > 0 && (
+                <View style={styles.reviewSection}>
+                  <View style={styles.reviewSectionHeader}>
+                    <Icon name="alert-circle" size={16} color="#F59E0B" />
+                    <Text style={styles.reviewSectionTitle}>Technique Review Recommended</Text>
+                  </View>
+                  {recommendations.reviewRecommended.map((rec) => (
+                    <Card key={rec.exerciseId} style={styles.reviewCard}>
+                      <View style={styles.reviewCardHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.reviewTitle}>{rec.name}</Text>
+                          <Text style={styles.reviewReason}>{rec.reason}</Text>
+                        </View>
+                        {rec.lastScore !== undefined && rec.lastScore !== null && (
+                          <Badge
+                            label={`Score: ${rec.lastScore}%`}
+                            variant={rec.lastScore < 70 ? 'danger' : 'warning'}
+                          />
+                        )}
+                      </View>
+                      <Button
+                        title="Start Targeted Review"
+                        variant="primary"
+                        size="sm"
+                        onPress={() =>
+                          navigation.navigate('ExerciseTutorial', {
+                            exerciseId: rec.exerciseId,
+                            initialMode: 'MOVEMENT_BREAKDOWN',
+                          })
+                        }
+                        style={styles.reviewStartBtn}
+                      />
+                    </Card>
+                  ))}
+                </View>
+              )}
+
               {overview?.activePaths && overview.activePaths.length > 0 ? (
                 overview.activePaths.map((path) => (
                   <Card key={path.id} style={styles.pathCard}>
@@ -369,6 +628,15 @@ export const LearningProgressScreen: React.FC = () => {
           )}
         </ScrollView>
       )}
+
+      {/* Day 78: Personalization Settings Modal */}
+      <PersonalizeLearningModal
+        visible={showPreferencesModal}
+        preferences={preferences}
+        onClose={() => setShowPreferencesModal(false)}
+        onSave={handleUpdatePreferences}
+        onReset={handleResetPreferences}
+      />
     </View>
   );
 };
@@ -646,5 +914,107 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontSize: 14,
     color: themeColors.textSecondary,
+  },
+  settingsButton: {
+    padding: spacing.xs,
+  },
+  reviewSection: {
+    marginBottom: spacing.md,
+  },
+  reviewSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.xs,
+  },
+  reviewSectionTitle: {
+    ...typography.subtitle,
+    fontSize: 14,
+    color: '#F59E0B',
+    fontWeight: '700',
+  },
+  reviewCard: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  reviewCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
+    gap: 8,
+  },
+  reviewTitle: {
+    ...typography.body,
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  reviewReason: {
+    ...typography.caption,
+    color: '#CBD5E1',
+    marginTop: 2,
+  },
+  reviewStartBtn: {
+    marginTop: spacing.xs,
+  },
+  sectionHeading: {
+    ...typography.subtitle,
+    fontSize: 14,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  masterySection: {
+    marginBottom: spacing.md,
+  },
+  masteryItemCard: {
+    backgroundColor: themeColors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    marginBottom: spacing.xs,
+  },
+  masteryDoneCard: {
+    backgroundColor: themeColors.surface,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
+    marginBottom: spacing.xs,
+  },
+  masteryItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  masteryItemTitle: {
+    ...typography.subtitle,
+    fontSize: 14,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+  },
+  masteryItemSubtitle: {
+    ...typography.caption,
+    fontSize: 11,
+    color: themeColors.textSecondary,
+    marginTop: 2,
+  },
+  masteryItemFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  masteryActionPrompt: {
+    ...typography.caption,
+    fontSize: 11,
+    color: themeColors.textMuted,
   },
 });

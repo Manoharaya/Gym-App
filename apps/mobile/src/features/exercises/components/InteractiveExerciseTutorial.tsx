@@ -12,8 +12,14 @@ import type {
   ExerciseTutorialResponse,
   TutorialMode,
   TutorialUserProgress,
+  PersonalizedTutorialPlan,
+  TargetedReviewResponse,
+  LearningPreferencesResponse,
+  UpdateLearningPreferencesPayload,
 } from '../services/exerciseService';
 import { InteractiveVisualPlayer } from './InteractiveVisualPlayer';
+import { ExerciseAngleViewer } from './ExerciseAngleViewer';
+import { TechniqueComparison } from './TechniqueComparison';
 import { TechniqueCoachingPanel } from './TechniqueCoachingPanel';
 import { VisualCuesBanner } from './VisualCuesBanner';
 import { TechniqueChecklistCard } from './TechniqueChecklistCard';
@@ -21,6 +27,9 @@ import { PracticeModeCard } from './PracticeModeCard';
 import { CommonMistakesSection } from './CommonMistakesSection';
 import { SafetyGuidanceSection } from './SafetyGuidanceSection';
 import { WhyThisExerciseWorksSection } from './WhyThisExerciseWorksSection';
+import { PersonalizedLearningBanner } from './PersonalizedLearningBanner';
+import { TargetedReviewPanel } from './TargetedReviewPanel';
+import { PersonalizeLearningModal } from './PersonalizeLearningModal';
 
 const sp = {
   xs: spacing[1],
@@ -40,6 +49,11 @@ export interface InteractiveExerciseTutorialProps {
   tutorial: ExerciseTutorialResponse;
   initialMode?: TutorialMode;
   userProgress?: TutorialUserProgress | null;
+  personalizedPlan?: PersonalizedTutorialPlan;
+  targetedReview?: TargetedReviewResponse | null;
+  learningPreferences?: LearningPreferencesResponse | null;
+  onUpdatePreferences?: (payload: UpdateLearningPreferencesPayload) => Promise<void>;
+  onResetPreferences?: () => Promise<void>;
   onUpdateProgress: (payload: {
     mode?: TutorialMode;
     phaseIndex?: number;
@@ -60,6 +74,11 @@ export const InteractiveExerciseTutorial: React.FC<InteractiveExerciseTutorialPr
   tutorial,
   initialMode = 'STEP_BY_STEP',
   userProgress,
+  personalizedPlan,
+  targetedReview,
+  learningPreferences,
+  onUpdatePreferences,
+  onResetPreferences,
   onUpdateProgress,
   onCompleteTutorial,
   onNavigateToMuscle,
@@ -67,6 +86,8 @@ export const InteractiveExerciseTutorial: React.FC<InteractiveExerciseTutorialPr
   onLaunchKnowledgeCheck,
   onExitTutorial,
 }) => {
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showTargetedReview, setShowTargetedReview] = useState(false);
   const [currentMode, setCurrentMode] = useState<TutorialMode>(
     (userProgress?.currentMode as TutorialMode) || initialMode,
   );
@@ -82,6 +103,7 @@ export const InteractiveExerciseTutorial: React.FC<InteractiveExerciseTutorialPr
   const [isPracticeCompleted, setIsPracticeCompleted] = useState(
     !!userProgress?.practiceCompleted,
   );
+  const [viewMode, setViewMode] = useState<'MULTI_ANGLE' | 'CLASSIC'>('MULTI_ANGLE');
 
   const activePhase =
     tutorial.phases && tutorial.phases.length > 0
@@ -200,6 +222,27 @@ export const InteractiveExerciseTutorial: React.FC<InteractiveExerciseTutorialPr
         )}
       </View>
 
+      {/* Day 78: Personalized Learning Banner & Targeted Review */}
+      {personalizedPlan && (
+        <PersonalizedLearningBanner
+          plan={personalizedPlan}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onSelectMode={(m) => handleSelectMode(m as TutorialMode)}
+          onStartTargetedReview={() => setShowTargetedReview((prev) => !prev)}
+        />
+      )}
+
+      {showTargetedReview && targetedReview && (
+        <TargetedReviewPanel
+          reviewData={targetedReview}
+          onClose={() => setShowTargetedReview(false)}
+          onStartRehearsal={() => {
+            setShowTargetedReview(false);
+            setCurrentProgression('PRACTICE');
+          }}
+        />
+      )}
+
       {/* 5-Step Progression Tracker */}
       <View style={styles.progressionBar}>
         {progressionSteps.map((step) => (
@@ -245,15 +288,52 @@ export const InteractiveExerciseTutorial: React.FC<InteractiveExerciseTutorialPr
         </ScrollView>
       </View>
 
+      {/* Multi-Angle vs Classic Mode Switcher */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 6 }}>
+        <TouchableOpacity
+          onPress={() => setViewMode(viewMode === 'MULTI_ANGLE' ? 'CLASSIC' : 'MULTI_ANGLE')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 12,
+            backgroundColor: themeColors.background,
+            borderWidth: 1,
+            borderColor: themeColors.border,
+          }}
+        >
+          <Icon
+            name={viewMode === 'MULTI_ANGLE' ? 'activity' : 'bolt'}
+            size={12}
+            color={themeColors.primary}
+          />
+          <Text style={{ fontSize: 11, color: themeColors.primary, fontWeight: '700' }}>
+            {viewMode === 'MULTI_ANGLE' ? '360° Multi-Angle Active' : 'Switch to Multi-Angle'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Main Interactive Visual Player */}
-      <InteractiveVisualPlayer
-        demonstrations={tutorial.demonstrations}
-        activePhase={activePhase}
-        exerciseName={tutorial.exercise.name}
-        audioGuidanceUrl={tutorial.tutorialConfig.audioGuidanceUrl}
-        audioGuidanceTranscript={tutorial.tutorialConfig.audioGuidanceTranscript}
-        onSeekTimestamp={(sec) => console.log('Seek:', sec)}
-      />
+      {viewMode === 'MULTI_ANGLE' ? (
+        <ExerciseAngleViewer
+          exerciseId={tutorial.exercise.id}
+          exerciseName={tutorial.exercise.name}
+          mediaList={tutorial.demonstrations as any}
+          activePhase={activePhase}
+          onAngleChange={(angle) => console.log('Tutorial angle switched:', angle)}
+        />
+      ) : (
+        <InteractiveVisualPlayer
+          demonstrations={tutorial.demonstrations}
+          activePhase={activePhase}
+          exerciseName={tutorial.exercise.name}
+          audioGuidanceUrl={tutorial.tutorialConfig.audioGuidanceUrl}
+          audioGuidanceTranscript={tutorial.tutorialConfig.audioGuidanceTranscript}
+          onSeekTimestamp={(sec) => console.log('Seek:', sec)}
+        />
+      )}
 
       {/* ================================================================= */}
       {/* PROGRESSION STEP: PRACTICE */}
@@ -485,9 +565,24 @@ export const InteractiveExerciseTutorial: React.FC<InteractiveExerciseTutorialPr
         </View>
       )}
 
-      {/* Common Mistakes & Safety for All Modes */}
-      <CommonMistakesSection mistakes={tutorial.commonMistakes} />
+      {/* Cross-Angle Analysis & Visual Comparison */}
+      <TechniqueComparison
+        exerciseName={tutorial.exercise.name}
+        movementPattern={tutorial.exercise.movementPattern}
+      />
+
       <SafetyGuidanceSection guidelines={tutorial.safetyGuidelines} />
+
+      {/* Day 78: Personalization Settings Modal */}
+      {onUpdatePreferences && onResetPreferences && (
+        <PersonalizeLearningModal
+          visible={showSettingsModal}
+          preferences={learningPreferences || null}
+          onClose={() => setShowSettingsModal(false)}
+          onSave={onUpdatePreferences}
+          onReset={onResetPreferences}
+        />
+      )}
     </ScrollView>
   );
 };

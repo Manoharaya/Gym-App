@@ -16,6 +16,10 @@ import {
   MuscleDetailScreen,
   MovementPatternDetailScreen,
   ExerciseTutorialScreen,
+  GuidedSessionsScreen,
+  GuidedSessionDetailScreen,
+  GuidedExerciseSessionScreen,
+  GuidedSessionAuthoringScreen,
 } from '../features/exercises';
 import {
   TrainerClientDetailScreen,
@@ -54,6 +58,10 @@ export const TrainerNavigator: React.FC = () => {
       <Stack.Screen name="MuscleDetail" component={MuscleDetailScreen} />
       <Stack.Screen name="MovementPatternDetail" component={MovementPatternDetailScreen} />
       <Stack.Screen name="ExerciseTutorial" component={ExerciseTutorialScreen} />
+      <Stack.Screen name="GuidedSessions" component={GuidedSessionsScreen} />
+      <Stack.Screen name="GuidedSessionDetail" component={GuidedSessionDetailScreen} />
+      <Stack.Screen name="GuidedExerciseSession" component={GuidedExerciseSessionScreen} />
+      <Stack.Screen name="GuidedSessionAuthoring" component={GuidedSessionAuthoringScreen} />
       <Stack.Screen name="TrainerWorkouts" component={TrainerWorkoutsScreen} />
       <Stack.Screen name="CreateWorkout" component={CreateWorkoutScreen} />
       {/* Day 14: Advanced Programming & Previews */}

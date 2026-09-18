@@ -20,6 +20,7 @@ import {
   ExerciseLearningMasteryStatus,
   ExerciseAnatomyData,
   DiscoveryMuscleItem,
+  LearningMasteryRecord,
 } from '../services/exerciseService';
 import { ExerciseMediaManagerModal } from '../components/ExerciseMediaManagerModal';
 import { ExerciseStepPlayer } from '../components/ExerciseStepPlayer';
@@ -39,6 +40,10 @@ import {
   MuscleEducationCard,
   WhyThisExerciseWorksSection,
   MovementMechanicsCard,
+  ExerciseAngleViewer,
+  TechniqueComparison,
+  ContentMasteryBadge,
+  LearningJourneyVisualizer,
 } from '../components';
 import type { Exercise } from '@fitcore/types';
 
@@ -116,6 +121,33 @@ export const ExerciseDetailScreen: React.FC = () => {
     }
   }, []);
 
+  // Day 79: Learning Mastery & Analytics
+  const [day79Mastery, setDay79Mastery] = useState<LearningMasteryRecord | null>(null);
+
+  const fetchDay79Mastery = useCallback(async () => {
+    if (!exerciseId) return;
+    try {
+      const rec = await ExerciseService.getContentMastery('EXERCISE', exerciseId);
+      setDay79Mastery(rec);
+    } catch {
+      // Graceful fallback
+    }
+  }, [exerciseId]);
+
+  const trackOverviewTelemetry = useCallback(async () => {
+    if (!exerciseId) return;
+    try {
+      await ExerciseService.trackLearningEvent({
+        eventType: 'SECTION_VIEWED',
+        contentType: 'EXERCISE',
+        contentId: exerciseId,
+        sectionId: 'INTRODUCTION',
+      });
+    } catch {
+      // Background telemetry
+    }
+  }, [exerciseId]);
+
   const fetchLearningMastery = useCallback(async () => {
     if (!exerciseId) return;
     try {
@@ -173,9 +205,11 @@ export const ExerciseDetailScreen: React.FC = () => {
     fetchLearningProgress();
     fetchRelatedContent();
     fetchLearningMastery();
+    fetchDay79Mastery();
+    trackOverviewTelemetry();
     fetchAnatomy();
     fetchDiscoveryMuscles();
-  }, [fetchVisualDetails, fetchLearningProgress, fetchRelatedContent, fetchLearningMastery, fetchAnatomy, fetchDiscoveryMuscles]);
+  }, [fetchVisualDetails, fetchLearningProgress, fetchRelatedContent, fetchLearningMastery, fetchDay79Mastery, trackOverviewTelemetry, fetchAnatomy, fetchDiscoveryMuscles]);
 
   useEffect(() => {
     if (exercise?.movementPhases && exercise.movementPhases.length > 0) {
@@ -331,46 +365,85 @@ export const ExerciseDetailScreen: React.FC = () => {
             trainingGoals={(exercise?.trainingGoals as string[]) || undefined}
           />
 
-          {/* Day 68: Learning Progress & Mastery Status Banner */}
+          {/* Day 79: Learning Mastery Status & Progression Visualizer Banner */}
           <View style={styles.masteryBanner}>
             <View style={styles.masteryInfo}>
               <View style={styles.masteryBadgeRow}>
-                <Badge
-                  label={learningProgress?.status === 'COMPLETED' ? 'MASTERED' : 'IN LEARNING'}
-                  variant={learningProgress?.status === 'COMPLETED' ? 'accent' : 'primary'}
+                <ContentMasteryBadge
+                  status={day79Mastery?.status || (learningProgress?.status === 'COMPLETED' ? 'COMPLETED' : 'EXPLORING')}
+                  completionPercent={day79Mastery?.completionPercent}
+                  score={day79Mastery?.knowledgeCheckScore}
+                  size="md"
+                  showPercent
                 />
                 <Text style={styles.masterySubtitle}>
-                  {learningProgress?.status === 'COMPLETED'
-                    ? 'Technique guide completed'
-                    : `${learningProgress?.completedSteps || 0} of ${instructionsList.length || 5} steps practiced`}
+                  {day79Mastery?.status === 'MASTERED'
+                    ? 'Educational objectives & quiz passed'
+                    : day79Mastery?.status === 'COMPLETED'
+                    ? 'All technique phases completed'
+                    : `${day79Mastery?.sectionsCompleted?.length || 0} of 11 educational sections completed`}
                 </Text>
               </View>
             </View>
 
-            <TouchableOpacity
-              onPress={handleToggleMastered}
-              disabled={isUpdatingProgress}
-              style={[
-                styles.masteryActionButton,
-                learningProgress?.status === 'COMPLETED' && styles.masteryActionButtonCompleted,
-              ]}
-              activeOpacity={0.8}
-            >
-              {isUpdatingProgress ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <TouchableOpacity
+                onPress={handleToggleMastered}
+                disabled={isUpdatingProgress}
+                style={[
+                  styles.masteryActionButton,
+                  learningProgress?.status === 'COMPLETED' && styles.masteryActionButtonCompleted,
+                ]}
+                activeOpacity={0.8}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Toggle exercise completed"
+              >
+                {isUpdatingProgress ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
                   <Icon
-                    name={learningProgress?.status === 'COMPLETED' ? 'check' : 'check'}
+                    name="check"
                     size={14}
                     color="#FFFFFF"
                   />
-                  <Text style={styles.masteryActionText}>
-                    {learningProgress?.status === 'COMPLETED' ? 'Mastered' : 'Mark Mastered'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() =>
+                  (navigation as any).navigate('ExerciseTutorial', {
+                    exerciseId,
+                    initialMode: 'MOVEMENT_BREAKDOWN',
+                  })
+                }
+                style={styles.masteryActionButton}
+                activeOpacity={0.8}
+              >
+                <Icon name="bolt" size={14} color="#FFFFFF" />
+                <Text style={styles.masteryActionText}>
+                  {day79Mastery?.status === 'MASTERED' ? 'Review' : 'Learn'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Day 79: Learning Journey Visualizer */}
+          <View style={{ marginHorizontal: sp.md, marginBottom: sp.md }}>
+            <LearningJourneyVisualizer
+              currentStatus={day79Mastery?.status || 'EXPLORING'}
+              completionPercent={day79Mastery?.completionPercent || 0}
+              sectionsCompleted={day79Mastery?.sectionsCompleted || []}
+              knowledgeCheckScore={day79Mastery?.knowledgeCheckScore}
+              onStagePress={(stage) => {
+                if (stage.key === 'KNOWLEDGE_CHECK' || stage.key === 'PRACTICE') {
+                  (navigation as any).navigate('ExerciseTutorial', {
+                    exerciseId,
+                    initialMode: stage.key,
+                  });
+                }
+              }}
+            />
           </View>
 
           {/* Segmented Navigation Tab Bar */}
@@ -578,6 +651,96 @@ export const ExerciseDetailScreen: React.FC = () => {
                   </Card>
                 )}
 
+                {/* Day 78: Personalized Interactive Tutorial Banner */}
+                {exercise && (
+                  <TouchableOpacity
+                    style={styles.tutorialHeroBanner}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      (navigation as any).navigate('ExerciseTutorial', { exerciseId: exercise.id })
+                    }
+                  >
+                    <View style={styles.tutorialHeroLeft}>
+                      <View style={styles.tutorialIconHalo}>
+                        <Icon name="sparkles" size={20} color="#0F172A" />
+                      </View>
+                      <View style={styles.tutorialHeroText}>
+                        <View style={styles.tutorialBadgeRow}>
+                          <Text style={styles.tutorialPre}>INTERACTIVE TUTORIAL</Text>
+                          <Badge label="Personalized" variant="accent" />
+                        </View>
+                        <Text style={styles.tutorialHeroTitle}>Adaptive Visual Learning Guide</Text>
+                        <Text style={styles.tutorialHeroSubtitle}>
+                          Tailored coaching depth, multi-angle views & interactive practice
+                        </Text>
+                      </View>
+                    </View>
+                    <Icon name="chevron-right" size={20} color={colors.accent} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Day 81: Visual Movement Coach Banner */}
+                {exercise && (
+                  <TouchableOpacity
+                    style={styles.movementCoachHeroBanner}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      (navigation as any).navigate('VisualMovementCoach', {
+                        exerciseId: exercise.id,
+                        exerciseName: exercise.name,
+                      })
+                    }
+                  >
+                    <View style={styles.tutorialHeroLeft}>
+                      <View style={styles.coachIconHalo}>
+                        <Icon name="activity" size={20} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.tutorialHeroText}>
+                        <View style={styles.tutorialBadgeRow}>
+                          <Text style={styles.movementCoachPre}>VISUAL MOVEMENT COACH</Text>
+                          <Badge label="Technique Foundation" variant="primary" />
+                        </View>
+                        <Text style={styles.tutorialHeroTitle}>Movement Expectations & Guidance</Text>
+                        <Text style={styles.tutorialHeroSubtitle}>
+                          Phase breakdown, technique focus priorities, and interactive rehearsal
+                        </Text>
+                      </View>
+                    </View>
+                    <Icon name="chevron-right" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Day 82: Guided Movement Practice Banner */}
+                {exercise && (
+                  <TouchableOpacity
+                    style={styles.guidedPracticeHeroBanner}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      (navigation as any).navigate('GuidedMovementPractice', {
+                        exerciseId: exercise.id,
+                        exerciseName: exercise.name,
+                      })
+                    }
+                  >
+                    <View style={styles.tutorialHeroLeft}>
+                      <View style={styles.practiceIconHalo}>
+                        <Icon name="dumbbell" size={20} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.tutorialHeroText}>
+                        <View style={styles.tutorialBadgeRow}>
+                          <Text style={styles.guidedPracticePre}>GUIDED PRACTICE</Text>
+                          <Badge label="Interactive Rehearsal" variant="accent" />
+                        </View>
+                        <Text style={styles.tutorialHeroTitle}>Practice With Visual Coach</Text>
+                        <Text style={styles.tutorialHeroSubtitle}>
+                          Step-by-step phase rehearsal, form checklists & self-reflection
+                        </Text>
+                      </View>
+                    </View>
+                    <Icon name="chevron-right" size={20} color={colors.accent} />
+                  </TouchableOpacity>
+                )}
+
                 {/* Day 66: Interactive Movement Phase Stepper Player */}
                 {movementPhases.length > 0 && (
                   <ExerciseMovementPlayer
@@ -643,6 +806,32 @@ export const ExerciseDetailScreen: React.FC = () => {
                       </Text>
                       <Text style={styles.tutorialHeroSubtitle}>
                         Step-by-step phases, coaching cues, breathing & practice
+                      </Text>
+                    </View>
+                  </View>
+                  <Icon name="chevron-right" size={18} color={colors.primary} />
+                </TouchableOpacity>
+
+                {/* Day 77: Multi-Angle Visual Demonstration Banner */}
+                <TouchableOpacity
+                  style={[styles.tutorialHeroBanner, { borderColor: colors.primary, marginTop: sp.sm }]}
+                  activeOpacity={0.85}
+                  onPress={() => setActiveTab('media')}
+                >
+                  <View style={styles.tutorialHeroLeft}>
+                    <View style={[styles.tutorialIconHalo, { backgroundColor: colors.primary }]}>
+                      <Icon name="activity" size={20} color="#000000" />
+                    </View>
+                    <View style={styles.tutorialHeroText}>
+                      <View style={styles.tutorialBadgeRow}>
+                        <Text style={styles.tutorialPre}>MULTI-ANGLE 360°</Text>
+                        <Badge label="COMPARE MODE" variant="primary" />
+                      </View>
+                      <Text style={styles.tutorialHeroTitle}>
+                        Multi-Angle Technique Studio
+                      </Text>
+                      <Text style={styles.tutorialHeroSubtitle}>
+                        Front, Side & 3/4 views with synced playback & authored technique cues
                       </Text>
                     </View>
                   </View>
@@ -1135,6 +1324,21 @@ export const ExerciseDetailScreen: React.FC = () => {
                     <Text style={styles.manageMediaBtnText}>Manage Media</Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Day 77: Interactive Multi-Angle Visual Demonstration & Compare Studio */}
+                <ExerciseAngleViewer
+                  exerciseId={exercise?.id || exerciseId}
+                  exerciseName={name}
+                  mediaList={mediaList}
+                  activePhase={activePhase}
+                  isTrainer={true}
+                />
+
+                {/* Day 77: Biomechanical Technique Comparison */}
+                <TechniqueComparison
+                  exerciseName={name}
+                  movementPattern={exercise?.movementPattern}
+                />
 
                 {mediaList.length > 0 ? (
                   mediaList.map((m, idx) => {
@@ -2410,5 +2614,57 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  movementCoachHeroBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    padding: sp.md,
+    marginBottom: sp.md,
+  },
+  coachIconHalo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  movementCoachPre: {
+    ...typography.caption,
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
+  guidedPracticeHeroBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(20, 184, 166, 0.12)',
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    padding: sp.md,
+    marginBottom: sp.md,
+  },
+  practiceIconHalo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  guidedPracticePre: {
+    ...typography.caption,
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.accent,
+    letterSpacing: 0.5,
   },
 });

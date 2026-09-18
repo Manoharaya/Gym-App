@@ -16,6 +16,10 @@ import {
   TutorialUserProgress,
   TutorialMode,
   TutorialSection,
+  PersonalizedTutorialPlan,
+  TargetedReviewResponse,
+  LearningPreferencesResponse,
+  UpdateLearningPreferencesPayload,
 } from '../services/exerciseService';
 import { InteractiveExerciseTutorial } from '../components/InteractiveExerciseTutorial';
 import type { MemberStackParamList } from '../../../navigation/types';
@@ -32,16 +36,37 @@ export const ExerciseTutorialScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tutorialData, setTutorialData] = useState<ExerciseTutorialResponse | null>(null);
   const [userProgress, setUserProgress] = useState<TutorialUserProgress | null>(null);
+  const [personalizedPlan, setPersonalizedPlan] = useState<PersonalizedTutorialPlan | null>(null);
+  const [targetedReview, setTargetedReview] = useState<TargetedReviewResponse | null>(null);
+  const [preferences, setPreferences] = useState<LearningPreferencesResponse | null>(null);
 
   const fetchTutorial = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await ExerciseService.getExerciseTutorial(exerciseId);
-      setTutorialData(data);
-      if (data.userProgress) {
-        setUserProgress(data.userProgress);
+      const [personalizedData, reviewData, prefsData] = await Promise.all([
+        ExerciseService.getPersonalizedTutorial(exerciseId).catch(async () => {
+          const fallback = await ExerciseService.getExerciseTutorial(exerciseId);
+          return {
+            exerciseId,
+            tutorial: fallback,
+            plan: null as any,
+            learningContext: null as any,
+          };
+        }),
+        ExerciseService.getTargetedReview(exerciseId).catch(() => null),
+        ExerciseService.getLearningPreferences().catch(() => null),
+      ]);
+
+      if (personalizedData?.tutorial) {
+        setTutorialData(personalizedData.tutorial);
+        setPersonalizedPlan(personalizedData.plan || null);
+        if (personalizedData.tutorial.userProgress) {
+          setUserProgress(personalizedData.tutorial.userProgress);
+        }
       }
+      setTargetedReview(reviewData);
+      setPreferences(prefsData);
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -98,6 +123,26 @@ export const ExerciseTutorialScreen: React.FC = () => {
     navigation.navigate('KnowledgeCheck', { checkId });
   };
 
+  const handleUpdatePreferences = async (payload: UpdateLearningPreferencesPayload) => {
+    try {
+      const updated = await ExerciseService.updateLearningPreferences(payload);
+      setPreferences(updated);
+      await fetchTutorial();
+    } catch (err) {
+      console.warn('Failed to update preferences:', err);
+    }
+  };
+
+  const handleResetPreferences = async () => {
+    try {
+      const reset = await ExerciseService.resetLearningPreferences();
+      setPreferences(reset);
+      await fetchTutorial();
+    } catch (err) {
+      console.warn('Failed to reset preferences:', err);
+    }
+  };
+
   const handleExit = () => {
     navigation.goBack();
   };
@@ -132,6 +177,11 @@ export const ExerciseTutorialScreen: React.FC = () => {
         tutorial={tutorialData}
         initialMode={(initialMode as TutorialMode) || 'STEP_BY_STEP'}
         userProgress={userProgress}
+        personalizedPlan={personalizedPlan || undefined}
+        targetedReview={targetedReview}
+        learningPreferences={preferences}
+        onUpdatePreferences={handleUpdatePreferences}
+        onResetPreferences={handleResetPreferences}
         onUpdateProgress={handleUpdateProgress}
         onCompleteTutorial={handleCompleteTutorial}
         onNavigateToMuscle={handleNavigateToMuscle}

@@ -50,6 +50,47 @@ export const MEDIA_STATUSES = [
   'ARCHIVED',
 ] as const;
 
+export const MEDIA_VIEW_ANGLES = [
+  'FRONT',
+  'BACK',
+  'LEFT',
+  'RIGHT',
+  'SIDE',
+  'THREE_QUARTER',
+  'OVERHEAD',
+  'CLOSE_UP',
+  'CUSTOM',
+] as const;
+export type MediaViewAngle = (typeof MEDIA_VIEW_ANGLES)[number];
+
+export const ANNOTATION_TYPES = [
+  'POINT',
+  'LINE',
+  'ARROW',
+  'REGION',
+  'TEXT_LABEL',
+  'HIGHLIGHT',
+] as const;
+export type AnnotationType = (typeof ANNOTATION_TYPES)[number];
+
+export const ANNOTATION_CATEGORIES = [
+  'ALIGNMENT',
+  'POSTURE',
+  'BREATHING',
+  'RANGE_OF_MOTION',
+  'SAFETY',
+] as const;
+export type AnnotationCategory = (typeof ANNOTATION_CATEGORIES)[number];
+
+export const ANNOTATION_STATUSES = [
+  'DRAFT',
+  'REVIEW',
+  'APPROVED',
+  'PUBLISHED',
+  'ARCHIVED',
+] as const;
+export type AnnotationStatus = (typeof ANNOTATION_STATUSES)[number];
+
 export class ExerciseMediaQueryDto {
   @ApiPropertyOptional({ enum: MEDIA_TYPES })
   @IsOptional()
@@ -60,6 +101,16 @@ export class ExerciseMediaQueryDto {
   @IsOptional()
   @IsIn(MEDIA_PURPOSES)
   purpose?: string;
+
+  @ApiPropertyOptional({ enum: MEDIA_VIEW_ANGLES })
+  @IsOptional()
+  @IsIn(MEDIA_VIEW_ANGLES)
+  viewAngle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
 
   @ApiPropertyOptional({ enum: MEDIA_STATUSES })
   @IsOptional()
@@ -127,6 +178,16 @@ export class PresignExerciseMediaUploadDto {
   @IsString()
   @MaxLength(500)
   description?: string;
+
+  @ApiPropertyOptional({ enum: MEDIA_VIEW_ANGLES, example: 'SIDE' })
+  @IsOptional()
+  @IsIn(MEDIA_VIEW_ANGLES)
+  viewAngle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
 }
 
 export class CreateExerciseMediaDto {
@@ -231,6 +292,8 @@ export class CreateExerciseMediaDto {
 
   @ApiPropertyOptional({ enum: MEDIA_STATUSES, default: 'READY' })
   @IsOptional()
+  @ApiPropertyOptional({ enum: MEDIA_STATUSES, default: 'READY' })
+  @IsOptional()
   @IsIn(MEDIA_STATUSES)
   status?: string = 'READY';
 
@@ -238,6 +301,16 @@ export class CreateExerciseMediaDto {
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean = true;
+
+  @ApiPropertyOptional({ enum: MEDIA_VIEW_ANGLES, example: 'FRONT' })
+  @IsOptional()
+  @IsIn(MEDIA_VIEW_ANGLES)
+  viewAngle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
 }
 
 export class UpdateExerciseMediaDto {
@@ -245,6 +318,16 @@ export class UpdateExerciseMediaDto {
   @IsOptional()
   @IsIn(MEDIA_PURPOSES)
   purpose?: string;
+
+  @ApiPropertyOptional({ enum: MEDIA_VIEW_ANGLES })
+  @IsOptional()
+  @IsIn(MEDIA_VIEW_ANGLES)
+  viewAngle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -301,6 +384,16 @@ export class DirectUploadMediaMetadataDto {
   @IsIn(MEDIA_PURPOSES)
   purpose?: string;
 
+  @ApiPropertyOptional({ enum: MEDIA_VIEW_ANGLES })
+  @IsOptional()
+  @IsIn(MEDIA_VIEW_ANGLES)
+  viewAngle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -349,5 +442,185 @@ export interface UploadedMediaFile {
   destination?: string;
   filename?: string;
   path?: string;
+}
+
+export class CreateMediaAnnotationDto {
+  @ApiProperty({ enum: ANNOTATION_TYPES, default: 'POINT' })
+  @IsIn(ANNOTATION_TYPES)
+  type: string;
+
+  @ApiProperty({ example: 'Knee tracking alignment' })
+  @IsString()
+  @MaxLength(120)
+  label: string;
+
+  @ApiPropertyOptional({ example: 'Knees should track in line with the second toe.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+
+  @ApiPropertyOptional({ enum: ANNOTATION_CATEGORIES, default: 'ALIGNMENT' })
+  @IsOptional()
+  @IsIn(ANNOTATION_CATEGORIES)
+  category?: string = 'ALIGNMENT';
+
+  @ApiProperty({ example: 0.45, description: 'Normalized X coordinate (0.0 to 1.0)' })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  x: number;
+
+  @ApiProperty({ example: 0.65, description: 'Normalized Y coordinate (0.0 to 1.0)' })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  y: number;
+
+  @ApiPropertyOptional({ example: 0.1, description: 'Normalized width (0.0 to 1.0)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  width?: number;
+
+  @ApiPropertyOptional({ example: 0.1, description: 'Normalized height (0.0 to 1.0)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  height?: number;
+
+  @ApiPropertyOptional({ example: 1.5, description: 'Video start timestamp in seconds' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  startTime?: number;
+
+  @ApiPropertyOptional({ example: 4.0, description: 'Video end timestamp in seconds' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  endTime?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
+
+  @ApiPropertyOptional({ enum: ANNOTATION_STATUSES, default: 'PUBLISHED' })
+  @IsOptional()
+  @IsIn(ANNOTATION_STATUSES)
+  status?: string = 'PUBLISHED';
+}
+
+export class UpdateMediaAnnotationDto {
+  @ApiPropertyOptional({ enum: ANNOTATION_TYPES })
+  @IsOptional()
+  @IsIn(ANNOTATION_TYPES)
+  type?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  label?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+
+  @ApiPropertyOptional({ enum: ANNOTATION_CATEGORIES })
+  @IsOptional()
+  @IsIn(ANNOTATION_CATEGORIES)
+  category?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  x?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  y?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  width?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  height?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  startTime?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  endTime?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
+
+  @ApiPropertyOptional({ enum: ANNOTATION_STATUSES })
+  @IsOptional()
+  @IsIn(ANNOTATION_STATUSES)
+  status?: string;
+}
+
+export class QueryMediaAnnotationsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phaseId?: string;
+
+  @ApiPropertyOptional({ enum: ANNOTATION_CATEGORIES })
+  @IsOptional()
+  @IsIn(ANNOTATION_CATEGORIES)
+  category?: string;
+
+  @ApiPropertyOptional({ enum: ANNOTATION_STATUSES })
+  @IsOptional()
+  @IsIn(ANNOTATION_STATUSES)
+  status?: string;
+}
+
+export interface MediaViewsGroupDto {
+  defaultAngle: string;
+  availableAngles: string[];
+  views: Record<string, any[]>;
+  totalMedia: number;
 }
 

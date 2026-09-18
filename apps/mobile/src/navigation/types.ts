@@ -105,6 +105,12 @@ export type MemberStackParamList = {
   MuscleDetail: { muscleCode: string; muscleName?: string };
   MovementPatternDetail: { pattern: string; patternName?: string };
   ExerciseTutorial: { exerciseId: string; initialMode?: string; previewMode?: boolean };
+  VisualMovementCoach: { exerciseId: string; exerciseName?: string; initialPhaseId?: string };
+  GuidedMovementPractice: { exerciseId: string; exerciseName?: string; sessionId?: string };
+  GuidedSessions: { category?: string; difficulty?: string } | undefined;
+  GuidedSessionDetail: { sessionId: string; title?: string };
+  GuidedExerciseSession: { sessionId: string; startFresh?: boolean; previewMode?: boolean };
+  GuidedSessionAuthoring: { sessionId?: string } | undefined;
   TrainingPlanOverview: { planId?: string } | undefined;
   TrainingCalendar: { planId?: string } | undefined;
   EngagementHome: undefined;
@@ -145,6 +151,12 @@ export type TrainerStackParamList = {
   MuscleDetail: { muscleCode: string; muscleName?: string };
   MovementPatternDetail: { pattern: string; patternName?: string };
   ExerciseTutorial: { exerciseId: string; initialMode?: string; previewMode?: boolean };
+  VisualMovementCoach: { exerciseId: string; exerciseName?: string; initialPhaseId?: string };
+  GuidedMovementPractice: { exerciseId: string; exerciseName?: string; sessionId?: string };
+  GuidedSessions: { category?: string; difficulty?: string } | undefined;
+  GuidedSessionDetail: { sessionId: string; title?: string };
+  GuidedExerciseSession: { sessionId: string; startFresh?: boolean; previewMode?: boolean };
+  GuidedSessionAuthoring: { sessionId?: string } | undefined;
   TrainerWorkouts: { memberProfileId?: string } | undefined;
   CreateWorkout: { memberProfileId?: string } | undefined;
   TrainerProgramming: { memberProfileId?: string; programId?: string; planId?: string } | undefined;

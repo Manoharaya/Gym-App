@@ -6,6 +6,7 @@ import {
   Post,
   Param,
   Body,
+  Query,
   Headers,
   HttpCode,
   HttpStatus,
@@ -16,7 +17,12 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermission } from '../../common/decorators/permissions.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
 import { ExerciseMediaService } from '../services/exercise-media.service';
-import { UpdateExerciseMediaDto } from '../dto/exercise-media.dto';
+import {
+  UpdateExerciseMediaDto,
+  CreateMediaAnnotationDto,
+  UpdateMediaAnnotationDto,
+  QueryMediaAnnotationsDto,
+} from '../dto/exercise-media.dto';
 
 @ApiTags('Exercise Media')
 @ApiBearerAuth()
@@ -93,5 +99,58 @@ export class ExerciseMediaController {
   ) {
     const organisationId = this.resolveOrgId(user, headerOrgId);
     return this.mediaService.archiveMedia(organisationId, id, user);
+  }
+
+  @Get(':id/annotations')
+  @RequirePermission('exercises', 'read')
+  @ApiOperation({ summary: 'Get authored visual cue annotations for an exercise media asset' })
+  async getAnnotations(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query() query: QueryMediaAnnotationsDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.getMediaAnnotations(organisationId, id, query, user);
+  }
+
+  @Post(':id/annotations')
+  @RequirePermission('exercises', 'manage')
+  @ApiOperation({ summary: 'Create an authored visual cue annotation on an exercise media asset' })
+  async createAnnotation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateMediaAnnotationDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.createMediaAnnotation(organisationId, id, dto, user);
+  }
+
+  @Patch(':id/annotations/:annotationId')
+  @RequirePermission('exercises', 'manage')
+  @ApiOperation({ summary: 'Update an authored visual cue annotation' })
+  async updateAnnotation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('annotationId') annotationId: string,
+    @Body() dto: UpdateMediaAnnotationDto,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.updateMediaAnnotation(organisationId, id, annotationId, dto, user);
+  }
+
+  @Delete(':id/annotations/:annotationId')
+  @RequirePermission('exercises', 'manage')
+  @ApiOperation({ summary: 'Delete an authored visual cue annotation' })
+  async deleteAnnotation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('annotationId') annotationId: string,
+    @Headers('x-organisation-id') headerOrgId?: string,
+  ) {
+    const organisationId = this.resolveOrgId(user, headerOrgId);
+    return this.mediaService.deleteMediaAnnotation(organisationId, id, annotationId, user);
   }
 }

@@ -452,7 +452,9 @@ model User {
   exerciseFavorites            UserExerciseFavorite[]
   exerciseRecentViews          UserExerciseRecentView[]
   exercisePreferences          MemberExercisePreference?
+  learningPersonalizationProfile LearningPersonalizationProfile?
   exerciseLearningProgress     ExerciseLearningProgress[]
+  movementPracticeSessions     MovementPracticeSession[]
   createdCollections           ExerciseCollection[]     @relation("CollectionsCreatedByUser")
   createdLearningPaths         LearningPath[]           @relation("LearningPathsCreatedByUser")
   learningPathProgress         UserLearningPathProgress[]
@@ -462,6 +464,12 @@ model User {
   knowledgeAttempts            KnowledgeAttempt[]
   createdCurricula             Curriculum[]             @relation("CurriculaCreatedByUser")
   createdGlossaryTerms         GlossaryTerm[]           @relation("GlossaryTermsCreatedByUser")
+  createdGuidedSessions        GuidedSession[]          @relation("GuidedSessionsCreatedByUser")
+  guidedSessionProgress        UserGuidedSessionProgress[]
+  guidedSessionItemCompletions UserGuidedSessionItemCompletion[]
+  learningMasteryRecords       LearningMastery[]
+  learningActivityEvents       LearningActivityEvent[]
+  learningGaps                 LearningGap[]
 
   @@index([email])
   @@index([phone])
@@ -2433,6 +2441,10 @@ model Exercise {
   movementPhases        ExerciseMovementPhase[]
   commonMistakes        ExerciseCommonMistake[]
   safetyGuidelines      ExerciseSafetyGuideline[]
+  movementExpectations  MovementExpectation[]
+  movementFeedbackRules MovementFeedbackRule[]
+  movementPracticeSessions MovementPracticeSession[]
+  learningGaps          LearningGap[]
   variationsFrom        ExerciseVariation[]       @relation("BaseExerciseVariations")
   variationsTo          ExerciseVariation[]       @relation("TargetExerciseVariations")
   equipmentRelations    ExerciseEquipmentRelation[]
@@ -2447,6 +2459,7 @@ model Exercise {
   collectionItems       ExerciseCollectionItem[]
   learningLessons       LearningPathLesson[]
   knowledgeChecks       KnowledgeCheck[]
+  guidedSessionItems    GuidedSessionItem[]
 
   @@index([organisationId])
   @@index([ownershipType])
@@ -2489,6 +2502,8 @@ model ExerciseMedia {
   modelLod              String?                   // LOW, MEDIUM, HIGH
   status                String                    @default("READY") // UPLOADING, PROCESSING, READY, FAILED, ARCHIVED
   isPublished           Boolean                   @default(true)
+  viewAngle             String?                   // FRONT, BACK, LEFT, RIGHT, SIDE, THREE_QUARTER, OVERHEAD, CLOSE_UP, CUSTOM
+  phaseId               String?
   createdByUserId       String?
   updatedByUserId       String?
   createdAt             DateTime                  @default(now())
@@ -2497,13 +2512,48 @@ model ExerciseMedia {
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
   instructionSteps      ExerciseInstructionStep[]
   movementPhases        ExerciseMovementPhase[]
+  phase                 ExerciseMovementPhase?    @relation("PhaseAngleMedia", fields: [phaseId], references: [id], onDelete: SetNull)
+  annotations           ExerciseMediaAnnotation[]
 
   @@index([exerciseId])
   @@index([mediaType])
   @@index([organisationId])
   @@index([purpose])
   @@index([status])
+  @@index([viewAngle])
+  @@index([phaseId])
   @@map("exercise_media")
+}
+
+model ExerciseMediaAnnotation {
+  id                    String                    @id @default(cuid())
+  mediaId               String
+  organisationId        String?
+  phaseId               String?
+  type                  String                    @default("POINT") // POINT, LINE, ARROW, REGION, TEXT_LABEL, HIGHLIGHT
+  label                 String
+  description           String?
+  category              String                    @default("ALIGNMENT") // ALIGNMENT, POSTURE, BREATHING, RANGE_OF_MOTION, SAFETY
+  x                     Float                     // Normalized coordinate 0.0 - 1.0
+  y                     Float                     // Normalized coordinate 0.0 - 1.0
+  width                 Float?                    // Normalized width 0.0 - 1.0
+  height                Float?                    // Normalized height 0.0 - 1.0
+  startTime             Float?                    // Video timestamp in seconds
+  endTime               Float?                    // Video timestamp in seconds
+  status                String                    @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  createdByUserId       String?
+  updatedByUserId       String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @default(now()) @updatedAt
+
+  media                 ExerciseMedia             @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  movementExpectations  MovementExpectation[]
+
+  @@index([mediaId])
+  @@index([organisationId])
+  @@index([phaseId])
+  @@index([status])
+  @@map("exercise_media_annotations")
 }
 
 model ExerciseInstruction {
@@ -2612,9 +2662,14 @@ model ExerciseMovementPhase {
 
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
   media                 ExerciseMedia?            @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  taggedMedia           ExerciseMedia[]           @relation("PhaseAngleMedia")
   instructionSteps      ExerciseInstructionStep[]
   commonMistakeRecords  ExerciseCommonMistake[]
   safetyGuidelineRecords ExerciseSafetyGuideline[]
+  movementExpectations  MovementExpectation[]
+  movementFeedbackRules MovementFeedbackRule[]
+  practiceSessionsAsCurrentPhase MovementPracticeSession[]
+  learningGaps          LearningGap[]
 
   @@index([exerciseId, orderIndex])
   @@index([mediaId])
@@ -2638,6 +2693,7 @@ model ExerciseCommonMistake {
 
   exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
   movementPhase         ExerciseMovementPhase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  movementExpectations  MovementExpectation[]
 
   @@index([exerciseId])
   @@index([phaseId])
@@ -2662,6 +2718,151 @@ model ExerciseSafetyGuideline {
   @@index([exerciseId])
   @@index([phaseId])
   @@map("exercise_safety_guidelines")
+}
+
+model MovementExpectation {
+  id                    String                    @id @default(cuid())
+  organisationId        String?
+  exerciseId            String
+  movementPhaseId       String?
+  title                 String
+  description           String
+  expectationType       String                    @default("POSTURE") // POSTURE, ALIGNMENT, BODY_POSITION, MOVEMENT_DIRECTION, RANGE_OF_MOTION, TEMPO, BREATHING, STABILITY, CONTROL, BALANCE, FOOT_POSITION, HAND_POSITION, SPINE_POSITION, HEAD_POSITION, JOINT_POSITION, EQUIPMENT_POSITION, SAFETY, FOCUS
+  priority              String                    @default("ESSENTIAL") // ESSENTIAL, IMPORTANT, OPTIONAL
+  bodyRegion            String                    @default("FULL_BODY") // HEAD, NECK, SHOULDERS, CHEST, UPPER_BACK, SPINE, CORE, HIPS, GLUTES, KNEES, ANKLES, FEET, ELBOWS, WRISTS, HANDS, FULL_BODY
+  expectedState         String?
+  expectedDirection     String?
+  expectedPosition      String?
+  expectedAlignment     String?
+  expectedRangeOfMotion String?
+  expectedTempo         String?
+  expectedBreathing     String?
+  visualCueId           String?
+  safetyNote            String?
+  commonMistakeId       String?
+  sortOrder             Int                       @default(0)
+  status                String                    @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  version               Int                       @default(1)
+  createdByUserId       String?
+  updatedByUserId       String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @default(now()) @updatedAt
+
+  exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  movementPhase         ExerciseMovementPhase?    @relation(fields: [movementPhaseId], references: [id], onDelete: SetNull)
+  visualCue             ExerciseMediaAnnotation?  @relation(fields: [visualCueId], references: [id], onDelete: SetNull)
+  commonMistake         ExerciseCommonMistake?    @relation(fields: [commonMistakeId], references: [id], onDelete: SetNull)
+  feedbackRules         MovementFeedbackRule[]
+
+  @@index([exerciseId, sortOrder])
+  @@index([movementPhaseId])
+  @@index([organisationId])
+  @@index([expectationType])
+  @@index([priority])
+  @@index([bodyRegion])
+  @@index([status])
+  @@map("movement_expectations")
+}
+
+model MovementFeedbackRule {
+  id                    String                    @id @default(cuid())
+  organisationId        String?
+  exerciseId            String
+  movementPhaseId       String?
+  expectationId         String?
+  conditionType         String                    @default("POSITION_DEVIATION") // PHASE_MISMATCH, POSITION_DEVIATION, ALIGNMENT_DEVIATION, ROM_DEVIATION, TEMPO_DEVIATION, STABILITY_DEVIATION, BREATHING_MISMATCH, MOVEMENT_DIRECTION
+  conditionParameters   Json?                     // Envelope: { threshold?: number, targetJoint?: string, axis?: string, allowableTolerance?: number, expectedPhase?: string, description?: string }
+  feedbackType          String                    @default("GUIDANCE") // POSITIVE, GUIDANCE, REMINDER, CAUTION, REVIEW
+  feedbackMessage       String
+  severity              String                    @default("MODERATE") // LOW, MODERATE, HIGH
+  priority              String                    @default("IMPORTANT") // ESSENTIAL, IMPORTANT, OPTIONAL
+  status                String                    @default("PUBLISHED") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  createdByUserId       String?
+  updatedByUserId       String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @default(now()) @updatedAt
+
+  exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  movementPhase         ExerciseMovementPhase?    @relation(fields: [movementPhaseId], references: [id], onDelete: SetNull)
+  expectation           MovementExpectation?      @relation(fields: [expectationId], references: [id], onDelete: SetNull)
+
+  @@index([exerciseId])
+  @@index([movementPhaseId])
+  @@index([expectationId])
+  @@index([organisationId])
+  @@index([conditionType])
+  @@index([feedbackType])
+  @@index([status])
+  @@map("movement_feedback_rules")
+}
+
+model MovementPracticeSession {
+  id                    String                    @id @default(cuid())
+  userId                String
+  organisationId        String
+  exerciseId            String
+  tutorialId            String?
+  sessionType           String                    @default("GUIDED_PRACTICE") // GUIDED_PRACTICE, PHASE_FOCUS, QUICK_REHEARSAL
+  status                String                    @default("NOT_STARTED") // NOT_STARTED, INTRO, PREPARATION, IN_PROGRESS, PAUSED, REVIEW, COMPLETED, ABANDONED
+  currentStep           String                    @default("INTRO") // INTRO, PREPARATION, PHASE_LEARNING, PHASE_PRACTICE, PHASE_REVIEW, SELF_REVIEW, KNOWLEDGE_CHECK, SUMMARY, COMPLETED
+  currentPhaseId        String?
+  currentPhaseIndex     Int                       @default(0)
+  totalSteps            Int                       @default(0)
+  progressPercent       Float                     @default(0.0)
+  completedPhases       Json?                     // string[] phaseIds completed
+  checklistState        Json?                     // Record<string, boolean> checklist items checked
+  phasePracticeData     Json?                     // Array<{ phaseId: string, reps?: number, durationSeconds?: number, completedAt: string }>
+  selfReflection        Json?                     // { selectedTopics?: string[], notes?: string }
+  knowledgeCheckScore   Float?
+  knowledgeCheckCompleted Boolean                 @default(false)
+  startedAt             DateTime?
+  lastActiveAt          DateTime                  @default(now())
+  completedAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @default(now()) @updatedAt
+
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise              Exercise                  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  currentPhase          ExerciseMovementPhase?    @relation(fields: [currentPhaseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([exerciseId])
+  @@index([organisationId])
+  @@map("movement_practice_sessions")
+}
+
+// ==========================================
+// DAY 83: MOVEMENT LEARNING INTELLIGENCE & LEARNING GAP DETECTION
+// ==========================================
+
+model LearningGap {
+  id              String                 @id @default(cuid())
+  organisationId  String
+  userId          String
+  contentType     String                 @default("EXERCISE") // EXERCISE, MOVEMENT_PHASE, TUTORIAL, KNOWLEDGE_CHECK, PREREQUISITE
+  contentId       String
+  exerciseId      String?
+  movementPhaseId String?
+  gapType         String                 // INCOMPLETE, LOW_KNOWLEDGE_CHECK_RESULT, REPEATED_REVIEW, UNREVIEWED_PHASE, MISSED_PREREQUISITE, ABANDONED, STALE_LEARNING
+  priority        String                 @default("MEDIUM") // HIGH, MEDIUM, LOW
+  reason          String                 // Transparent educational explanation
+  status          String                 @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, DISMISSED
+  contextData     Json?                  // { phaseName?: string, score?: number, prerequisiteName?: string, lastAttemptAt?: string, timesReviewed?: number }
+  detectedAt      DateTime               @default(now())
+  lastReviewedAt  DateTime?
+  resolvedAt      DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise        Exercise?              @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  movementPhase   ExerciseMovementPhase? @relation(fields: [movementPhaseId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, userId, status])
+  @@index([userId, gapType, status])
+  @@index([exerciseId])
+  @@index([movementPhaseId])
+  @@map("learning_gaps")
 }
 
 model ExerciseVariation {
@@ -2795,6 +2996,93 @@ model MemberExercisePreference {
   @@index([userId])
   @@index([organisationId])
   @@map("member_exercise_preferences")
+}
+
+// ==========================================
+// DAY 78: LEARNING PERSONALIZATION PROFILE
+// ==========================================
+
+model LearningPersonalizationProfile {
+  id                        String       @id @default(cuid())
+  userId                    String       @unique
+  organisationId            String
+  preferredLearningDepth    String       @default("STANDARD") // BASIC, STANDARD, DETAILED, ADVANCED
+  preferredTutorialMode     String       @default("PERSONALIZED") // PERSONALIZED, QUICK_LEARN, STEP_BY_STEP, MOVEMENT_BREAKDOWN, TECHNIQUE_CHECKLIST
+  preferredMediaType        String?      // VIDEO, ANIMATION, IMAGE
+  preferredViewAngle        String?      // FRONT, SIDE, THREE_QUARTER, BACK, etc.
+  autoAdvancePreference     Boolean      @default(false)
+  showDetailedInstructions  Boolean      @default(true)
+  showAnatomyDetails        Boolean      @default(true)
+  showTechniqueDetails      Boolean      @default(true)
+  practicePreference        String       @default("REPS") // REPS, TIMED, BOTH
+  knowledgeCheckPreference  Boolean      @default(true)
+  playbackSpeed             Float        @default(1.0)
+  totalExercisesLearned     Int          @default(0)
+  totalExercisesCompleted   Int          @default(0)
+  totalPhasesCompleted      Int          @default(0)
+  totalPracticesCompleted   Int          @default(0)
+  lastMovementLearningActivity DateTime?
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+
+  user                      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organisationId])
+  @@map("learning_personalization_profiles")
+}
+
+// ==========================================
+// DAY 79: LEARNING MASTERY & ACTIVITY INTELLIGENCE
+// ==========================================
+
+model LearningMastery {
+  id                      String    @id @default(cuid())
+  userId                  String
+  organisationId          String
+  contentType             String    // EXERCISE, TUTORIAL, LESSON, LEARNING_PATH, COLLECTION, GUIDED_SESSION, CURRICULUM, MOVEMENT, MUSCLE, EQUIPMENT
+  contentId               String
+  status                  String    @default("NOT_STARTED") // NOT_STARTED, EXPLORING, LEARNING, PRACTICING, REVIEW, PROGRESSING, COMPLETED, MASTERED
+  completionPercent       Float     @default(0.0)
+  knowledgeCheckScore     Float?
+  knowledgeCheckAttempts  Int       @default(0)
+  sectionsCompleted       Json?     // Array of completed section keys: ["INTRO", "SETUP", "EXECUTION", "PRACTICE", "KNOWLEDGE_CHECK"]
+  lastActivityAt          DateTime  @default(now())
+  firstCompletedAt        DateTime?
+  masteredAt              DateTime?
+  reviewRecommendedAt     DateTime?
+  reviewReason            String?
+  metadata                Json?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentType, contentId])
+  @@index([userId, status])
+  @@index([organisationId, contentType, status])
+  @@index([contentId])
+  @@map("learning_mastery")
+}
+
+model LearningActivityEvent {
+  id             String        @id @default(cuid())
+  organisationId String
+  userId         String
+  eventType      String        // exercise_learning_started, tutorial_completed, learning_section_viewed, etc.
+  contentType    String        // EXERCISE, TUTORIAL, LESSON, LEARNING_PATH, GUIDED_SESSION, KNOWLEDGE_CHECK, CURRICULUM
+  contentId      String
+  sectionId      String?
+  sessionId      String?
+  metadata       Json?
+  occurredAt     DateTime      @default(now())
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, eventType])
+  @@index([userId, occurredAt])
+  @@index([contentType, contentId])
+  @@map("learning_activity_events")
 }
 
 model ExerciseLearningProgress {
@@ -2970,10 +3258,13 @@ model LearningPathLesson {
   exercise              Exercise?             @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
   completions           UserLessonCompletion[]
   knowledgeChecks       KnowledgeCheck[]
+  guidedSessionId       String?
+  guidedSession         GuidedSession?        @relation(fields: [guidedSessionId], references: [id], onDelete: SetNull)
 
   @@index([pathId, sortOrder])
   @@index([sectionId])
   @@index([exerciseId])
+  @@index([guidedSessionId])
   @@map("learning_path_lessons")
 }
 
@@ -3090,6 +3381,7 @@ model KnowledgeCheck {
   createdBy             User?               @relation("KnowledgeChecksCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
   questions             KnowledgeQuestion[]
   attempts              KnowledgeAttempt[]
+  guidedSessionItems    GuidedSessionItem[]
 
   @@index([tenantId])
   @@index([lessonId])
@@ -3260,6 +3552,148 @@ model GlossaryTerm {
   @@index([category])
   @@index([term])
   @@map("glossary_terms")
+}
+
+// ==========================================
+// DAY 76: GUIDED EXERCISE SESSIONS & STRUCTURED PRACTICE PROGRAMS
+// ==========================================
+
+model GuidedSession {
+  id                        String                       @id @default(cuid())
+  organisationId            String?
+  ownershipType             String                       @default("SYSTEM") // SYSTEM, ORGANISATION, TRAINER
+  createdById               String?
+  title                     String
+  slug                      String
+  description               String?
+  coverMediaUrl             String?
+  category                  String?                      // FUNDAMENTALS, SKILL_MASTERY, STRENGTH, MOBILITY, REHAB, POSTURE
+  difficulty                String                       @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  primaryGoal               String?                      // TECHNIQUE, STRENGTH, INJURY_PREVENTION, HYPERTROPHY, MOBILITY
+  estimatedDurationMinutes  Int                          @default(20)
+  contentStatus             String                       @default("DRAFT") // DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED
+  featured                  Boolean                      @default(false)
+  sortOrder                 Int                          @default(0)
+  exerciseCount             Int                          @default(0)
+  itemCount                 Int                          @default(0)
+  metadata                  Json?                        // { equipmentNeededSummary?: string[], targetAudience?: string, prerequisites?: string[], version?: number }
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
+
+  createdBy                 User?                        @relation("GuidedSessionsCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  sections                  GuidedSessionSection[]
+  items                     GuidedSessionItem[]
+  userProgress              UserGuidedSessionProgress[]
+  lessons                   LearningPathLesson[]
+
+  @@index([organisationId])
+  @@index([ownershipType])
+  @@index([contentStatus])
+  @@index([category])
+  @@index([difficulty])
+  @@index([primaryGoal])
+  @@index([featured])
+  @@index([slug])
+  @@map("guided_sessions")
+}
+
+model GuidedSessionSection {
+  id                    String                @id @default(cuid())
+  sessionId             String
+  title                 String
+  description           String?
+  sortOrder             Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  session               GuidedSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  items                 GuidedSessionItem[]
+
+  @@index([sessionId, sortOrder])
+  @@map("guided_session_sections")
+}
+
+model GuidedSessionItem {
+  id                    String                @id @default(cuid())
+  sessionId             String
+  sectionId             String?
+  sortOrder             Int                   @default(0)
+  itemType              String                // INTRO, WARMUP, EXERCISE_TUTORIAL, PRACTICE, REST, TRANSITION, KNOWLEDGE_CHECK, COOLDOWN, SUMMARY
+  title                 String
+  description           String?
+  durationSeconds       Int?                  // Configured duration (e.g. 30s rest, 45s practice timer)
+  repetitionCount       Int?                  // If rep-based practice (e.g. 8 reps)
+  exerciseId            String?
+  knowledgeCheckId      String?
+  config                Json?                 // Additional structured options: visual cues, transitionEquipment, coachNotes, etc.
+  isRequired            Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  session               GuidedSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  section               GuidedSessionSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  exercise              Exercise?             @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  knowledgeCheck        KnowledgeCheck?       @relation(fields: [knowledgeCheckId], references: [id], onDelete: SetNull)
+  completions           UserGuidedSessionItemCompletion[]
+
+  @@index([sessionId, sortOrder])
+  @@index([sectionId])
+  @@index([exerciseId])
+  @@index([knowledgeCheckId])
+  @@index([itemType])
+  @@map("guided_session_items")
+}
+
+model UserGuidedSessionProgress {
+  id                    String                @id @default(cuid())
+  userId                String
+  sessionId             String
+  organisationId        String?
+  status                String                @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  currentStepIndex      Int                   @default(0)
+  currentItemId         String?
+  completedItemCount    Int                   @default(0)
+  totalItemCount        Int                   @default(0)
+  percentComplete       Float                 @default(0.0)
+  timeSpentSeconds      Int                   @default(0)
+  practiceLog           Json?                 // Self-reflection / practice completion state per item
+  knowledgeCheckScores  Json?                 // Scores from knowledge checks taken in session
+  startedAt             DateTime?
+  completedAt           DateTime?
+  lastAccessedAt        DateTime              @default(now())
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session               GuidedSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  itemCompletions       UserGuidedSessionItemCompletion[]
+
+  @@unique([userId, sessionId])
+  @@index([userId, status])
+  @@index([sessionId])
+  @@index([organisationId])
+  @@map("user_guided_session_progress")
+}
+
+model UserGuidedSessionItemCompletion {
+  id                    String                    @id @default(cuid())
+  progressId            String
+  userId                String
+  sessionId             String
+  itemId                String
+  completedAt           DateTime                  @default(now())
+  timeSpentSeconds      Int                       @default(0)
+  metadata              Json?                     // e.g. reps completed, checklist state, rest skipped/taken, score
+
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress              UserGuidedSessionProgress @relation(fields: [progressId], references: [id], onDelete: Cascade)
+  item                  GuidedSessionItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([progressId])
+  @@index([userId, sessionId])
+  @@index([itemId])
+  @@map("user_guided_session_item_completions")
 }
 
 model WorkoutTemplate {
